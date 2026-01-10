@@ -74,7 +74,41 @@ async function mockAdapter(endpoint: string, options: RequestInit): Promise<any>
 
 // --- Public API Services ---
 
-export const fetchProduct = (id: string) => apiFetch<Product>(`/products/${id}`);
+/**
+ * Fetches Product Data.
+ * STRATEGY: Merges local hardcoded constants (Title, Desc, Images) with remote dynamic data (Price, Stock).
+ */
+export const fetchProduct = async (id: string): Promise<Product> => {
+    try {
+        // 1. Fetch Dynamic Data (DB)
+        const dbProduct = await apiFetch<Product>(`/products/${id}`);
+        
+        // 2. Load Static Config
+        const staticConfig = MAIN_PRODUCT;
+
+        // 3. Merge: Keep DB prices/stock, but overwrite Title/Desc/Images from constants.ts
+        // This allows developers to update text in code without needing DB access.
+        const mergedVariants = staticConfig.variants.map(staticVar => {
+            const dbVar = dbProduct.variants.find(v => v.id === staticVar.id);
+            return {
+                ...staticVar,
+                price: dbVar ? dbVar.price : staticVar.price,
+                compareAtPrice: dbVar ? dbVar.compareAtPrice : staticVar.compareAtPrice,
+                stock: dbVar ? (dbVar as any).stock : (staticVar as any).stock // DB usually has stock
+            };
+        });
+
+        return {
+            ...staticConfig,
+            id: dbProduct.id, // Ensure ID matches DB
+            variants: mergedVariants
+        };
+    } catch (error) {
+        console.error("Error fetching product, falling back to static config", error);
+        return MAIN_PRODUCT; // Fallback
+    }
+};
+
 export const fetchReviews = () => apiFetch<Review[]>('/reviews');
 export const fetchBlogPosts = () => apiFetch<BlogPost[]>('/blog');
 
@@ -110,6 +144,10 @@ export const fetchAdminOrders = () => apiFetch<Order[]>('/admin/orders');
 export const updateOrderStatus = (id: string, status: string) => 
     apiFetch<Order>(`/admin/orders/${id}`, { method: 'PUT', body: JSON.stringify({ status }) });
 
+/**
+ * Updates Product Prices/Stock only.
+ * Ignores Title/Description updates as they are hardcoded.
+ */
 export const updateProduct = (id: string, data: any) => 
     apiFetch(`/admin/products/${id}`, { method: 'PUT', body: JSON.stringify(data) });
 

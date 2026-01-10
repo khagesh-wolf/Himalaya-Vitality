@@ -189,20 +189,17 @@ app.put('/api/admin/orders/:id', async (req, res) => {
     }
 });
 
-// Update Product (and Variants)
+// Update Product (Variants Only)
 app.put('/api/admin/products/:id', async (req, res) => {
     const { id } = req.params;
-    const { title, description, variants } = req.body;
+    const { variants } = req.body;
+    // NOTE: Title and Description updates are ignored as they are managed by constants.ts
+    
     try {
-        // Update Product Info
-        const product = await prisma.product.update({
-            where: { id },
-            data: { title, description }
-        });
-
-        // Update Variants
+        // Update Variants Only
         if (variants && variants.length > 0) {
             for (const v of variants) {
+                // Ensure we only update existing variants
                 await prisma.productVariant.update({
                     where: { id: v.id },
                     data: {
@@ -213,10 +210,10 @@ app.put('/api/admin/products/:id', async (req, res) => {
                 });
             }
         }
-        res.json({ success: true });
+        res.json({ success: true, message: "Prices and Stock Updated" });
     } catch (error) {
         console.error(error);
-        res.status(500).json({ error: 'Failed to update product' });
+        res.status(500).json({ error: 'Failed to update product variants' });
     }
 });
 

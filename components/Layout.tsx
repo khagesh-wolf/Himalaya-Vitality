@@ -225,7 +225,9 @@ export const Footer = () => {
 
   // --- Security Script: Developer Credit Protection ---
   useEffect(() => {
-    // Only run protection on storefront, not admin (optional, but safer to run everywhere)
+    // Only run protection on storefront, not admin login (to avoid interfering with admin auth process if needed)
+    if (location.pathname === '/admin/login') return;
+
     const checkCredit = setInterval(() => {
         const credit = document.getElementById('dev-credit') as HTMLAnchorElement;
         const requiredHref = 'https://khagesh.com.np';
@@ -246,7 +248,7 @@ export const Footer = () => {
     }, 2000); // Check every 2 seconds
 
     return () => clearInterval(checkCredit);
-  }, []);
+  }, [location.pathname]);
 
   if (isAdmin) return <footer className="bg-white border-t border-gray-200 py-4 mt-auto"><Container><div className="flex justify-center items-center text-[10px] text-gray-400 font-medium"><span className="mr-1">System Version 1.2.0 • </span><a href="https://khagesh.com.np" id="dev-credit" className="hover:text-brand-red">Developed by Khagesh</a></div></Container></footer>;
 

@@ -1,4 +1,5 @@
 
+
 export enum BundleType {
   SINGLE = 'SINGLE',
   DOUBLE = 'DOUBLE',
@@ -14,6 +15,7 @@ export interface ProductVariant {
   label: string;
   savings: string;
   isPopular?: boolean;
+  stock?: number;
 }
 
 export interface Product {

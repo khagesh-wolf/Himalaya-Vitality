@@ -1,10 +1,16 @@
 
 import { Product, BundleType, Review, Order, BlogPost } from './types';
 
+// ==========================================
+// 🛠️ PRODUCT CONFIGURATION (HARDCODED)
+// Update Title, Description, and Images here.
+// Prices and Stock are managed in the Admin Panel / Database.
+// ==========================================
+
 export const MAIN_PRODUCT: Product = {
-  id: 'himalaya-shilajit-resin',
+  id: 'himalaya-shilajit-resin', // Database ID reference
   title: 'Pure Himalayan Shilajit Resin',
-  description: 'Sourced from 18,000ft in the Himalayas, our Gold Grade Shilajit is purified using traditional Ayurvedic methods to ensure maximum potency and purity.',
+  description: 'Sourced from 18,000ft in the Himalayas, our Gold Grade Shilajit is purified using traditional Ayurvedic methods to ensure maximum potency and purity. Rich in Fulvic Acid and over 85+ trace minerals.',
   rating: 4.9,
   reviewCount: 1248,
   features: [
@@ -18,15 +24,18 @@ export const MAIN_PRODUCT: Product = {
     'https://picsum.photos/600/600?random=2',
     'https://picsum.photos/600/600?random=3'
   ],
+  // These variants act as the "Template". 
+  // The actual Price and Stock will be overwritten by the Database/Admin Panel.
   variants: [
     {
       id: 'var_single',
       type: BundleType.SINGLE,
       name: 'Starter Pack (1 Jar)',
-      price: 49,
+      price: 49, // Default/Fallback
       compareAtPrice: 65,
       label: '1 Month Supply',
-      savings: 'Save $16'
+      savings: 'Save $16',
+      stock: 100 // Default/Fallback
     },
     {
       id: 'var_double',
@@ -35,7 +44,8 @@ export const MAIN_PRODUCT: Product = {
       price: 88,
       compareAtPrice: 130,
       label: '2 Month Supply',
-      savings: 'Save $42'
+      savings: 'Save $42',
+      stock: 100
     },
     {
       id: 'var_triple',
@@ -45,10 +55,15 @@ export const MAIN_PRODUCT: Product = {
       compareAtPrice: 195,
       label: '3 Month Supply',
       savings: 'Save $78',
-      isPopular: true
+      isPopular: true,
+      stock: 100
     }
   ]
 };
+
+// ==========================================
+// END PRODUCT CONFIGURATION
+// ==========================================
 
 export const ACCESSORY_PRODUCTS = [
     {
