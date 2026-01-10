@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Himalaya Vitality | Premium Shilajit Resin</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            colors: {
+              brand: {
+                red: '#D0202F', // Logo Red
+                dark: '#111111', // Deep Black
+                gray: '#F3F4F6',
+              },
+              gold: {
+                100: '#FEF9C3',
+                400: '#FACC15',
+                500: '#EAB308',
+              }
+            },
+            fontFamily: {
+              heading: ['Montserrat', 'sans-serif'],
+              sans: ['Inter', 'sans-serif'],
+            },
+            animation: {
+              'pulse-fast': 'pulse 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+              'shimmer': 'shimmer 2.5s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+              'fade-in-up': 'fadeInUp 1s cubic-bezier(0.16, 1, 0.3, 1) forwards',
+              'letter-reveal': 'letterReveal 1s cubic-bezier(0.34, 1.56, 0.64, 1) forwards',
+              'zoom-slow': 'zoomSlow 20s ease-out forwards',
+              'float': 'float 6s ease-in-out infinite',
+              'slide-up': 'slideUp 0.8s ease-out forwards',
+            },
+            keyframes: {
+              shimmer: {
+                '0%': { transform: 'translateX(-150%)' },
+                '100%': { transform: 'translateX(150%)' },
+              },
+              fadeInUp: {
+                '0%': { opacity: '0', transform: 'translateY(40px)' },
+                '100%': { opacity: '1', transform: 'translateY(0)' },
+              },
+              letterReveal: {
+                '0%': { opacity: '0', transform: 'translateY(50px) scale(0.8)', filter: 'blur(10px)' },
+                '100%': { opacity: '1', transform: 'translateY(0) scale(1)', filter: 'blur(0)' },
+              },
+              zoomSlow: {
+                '0%': { transform: 'scale(1)' },
+                '100%': { transform: 'scale(1.2)' },
+              },
+              float: {
+                '0%, 100%': { transform: 'translateY(0)' },
+                '50%': { transform: 'translateY(-10px)' },
+              },
+              slideUp: {
+                '0%': { transform: 'translateY(100%)', opacity: '0' },
+                '100%': { transform: 'translateY(0)', opacity: '1' },
+              }
+            }
+          }
+        }
+      }
+    </script>
+<script type="importmap">
+{
+  "imports": {
+    "@hookform/resolvers/": "https://esm.sh/@hookform/resolvers@^5.2.2/",
+    "lucide-react": "https://esm.sh/lucide-react@^0.562.0",
+    "react-dom/": "https://esm.sh/react-dom@^19.2.3/",
+    "react-router-dom": "https://esm.sh/react-router-dom@^7.12.0",
+    "zod": "https://esm.sh/zod@^4.3.5",
+    "react/": "https://esm.sh/react@^19.2.3/",
+    "react": "https://esm.sh/react@^19.2.3",
+    "recharts": "https://esm.sh/recharts@^3.6.0",
+    "@vitejs/plugin-react": "https://esm.sh/@vitejs/plugin-react@^5.1.2",
+    "vite": "https://esm.sh/vite@^7.3.1",
+    "@tanstack/react-query": "https://esm.sh/@tanstack/react-query@^5.90.16",
+    "@stripe/stripe-js": "https://esm.sh/@stripe/stripe-js@^8.6.1",
+    "react-hook-form": "https://esm.sh/react-hook-form@^7.70.0",
+    "fuse.js": "https://esm.sh/fuse.js@^7.1.0",
+    "@stripe/react-stripe-js": "https://esm.sh/@stripe/react-stripe-js@^5.4.1"
+  }
+}
+</script>
+<link rel="stylesheet" href="/index.css">
+</head>
+  <body class="bg-white text-stone-900 font-sans antialiased">
+    <div id="root"></div>
+    <script type="module" src="/index.tsx"></script>
+  </body>
+</html>
