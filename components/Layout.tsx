@@ -136,7 +136,7 @@ export const Navbar = () => {
 
               {/* Account (Desktop) */}
               <div className="relative group">
-                <Link to={isAuthenticated ? '#' : '/login'} onClick={() => isAuthenticated && setShowProfileMenu(!showProfileMenu)}>
+                <Link to={isAuthenticated ? '#' : '/login'} onClick={(e) => { if(isAuthenticated) { e.preventDefault(); setShowProfileMenu(!showProfileMenu); } }}>
                     <button className={`p-2 rounded-full transition-colors group hidden md:block ${scrolled ? 'text-gray-600 hover:text-brand-dark hover:bg-gray-100' : 'text-white hover:bg-white/20'}`}>
                         {user?.avatar ? (
                             <img src={user.avatar} alt="Profile" className="w-5 h-5 rounded-full" />
@@ -154,10 +154,11 @@ export const Navbar = () => {
                             <p className="text-xs text-gray-500 truncate">{user?.email}</p>
                         </div>
                         {user?.role === 'ADMIN' && (
-                            <Link to="/admin" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 hover:text-brand-red">Admin Dashboard</Link>
+                            <Link to="/admin" onClick={() => setShowProfileMenu(false)} className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 hover:text-brand-red">Admin Dashboard</Link>
                         )}
-                        <Link to="/profile" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 hover:text-brand-red">Order History</Link>
-                        <button onClick={logout} className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 hover:text-brand-red flex items-center">
+                        <Link to="/profile" onClick={() => setShowProfileMenu(false)} className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 hover:text-brand-red">My Profile</Link>
+                        <Link to="/profile" onClick={() => setShowProfileMenu(false)} className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 hover:text-brand-red">Order History</Link>
+                        <button onClick={() => { logout(); setShowProfileMenu(false); }} className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 hover:text-brand-red flex items-center">
                             <LogOut size={14} className="mr-2" /> Sign Out
                         </button>
                     </div>
@@ -216,7 +217,10 @@ export const Navbar = () => {
                                       <div className="text-xs text-gray-500">{user?.email}</div>
                                   </div>
                               </div>
-                              <Button fullWidth size="sm" variant="outline-dark" onClick={logout} className="bg-white">Sign Out</Button>
+                              <Link to="/profile" onClick={() => setIsMobileMenuOpen(false)}>
+                                  <Button fullWidth size="sm" variant="outline-dark" className="bg-white mb-2">My Profile</Button>
+                              </Link>
+                              <Button fullWidth size="sm" variant="ghost" onClick={logout} className="bg-white border border-gray-200">Sign Out</Button>
                           </div>
                       ) : (
                           <Link to="/login" onClick={() => setIsMobileMenuOpen(false)}>

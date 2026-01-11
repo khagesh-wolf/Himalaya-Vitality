@@ -35,7 +35,7 @@ export const LoginPage = () => {
         e.preventDefault();
         try {
             await login({ email, password });
-            navigate('/');
+            navigate('/profile');
         } catch (e) {
             // Error handled in context
         }
@@ -45,7 +45,7 @@ export const LoginPage = () => {
         onSuccess: async (tokenResponse) => {
             try {
                 await socialLogin(tokenResponse.access_token);
-                navigate('/');
+                navigate('/profile');
             } catch (err) {
                 console.error('Google login failed in context', err);
             }
@@ -137,7 +137,7 @@ export const SignupPage = () => {
         e.preventDefault();
         try {
             await signup({ name, email, password });
-            navigate('/');
+            navigate('/profile');
         } catch (e) {
             // Error handled in context
         }
@@ -147,7 +147,7 @@ export const SignupPage = () => {
         onSuccess: async (tokenResponse) => {
             try {
                 await socialLogin(tokenResponse.access_token);
-                navigate('/');
+                navigate('/profile');
             } catch (err) {
                 console.error('Google signup failed in context', err);
             }
