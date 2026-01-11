@@ -119,6 +119,20 @@ async function mockAdapter(endpoint: string, options: RequestInit): Promise<any>
         return { token: `mock_token_${newUser.id}`, user: newUser };
     }
 
+    // Mock Google Login
+    if (endpoint === '/auth/google') {
+        return { 
+            token: `mock_google_token_${Date.now()}`,
+            user: { 
+                id: 'social_google_user', 
+                name: 'Google User', 
+                email: 'user@google.com', 
+                role: 'CUSTOMER', 
+                avatar: 'https://lh3.googleusercontent.com/a/default-user=s96-c' 
+            }
+        };
+    }
+
     if (endpoint === '/auth/me') {
         const authHeader = (options.headers as any)?.Authorization;
         const token = authHeader ? authHeader.split(' ')[1] : null;
@@ -131,7 +145,7 @@ async function mockAdapter(endpoint: string, options: RequestInit): Promise<any>
                 if (user) return user;
             }
             // 2. Social Login Tokens
-            if (token === 'mock_google_token') {
+            if (token.startsWith('mock_google_token')) {
                  return { 
                     id: 'social_google_user', 
                     name: 'Google User', 
@@ -151,7 +165,7 @@ async function mockAdapter(endpoint: string, options: RequestInit): Promise<any>
         let userId = '';
         if (token && token.startsWith('mock_token_')) {
             userId = token.replace('mock_token_', '');
-        } else if (token === 'mock_google_token') {
+        } else if (token && token.startsWith('mock_google_token')) {
             userId = 'social_google_user'; // Mock ID for google user
         }
         
@@ -216,6 +230,7 @@ export const fetchBlogPosts = () => apiFetch<BlogPost[]>('/blog');
 
 export const loginUser = (data: any) => apiFetch<{ token: string, user: User }>('/auth/login', { method: 'POST', body: JSON.stringify(data) });
 export const signupUser = (data: any) => apiFetch<{ token: string, user: User }>('/auth/signup', { method: 'POST', body: JSON.stringify(data) });
+export const googleAuthenticate = (token: string) => apiFetch<{ token: string, user: User }>('/auth/google', { method: 'POST', body: JSON.stringify({ token }) });
 export const fetchCurrentUser = () => apiFetch<User>('/auth/me');
 export const updateUserProfile = (data: Partial<User>) => apiFetch<User>('/auth/profile', { method: 'PUT', body: JSON.stringify(data) });
 export const fetchUserOrders = () => apiFetch<Order[]>('/orders/my-orders');

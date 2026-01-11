@@ -2,6 +2,7 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { Mail, Lock, User, AlertCircle } from 'lucide-react';
+import { useGoogleLogin } from '@react-oauth/google';
 import { Button, Card, Container } from '../components/UI';
 import { useAuth } from '../context/AuthContext';
 import { SEO } from '../components/SEO';
@@ -10,6 +11,7 @@ const SocialButton = ({ onClick }: { onClick: () => void }) => {
     return (
         <button 
             onClick={onClick}
+            type="button"
             className="flex items-center justify-center w-full px-4 py-3 border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors font-bold text-sm text-gray-700 bg-white shadow-sm"
         >
             <svg className="w-5 h-5 mr-3" viewBox="0 0 24 24">
@@ -39,6 +41,18 @@ export const LoginPage = () => {
         }
     };
 
+    const handleGoogleLogin = useGoogleLogin({
+        onSuccess: async (tokenResponse) => {
+            try {
+                await socialLogin(tokenResponse.access_token);
+                navigate('/');
+            } catch (err) {
+                console.error('Google login failed in context', err);
+            }
+        },
+        onError: () => console.error('Google Login Failed'),
+    });
+
     return (
         <div className="min-h-screen bg-gray-50 flex items-center justify-center py-20">
             <SEO title="Login" />
@@ -50,7 +64,7 @@ export const LoginPage = () => {
 
                 <Card className="p-8 border-none shadow-xl">
                     <div className="space-y-3 mb-6">
-                        <SocialButton onClick={() => socialLogin('google')} />
+                        <SocialButton onClick={() => handleGoogleLogin()} />
                     </div>
 
                     <div className="relative mb-6">
@@ -92,8 +106,9 @@ export const LoginPage = () => {
                         </div>
 
                         {error && (
-                            <div className="bg-red-50 text-red-600 p-3 rounded-lg text-sm flex items-center">
-                                <AlertCircle size={16} className="mr-2 shrink-0"/> {error}
+                            <div className="bg-red-50 text-red-600 p-3 rounded-lg text-sm flex items-start">
+                                <AlertCircle size={16} className="mr-2 shrink-0 mt-0.5"/> 
+                                <span>{error}</span>
                             </div>
                         )}
 
@@ -127,6 +142,18 @@ export const SignupPage = () => {
             // Error handled in context
         }
     };
+
+    const handleGoogleLogin = useGoogleLogin({
+        onSuccess: async (tokenResponse) => {
+            try {
+                await socialLogin(tokenResponse.access_token);
+                navigate('/');
+            } catch (err) {
+                console.error('Google signup failed in context', err);
+            }
+        },
+        onError: () => console.error('Google Signup Failed'),
+    });
 
     return (
         <div className="min-h-screen bg-gray-50 flex items-center justify-center py-20">
@@ -183,8 +210,9 @@ export const SignupPage = () => {
                         </div>
 
                         {error && (
-                            <div className="bg-red-50 text-red-600 p-3 rounded-lg text-sm flex items-center">
-                                <AlertCircle size={16} className="mr-2 shrink-0"/> {error}
+                            <div className="bg-red-50 text-red-600 p-3 rounded-lg text-sm flex items-start">
+                                <AlertCircle size={16} className="mr-2 shrink-0 mt-0.5"/> 
+                                <span>{error}</span>
                             </div>
                         )}
 
@@ -199,7 +227,7 @@ export const SignupPage = () => {
                     </div>
 
                     <div className="space-y-3">
-                        <SocialButton onClick={() => socialLogin('google')} />
+                        <SocialButton onClick={() => handleGoogleLogin()} />
                     </div>
                 </Card>
 

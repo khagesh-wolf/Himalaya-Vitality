@@ -1,7 +1,7 @@
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { User } from '../types';
-import { loginUser, signupUser, fetchCurrentUser } from '../services/api';
+import { loginUser, signupUser, fetchCurrentUser, googleAuthenticate } from '../services/api';
 
 interface AuthContextType {
   user: User | null;
@@ -10,7 +10,7 @@ interface AuthContextType {
   isLoading: boolean;
   login: (data: any) => Promise<void>;
   signup: (data: any) => Promise<void>;
-  socialLogin: (provider: 'google') => Promise<void>;
+  socialLogin: (token: string, provider?: 'google') => Promise<void>;
   logout: () => void;
   error: string | null;
 }
@@ -69,22 +69,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  const socialLogin = async (provider: 'google') => {
+  const socialLogin = async (token: string, provider: 'google' = 'google') => {
     setIsLoading(true);
-    // Simulation of Social Login
-    // In a real app, this would redirect to backend OAuth endpoint
-    setTimeout(() => {
-        const mockUser: User = {
-            id: `social_${provider}_${Date.now()}`,
-            email: `user@${provider}.com`,
-            name: `Google User`,
-            role: 'CUSTOMER',
-            avatar: 'https://lh3.googleusercontent.com/a/default-user=s96-c' 
-        };
-        setUser(mockUser);
-        localStorage.setItem('hv_token', `mock_${provider}_token`);
+    setError(null);
+    try {
+        const { token: appToken, user: userData } = await googleAuthenticate(token);
+        localStorage.setItem('hv_token', appToken);
+        setUser(userData);
+    } catch (err: any) {
+        setError(err.message || 'Social login failed');
+        throw err;
+    } finally {
         setIsLoading(false);
-    }, 1500);
+    }
   };
 
   const logout = () => {

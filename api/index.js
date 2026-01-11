@@ -97,7 +97,12 @@ app.post('/api/auth/signup', async (req, res) => {
 
     } catch (error) {
         console.error("Signup Error:", error);
-        res.status(500).json({ message: 'Server error during signup.' });
+        // Explicitly return the error message for debugging
+        res.status(500).json({ 
+            message: 'Server error during signup.', 
+            error: error.message,
+            code: error.code // Prisma error code
+        });
     }
 });
 
@@ -139,7 +144,73 @@ app.post('/api/auth/login', async (req, res) => {
 
     } catch (error) {
         console.error("Login Error:", error);
-        res.status(500).json({ message: 'Server error during login.' });
+        res.status(500).json({ message: 'Server error during login.', error: error.message });
+    }
+});
+
+// GOOGLE AUTH LOGIN/SIGNUP
+app.post('/api/auth/google', async (req, res) => {
+    const { token } = req.body; // Receives Access Token from Frontend
+
+    try {
+        // 1. Verify Token with Google
+        // We use the UserInfo endpoint to validate the access token and get user details
+        const googleResponse = await fetch(`https://www.googleapis.com/oauth2/v3/userinfo?access_token=${token}`);
+        
+        if (!googleResponse.ok) {
+            return res.status(400).json({ message: 'Invalid Google Token' });
+        }
+
+        const googleUser = await googleResponse.json();
+        const { email, name, picture } = googleUser;
+
+        if (!email) return res.status(400).json({ message: 'Google account missing email' });
+
+        // 2. Check or Create User in DB
+        let user = await prisma.user.findUnique({ where: { email } });
+
+        if (!user) {
+            user = await prisma.user.create({
+                data: {
+                    email,
+                    name,
+                    avatar: picture,
+                    role: 'CUSTOMER',
+                    provider: 'GOOGLE',
+                    password: null // No password for social logins
+                }
+            });
+        } else {
+            // Optional: Update avatar if changed
+            if (picture && user.avatar !== picture) {
+                user = await prisma.user.update({
+                    where: { id: user.id },
+                    data: { avatar: picture }
+                });
+            }
+        }
+
+        // 3. Generate App JWT
+        const appToken = jwt.sign(
+            { id: user.id, email: user.email, role: user.role },
+            JWT_SECRET,
+            { expiresIn: '7d' }
+        );
+
+        res.json({ 
+            token: appToken, 
+            user: {
+                id: user.id, 
+                name: user.name, 
+                email: user.email, 
+                role: user.role,
+                avatar: user.avatar
+            } 
+        });
+
+    } catch (error) {
+        console.error("Google Auth Error:", error);
+        res.status(500).json({ message: 'Google authentication failed', error: error.message });
     }
 });
 

@@ -1,7 +1,7 @@
-
 import React, { useEffect, Suspense } from 'react';
 import { HashRouter, Routes, Route, useLocation } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { GoogleOAuthProvider } from '@react-oauth/google';
 import { Navbar, Footer } from './components/Layout';
 import { CurrencyProvider } from './context/CurrencyContext';
 import { CartProvider } from './context/CartContext';
@@ -58,66 +58,63 @@ const ScrollToTop = () => {
   return null;
 };
 
+// Replace with your actual Google Client ID from console.cloud.google.com
+const GOOGLE_CLIENT_ID = (import.meta as any).env.VITE_GOOGLE_CLIENT_ID || "YOUR_GOOGLE_CLIENT_ID_PLACEHOLDER";
+
 const App: React.FC = () => {
   return (
     <ErrorBoundary>
-      <QueryClientProvider client={queryClient}>
-        <LoadingProvider>
-          <AuthProvider>
-            <SettingsProvider>
-              <CurrencyProvider>
-                <CartProvider>
-                  <HashRouter>
-                    <ScrollToTop />
-                    <div className="flex flex-col min-h-screen font-sans text-earth-900">
-                      <Navbar />
-                      <main className="flex-grow">
-                        <Suspense fallback={<GlobalLoader />}>
-                          <Routes>
-                            <Route path="/" element={<><SEO title="Premium Shilajit Resin" description="Boost your energy naturally." /><HomePage /></>} />
-                            
-                            {/* Consolidated Shop Route - All product traffic goes here */}
-                            <Route path="/product/:productId" element={<><SEO title="Shop Shilajit" /><ProductPage /></>} />
-                            <Route path="/shop" element={<><SEO title="Shop Shilajit" /><ProductPage /></>} /> 
-                            
-                            <Route path="/cart" element={<><SEO title="Your Cart" /><CartPage /></>} />
-                            <Route path="/checkout" element={<><SEO title="Secure Checkout" /><CheckoutPage /></>} />
-                            
-                            {/* Auth Routes */}
-                            <Route path="/login" element={<LoginPage />} />
-                            <Route path="/signup" element={<SignupPage />} />
-                            <Route path="/profile" element={<ProfilePage />} />
-                            
-                            <Route path="/admin" element={<AdminDashboard />} />
-                            <Route path="/admin/login" element={<AdminLoginPage />} />
-                            
-                            <Route path="/about" element={<><SEO title="Our Story" /><AboutPage /></>} />
-                            <Route path="/science" element={<><SEO title="The Science" /><SciencePage /></>} />
-                            <Route path="/how-to-use" element={<><SEO title="How To Use" /><HowToUsePage /></>} />
-                            <Route path="/faq" element={<><SEO title="FAQ" /><FAQPage /></>} />
-                            <Route path="/blog" element={<BlogIndex />} />
-                            <Route path="/blog/:slug" element={<BlogPostPage />} />
-                            <Route path="/contact" element={<><SEO title="Contact Us" /><ContactPage /></>} />
-                            <Route path="/track" element={<><SEO title="Track Order" /><TrackOrderPage /></>} />
-                            <Route path="/reviews" element={<><SEO title="Reviews" /><ReviewsPage /></>} />
-                            <Route path="/sitemap" element={<><SEO title="Sitemap" /><SitemapPage /></>} />
-                            <Route path="/privacy" element={<><SEO title="Privacy Policy" /><PrivacyPage /></>} />
-                            <Route path="/terms" element={<><SEO title="Terms of Service" /><TermsPage /></>} />
-                            <Route path="/shipping-returns" element={<><SEO title="Shipping & Returns" /><ShippingReturnsPage /></>} />
-
-                            <Route path="*" element={<NotFoundPage />} />
-                          </Routes>
-                        </Suspense>
-                      </main>
-                      <Footer />
-                    </div>
-                  </HashRouter>
-                </CartProvider>
-              </CurrencyProvider>
-            </SettingsProvider>
-          </AuthProvider>
-        </LoadingProvider>
-      </QueryClientProvider>
+      <GoogleOAuthProvider clientId={GOOGLE_CLIENT_ID}>
+        <QueryClientProvider client={queryClient}>
+          <LoadingProvider>
+            <AuthProvider>
+              <SettingsProvider>
+                <CurrencyProvider>
+                  <CartProvider>
+                    <HashRouter>
+                      <ScrollToTop />
+                      <div className="flex flex-col min-h-screen font-sans text-earth-900">
+                        <Navbar />
+                        <main className="flex-grow">
+                          <Suspense fallback={<GlobalLoader />}>
+                            <Routes>
+                              <Route path="/" element={<><SEO title="Premium Shilajit Resin" description="Boost your energy naturally." /><HomePage /></>} />
+                              <Route path="/product/:productId" element={<><SEO title="Shop Shilajit" /><ProductPage /></>} />
+                              <Route path="/shop" element={<><SEO title="Shop Shilajit" /><ProductPage /></>} /> 
+                              <Route path="/cart" element={<><SEO title="Your Cart" /><CartPage /></>} />
+                              <Route path="/checkout" element={<><SEO title="Secure Checkout" /><CheckoutPage /></>} />
+                              <Route path="/login" element={<LoginPage />} />
+                              <Route path="/signup" element={<SignupPage />} />
+                              <Route path="/profile" element={<ProfilePage />} />
+                              <Route path="/admin" element={<AdminDashboard />} />
+                              <Route path="/admin/login" element={<AdminLoginPage />} />
+                              <Route path="/about" element={<><SEO title="Our Story" /><AboutPage /></>} />
+                              <Route path="/science" element={<><SEO title="The Science" /><SciencePage /></>} />
+                              <Route path="/how-to-use" element={<><SEO title="How To Use" /><HowToUsePage /></>} />
+                              <Route path="/faq" element={<><SEO title="FAQ" /><FAQPage /></>} />
+                              <Route path="/blog" element={<BlogIndex />} />
+                              <Route path="/blog/:slug" element={<BlogPostPage />} />
+                              <Route path="/contact" element={<><SEO title="Contact Us" /><ContactPage /></>} />
+                              <Route path="/track" element={<><SEO title="Track Order" /><TrackOrderPage /></>} />
+                              <Route path="/reviews" element={<><SEO title="Reviews" /><ReviewsPage /></>} />
+                              <Route path="/sitemap" element={<><SEO title="Sitemap" /><SitemapPage /></>} />
+                              <Route path="/privacy" element={<><SEO title="Privacy Policy" /><PrivacyPage /></>} />
+                              <Route path="/terms" element={<><SEO title="Terms of Service" /><TermsPage /></>} />
+                              <Route path="/shipping-returns" element={<><SEO title="Shipping & Returns" /><ShippingReturnsPage /></>} />
+                              <Route path="*" element={<NotFoundPage />} />
+                            </Routes>
+                          </Suspense>
+                        </main>
+                        <Footer />
+                      </div>
+                    </HashRouter>
+                  </CartProvider>
+                </CurrencyProvider>
+              </SettingsProvider>
+            </AuthProvider>
+          </LoadingProvider>
+        </QueryClientProvider>
+      </GoogleOAuthProvider>
     </ErrorBoundary>
   );
 };
