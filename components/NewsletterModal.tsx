@@ -32,14 +32,14 @@ export const NewsletterModal = () => {
         ) {
             setIsOpen(true);
         }
-    }, 10000);
+    }, 15000);
 
     // 4. Exit Intent Logic (Enforcing 10s rule as requested)
     const handleMouseLeave = (e: MouseEvent) => {
       if (e.clientY <= 0) {
         const timeOnPage = Date.now() - mountedTime;
         // Only show if user has been hanging on the website for more than 10 seconds
-        if (timeOnPage < 10000) return;
+        if (timeOnPage < 15000) return;
 
         if (
             localStorage.getItem('himalaya_subscribed') !== 'true' &&
@@ -119,7 +119,7 @@ export const NewsletterModal = () => {
         {/* Image Side */}
         <div className="hidden md:block w-2/5 relative">
            <LazyImage 
-             src="https://images.unsplash.com/photo-1544367563-12123d832e34?q=80&w=800&auto=format&fit=crop" 
+             src="https://unsplash.com/photos/a-buddha-statue-sitting-in-front-of-a-tree-s3bt3HeHbYY?q=80&w=800&auto=format&fit=crop" 
              alt="Himalayan Zen" 
              className="absolute inset-0 w-full h-full object-cover" 
            />
@@ -136,7 +136,7 @@ export const NewsletterModal = () => {
             <>
               <div className="mb-6">
                 <h2 className="font-heading text-2xl md:text-3xl font-extrabold text-brand-dark mb-3">
-                  Unlock 10% Off
+                  Unlock 25% Off
                 </h2>
                 <p className="text-gray-500 text-sm leading-relaxed">
                   Join 15,000+ athletes. Get exclusive access to new harvests, recovery protocols, and <strong>10% off your first order</strong>.

@@ -1,40 +1,110 @@
+
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { User } from '../types';
+import { loginUser, signupUser, fetchCurrentUser } from '../services/api';
 
 interface AuthContextType {
+  user: User | null;
   isAuthenticated: boolean;
-  login: (password: string) => boolean;
+  isAdmin: boolean;
+  isLoading: boolean;
+  login: (data: any) => Promise<void>;
+  signup: (data: any) => Promise<void>;
+  socialLogin: (provider: 'google') => Promise<void>;
   logout: () => void;
+  error: string | null;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [user, setUser] = useState<User | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const session = localStorage.getItem('himalaya_admin_session');
-    if (session === 'valid') {
-      setIsAuthenticated(true);
-    }
+    const initAuth = async () => {
+      const token = localStorage.getItem('hv_token');
+      if (token) {
+        try {
+          const userData = await fetchCurrentUser();
+          setUser(userData);
+        } catch (err) {
+          console.error("Session expired or invalid");
+          localStorage.removeItem('hv_token');
+        }
+      }
+      setIsLoading(false);
+    };
+    initAuth();
   }, []);
 
-  const login = (password: string) => {
-    // Mock secure password check
-    if (password === 'admin123') {
-      localStorage.setItem('himalaya_admin_session', 'valid');
-      setIsAuthenticated(true);
-      return true;
+  const login = async (data: any) => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const { token, user: userData } = await loginUser(data);
+      localStorage.setItem('hv_token', token);
+      setUser(userData);
+    } catch (err: any) {
+      setError(err.message || 'Login failed');
+      throw err;
+    } finally {
+      setIsLoading(false);
     }
-    return false;
+  };
+
+  const signup = async (data: any) => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const { token, user: userData } = await signupUser(data);
+      localStorage.setItem('hv_token', token);
+      setUser(userData);
+    } catch (err: any) {
+      setError(err.message || 'Signup failed');
+      throw err;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const socialLogin = async (provider: 'google') => {
+    setIsLoading(true);
+    // Simulation of Social Login
+    // In a real app, this would redirect to backend OAuth endpoint
+    setTimeout(() => {
+        const mockUser: User = {
+            id: `social_${provider}_${Date.now()}`,
+            email: `user@${provider}.com`,
+            name: `Google User`,
+            role: 'CUSTOMER',
+            avatar: 'https://lh3.googleusercontent.com/a/default-user=s96-c' 
+        };
+        setUser(mockUser);
+        localStorage.setItem('hv_token', `mock_${provider}_token`);
+        setIsLoading(false);
+    }, 1500);
   };
 
   const logout = () => {
-    localStorage.removeItem('himalaya_admin_session');
-    setIsAuthenticated(false);
+    localStorage.removeItem('hv_token');
+    localStorage.removeItem('himalaya_admin_session'); // clear legacy admin token
+    setUser(null);
   };
 
   return (
-    <AuthContext.Provider value={{ isAuthenticated, login, logout }}>
+    <AuthContext.Provider value={{ 
+      user, 
+      isAuthenticated: !!user, 
+      isAdmin: user?.role === 'ADMIN',
+      isLoading, 
+      login, 
+      signup, 
+      socialLogin,
+      logout,
+      error
+    }}>
       {children}
     </AuthContext.Provider>
   );

@@ -25,6 +25,9 @@ const CartPage = React.lazy(() => import('./pages/CartPage').then(m => ({ defaul
 const BlogIndex = React.lazy(() => import('./pages/BlogPage').then(m => ({ default: m.BlogIndex })));
 const BlogPostPage = React.lazy(() => import('./pages/BlogPage').then(m => ({ default: m.BlogPostPage })));
 const NotFoundPage = React.lazy(() => import('./pages/NotFoundPage').then(m => ({ default: m.NotFoundPage })));
+const LoginPage = React.lazy(() => import('./pages/AuthPages').then(m => ({ default: m.LoginPage })));
+const SignupPage = React.lazy(() => import('./pages/AuthPages').then(m => ({ default: m.SignupPage })));
+const ProfilePage = React.lazy(() => import('./pages/ProfilePage').then(m => ({ default: m.ProfilePage })));
 
 // Lazy load static pages
 const AboutPage = React.lazy(() => import('./pages/StaticPages').then(m => ({ default: m.AboutPage })));
@@ -75,10 +78,16 @@ const App: React.FC = () => {
                             
                             {/* Consolidated Shop Route - All product traffic goes here */}
                             <Route path="/product/:productId" element={<><SEO title="Shop Shilajit" /><ProductPage /></>} />
-                            <Route path="/shop" element={<><SEO title="Shop Shilajit" /><ProductPage /></>} /> {/* Redirect/Alias for legacy */}
+                            <Route path="/shop" element={<><SEO title="Shop Shilajit" /><ProductPage /></>} /> 
                             
                             <Route path="/cart" element={<><SEO title="Your Cart" /><CartPage /></>} />
                             <Route path="/checkout" element={<><SEO title="Secure Checkout" /><CheckoutPage /></>} />
+                            
+                            {/* Auth Routes */}
+                            <Route path="/login" element={<LoginPage />} />
+                            <Route path="/signup" element={<SignupPage />} />
+                            <Route path="/profile" element={<ProfilePage />} />
+                            
                             <Route path="/admin" element={<AdminDashboard />} />
                             <Route path="/admin/login" element={<AdminLoginPage />} />
                             

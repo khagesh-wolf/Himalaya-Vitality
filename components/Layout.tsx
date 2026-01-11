@@ -1,10 +1,11 @@
 
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { ShoppingBag, Menu, X, ShieldCheck, Truck, Globe, Search, Instagram, Mail } from 'lucide-react';
-import { Container } from './UI';
+import { ShoppingBag, Menu, X, ShieldCheck, Truck, Globe, Search, Instagram, Mail, User, LogOut } from 'lucide-react';
+import { Container, Button } from './UI';
 import { useCurrency, CurrencyCode, SUPPORTED_CURRENCIES } from '../context/CurrencyContext';
 import { useCart } from '../context/CartContext';
+import { useAuth } from '../context/AuthContext';
 import { GlobalLoader } from './GlobalLoader';
 import { CookieConsent } from './CookieConsent';
 import { NewsletterModal } from './NewsletterModal';
@@ -29,12 +30,14 @@ export const Navbar = () => {
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
+  const [showProfileMenu, setShowProfileMenu] = useState(false);
   
   const location = useLocation();
   const isAdmin = location.pathname.startsWith('/admin') && location.pathname !== '/admin/login';
   const { currency, setCurrency } = useCurrency();
   const { cartCount } = useCart();
   const { settings } = useSettings();
+  const { user, logout, isAuthenticated } = useAuth();
 
   // Handle Body Scroll Lock
   useEffect(() => {
@@ -93,10 +96,6 @@ export const Navbar = () => {
             : 'bg-transparent border-transparent md:bg-gradient-to-b md:from-black/30 md:to-transparent'
         }`}
       >
-        {/* On mobile, if not scrolled, we might want a background if content is light. 
-            However, we usually have a dark hero. 
-            Added generic background check logic via `scrolled` state.
-        */}
         <div className={`absolute inset-0 bg-white/90 backdrop-blur-md transition-opacity duration-300 md:hidden ${scrolled ? 'opacity-100' : 'opacity-0'}`}></div>
 
         <Container className="relative">
@@ -110,13 +109,11 @@ export const Navbar = () => {
               <Menu size={24} />
             </button>
 
-            {/* 2. Logo (Center Mobile, Left Desktop) */}
-            {/* On mobile transparent header, logo needs specific styling or just rely on default */}
+            {/* 2. Logo */}
             <Link to="/" className="flex-shrink-0 relative z-40">
                 <div className={`transition-opacity duration-300 ${!scrolled && location.pathname === '/' ? 'hidden md:block' : 'block'}`}>
                      <Logo />
                 </div>
-                {/* Alternative White Logo for transparent header could go here, but using brand logo is safer for brand identity */}
             </Link>
 
             {/* 3. Desktop Navigation (Center) */}
@@ -129,16 +126,45 @@ export const Navbar = () => {
 
             {/* 4. Actions (Right) */}
             <div className="flex items-center space-x-1 md:space-x-3">
-              {/* Search Trigger */}
+              {/* Search */}
               <button 
                 onClick={() => setIsSearchOpen(true)}
                 className={`p-2 rounded-full transition-colors group ${scrolled ? 'text-gray-600 hover:text-brand-dark hover:bg-gray-100' : 'text-white hover:bg-white/20'}`}
-                aria-label="Search"
               >
                 <Search size={20} className="group-hover:scale-110 transition-transform" />
               </button>
 
-              {/* Currency Selector (Desktop Only) */}
+              {/* Account (Desktop) */}
+              <div className="relative group">
+                <Link to={isAuthenticated ? '#' : '/login'} onClick={() => isAuthenticated && setShowProfileMenu(!showProfileMenu)}>
+                    <button className={`p-2 rounded-full transition-colors group hidden md:block ${scrolled ? 'text-gray-600 hover:text-brand-dark hover:bg-gray-100' : 'text-white hover:bg-white/20'}`}>
+                        {user?.avatar ? (
+                            <img src={user.avatar} alt="Profile" className="w-5 h-5 rounded-full" />
+                        ) : (
+                            <User size={20} className="group-hover:scale-110 transition-transform" />
+                        )}
+                    </button>
+                </Link>
+                
+                {/* Desktop Dropdown */}
+                {isAuthenticated && showProfileMenu && (
+                    <div className="absolute right-0 top-12 w-48 bg-white rounded-xl shadow-xl border border-gray-100 py-2 animate-in fade-in slide-in-from-top-2 z-50">
+                        <div className="px-4 py-3 border-b border-gray-100">
+                            <p className="text-sm font-bold text-brand-dark truncate">{user?.name || 'User'}</p>
+                            <p className="text-xs text-gray-500 truncate">{user?.email}</p>
+                        </div>
+                        {user?.role === 'ADMIN' && (
+                            <Link to="/admin" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 hover:text-brand-red">Admin Dashboard</Link>
+                        )}
+                        <Link to="/profile" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 hover:text-brand-red">Order History</Link>
+                        <button onClick={logout} className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 hover:text-brand-red flex items-center">
+                            <LogOut size={14} className="mr-2" /> Sign Out
+                        </button>
+                    </div>
+                )}
+              </div>
+
+              {/* Currency */}
               {settings.enableCurrencySelector && (
                 <div className="hidden md:block relative group mx-2">
                   <select 
@@ -151,11 +177,10 @@ export const Navbar = () => {
                 </div>
               )}
 
-              {/* Cart Trigger */}
+              {/* Cart */}
               <button 
                   className={`p-2 rounded-full transition-colors relative group ${scrolled ? 'text-brand-dark hover:bg-gray-100' : 'text-white hover:bg-white/20'}`}
                   onClick={() => setIsCartOpen(true)}
-                  aria-label="Cart"
               >
                 <ShoppingBag size={20} className="group-hover:scale-110 transition-transform" />
                 {cartCount > 0 && (
@@ -180,6 +205,25 @@ export const Navbar = () => {
               
               <div className="flex-1 overflow-y-auto py-6 px-6">
                   <nav className="space-y-6">
+                      {isAuthenticated ? (
+                          <div className="bg-gray-50 p-4 rounded-xl mb-6">
+                              <div className="flex items-center gap-3 mb-3">
+                                  <div className="w-10 h-10 bg-brand-red rounded-full flex items-center justify-center text-white font-bold">
+                                      {user?.name?.charAt(0) || 'U'}
+                                  </div>
+                                  <div>
+                                      <div className="font-bold text-brand-dark">{user?.name}</div>
+                                      <div className="text-xs text-gray-500">{user?.email}</div>
+                                  </div>
+                              </div>
+                              <Button fullWidth size="sm" variant="outline-dark" onClick={logout} className="bg-white">Sign Out</Button>
+                          </div>
+                      ) : (
+                          <Link to="/login" onClick={() => setIsMobileMenuOpen(false)}>
+                              <Button fullWidth size="lg" className="mb-6 shadow-lg shadow-brand-red/20">Login / Join</Button>
+                          </Link>
+                      )}
+
                       {['Shop', 'Science', 'About', 'Reviews', 'Blog', 'Track Order', 'Contact'].map((item) => (
                           <Link 
                               key={item}
@@ -225,7 +269,7 @@ export const Footer = () => {
 
   // --- Security Script: Developer Credit Protection ---
   useEffect(() => {
-    // Only run protection on storefront, not admin login (to avoid interfering with admin auth process if needed)
+    // Only run protection on storefront, not admin login
     if (location.pathname === '/admin/login') return;
 
     const checkCredit = setInterval(() => {
@@ -233,7 +277,6 @@ export const Footer = () => {
         const requiredHref = 'https://khagesh.com.np';
         const requiredText = 'Khagesh';
 
-        // Conditions: Missing element, Wrong Link, Hidden, or Text Tampered
         if (
             !credit || 
             credit.getAttribute('href') !== requiredHref || 
@@ -242,10 +285,9 @@ export const Footer = () => {
             getComputedStyle(credit).visibility === 'hidden' ||
             getComputedStyle(credit).opacity === '0'
         ) {
-            // Redirect if tampering detected
             window.location.href = requiredHref;
         }
-    }, 2000); // Check every 2 seconds
+    }, 2000); 
 
     return () => clearInterval(checkCredit);
   }, [location.pathname]);

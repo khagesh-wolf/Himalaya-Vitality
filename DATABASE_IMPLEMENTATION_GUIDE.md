@@ -16,6 +16,19 @@ datasource db {
   directUrl = env("DIRECT_URL")
 }
 
+model User {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  password  String?  // Nullable for OAuth users
+  name      String?
+  role      String   @default("CUSTOMER") // CUSTOMER, ADMIN
+  avatar    String?
+  provider  String   @default("EMAIL") // EMAIL, GOOGLE, GITHUB
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  orders    Order[]
+}
+
 model Product {
   id          String           @id
   title       String
@@ -62,6 +75,8 @@ model Review {
 model Order {
   id            String      @id @default(uuid())
   orderNumber   String      @unique
+  userId        String?
+  user          User?       @relation(fields: [userId], references: [id])
   customerEmail String
   customerName  String
   shippingAddress Json
@@ -118,6 +133,9 @@ DATABASE_URL="postgres://[user]:[password]@[host]:5432/[db-name]?sslmode=require
 
 # DIRECT connection (Session mode) - Standard URL
 DIRECT_URL="postgres://[user]:[password]@[host]:5432/[db-name]?sslmode=require"
+
+# Auth Secrets
+JWT_SECRET="your-secure-random-string"
 ```
 
 ## 3. How to Apply

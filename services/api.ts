@@ -1,6 +1,6 @@
 
 import { MAIN_PRODUCT, REVIEWS, MOCK_ORDERS, BLOG_POSTS } from '../constants';
-import { Product, Review, Order, BlogPost, CartItem, Discount, Subscriber } from '../types';
+import { Product, Review, Order, BlogPost, CartItem, Discount, Subscriber, User, InventoryLog } from '../types';
 
 // --- CONFIGURATION ---
 
@@ -22,6 +22,14 @@ console.log(`[System] Running in ${USE_MOCK ? 'MOCK' : 'LIVE'} mode. Endpoint: $
 
 // --- Generic Fetch Wrapper ---
 async function apiFetch<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
+    const token = localStorage.getItem('hv_token');
+    
+    const headers = {
+        'Content-Type': 'application/json',
+        ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+        ...options.headers,
+    };
+
     if (USE_MOCK) {
         return mockAdapter(endpoint, options) as Promise<T>;
     }
@@ -33,11 +41,8 @@ async function apiFetch<T>(endpoint: string, options: RequestInit = {}): Promise
         }
 
         const response = await fetch(fullPath, {
-            headers: {
-                'Content-Type': 'application/json',
-                ...options.headers,
-            },
             ...options,
+            headers
         });
 
         if (!response.ok) {
@@ -53,8 +58,118 @@ async function apiFetch<T>(endpoint: string, options: RequestInit = {}): Promise
 }
 
 // --- Mock Adapter (Simulates Backend Logic) ---
+
+// 1. Load/Save Mock Users from LocalStorage to persist sessions across reloads
+const loadMockUsers = (): User[] => {
+    try {
+        const saved = localStorage.getItem('hv_mock_users');
+        if (saved) return JSON.parse(saved);
+    } catch(e) { console.error("Failed to load mock users", e); }
+    
+    return [
+        { id: 'u_admin', email: 'admin@himalaya.com', name: 'Admin User', role: 'ADMIN' },
+        { 
+            id: 'u_demo', 
+            email: 'user@example.com', 
+            name: 'Demo User', 
+            role: 'CUSTOMER',
+            firstName: 'Demo',
+            lastName: 'User',
+            address: '123 Highland Drive',
+            city: 'Austin',
+            country: 'US',
+            zip: '78701',
+            phone: '555-0123'
+        }
+    ];
+};
+
+let MOCK_USERS = loadMockUsers();
+
+const saveMockUsers = () => {
+    localStorage.setItem('hv_mock_users', JSON.stringify(MOCK_USERS));
+};
+
 async function mockAdapter(endpoint: string, options: RequestInit): Promise<any> {
     await new Promise(resolve => setTimeout(resolve, 600)); // Simulate Network delay
+
+    // Auth Mocking
+    if (endpoint === '/auth/login') {
+        const body = JSON.parse(options.body as string);
+        const user = MOCK_USERS.find(u => u.email === body.email);
+        
+        if (user && body.password !== 'wrong') {
+            return { token: `mock_token_${user.id}`, user };
+        }
+        throw new Error('Invalid credentials');
+    }
+
+    if (endpoint === '/auth/signup') {
+        const body = JSON.parse(options.body as string);
+        if (MOCK_USERS.find(u => u.email === body.email)) throw new Error('User already exists');
+        
+        const newUser: User = { 
+            id: `u_${Date.now()}`, 
+            email: body.email, 
+            name: body.name, 
+            role: 'CUSTOMER' 
+        };
+        MOCK_USERS.push(newUser);
+        saveMockUsers(); // Persist new user
+        return { token: `mock_token_${newUser.id}`, user: newUser };
+    }
+
+    if (endpoint === '/auth/me') {
+        const authHeader = (options.headers as any)?.Authorization;
+        const token = authHeader ? authHeader.split(' ')[1] : null;
+        
+        if (token) {
+            // 1. Regular Mock Tokens
+            if (token.startsWith('mock_token_')) {
+                const userId = token.replace('mock_token_', '');
+                const user = MOCK_USERS.find(u => u.id === userId);
+                if (user) return user;
+            }
+            // 2. Social Login Tokens
+            if (token === 'mock_google_token') {
+                 return { 
+                    id: 'social_google_user', 
+                    name: 'Google User', 
+                    email: 'user@google.com', 
+                    role: 'CUSTOMER', 
+                    avatar: 'https://lh3.googleusercontent.com/a/default-user=s96-c' 
+                };
+            }
+        }
+        throw new Error('Unauthorized');
+    }
+
+    if (endpoint === '/auth/profile' && options.method === 'PUT') {
+        const body = JSON.parse(options.body as string);
+        const token = (options.headers as any)?.Authorization?.split(' ')[1];
+        
+        let userId = '';
+        if (token && token.startsWith('mock_token_')) {
+            userId = token.replace('mock_token_', '');
+        } else if (token === 'mock_google_token') {
+            userId = 'social_google_user'; // Mock ID for google user
+        }
+        
+        const userIndex = MOCK_USERS.findIndex(u => u.id === userId);
+        if (userIndex !== -1) {
+            MOCK_USERS[userIndex] = { ...MOCK_USERS[userIndex], ...body };
+            saveMockUsers(); // Persist changes
+            return MOCK_USERS[userIndex];
+        }
+        return body; 
+    }
+
+    if (endpoint === '/orders/my-orders') {
+        // Return a subset of mock orders for the "Demo User"
+        return MOCK_ORDERS.slice(0, 3).map(o => ({...o, itemsDetails: [
+            { title: MAIN_PRODUCT.title, quantity: o.items, price: o.total / o.items, image: MAIN_PRODUCT.images[0] }
+        ]}));
+    }
 
     if (endpoint.startsWith('/products/')) return MAIN_PRODUCT;
     if (endpoint === '/reviews') return REVIEWS;
@@ -74,43 +189,36 @@ async function mockAdapter(endpoint: string, options: RequestInit): Promise<any>
 
 // --- Public API Services ---
 
-/**
- * Fetches Product Data.
- * STRATEGY: Merges local hardcoded constants (Title, Desc, Images) with remote dynamic data (Price, Stock).
- */
 export const fetchProduct = async (id: string): Promise<Product> => {
     try {
-        // 1. Fetch Dynamic Data (DB)
         const dbProduct = await apiFetch<Product>(`/products/${id}`);
-        
-        // 2. Load Static Config
         const staticConfig = MAIN_PRODUCT;
-
-        // 3. Merge: Keep DB prices/stock, but overwrite Title/Desc/Images from constants.ts
-        // This allows developers to update text in code without needing DB access.
         const mergedVariants = staticConfig.variants.map(staticVar => {
             const dbVar = dbProduct.variants.find(v => v.id === staticVar.id);
             return {
                 ...staticVar,
                 price: dbVar ? dbVar.price : staticVar.price,
                 compareAtPrice: dbVar ? dbVar.compareAtPrice : staticVar.compareAtPrice,
-                stock: dbVar ? (dbVar as any).stock : (staticVar as any).stock // DB usually has stock
+                stock: dbVar ? (dbVar as any).stock : (staticVar as any).stock
             };
         });
-
-        return {
-            ...staticConfig,
-            id: dbProduct.id, // Ensure ID matches DB
-            variants: mergedVariants
-        };
+        return { ...staticConfig, id: dbProduct.id, variants: mergedVariants };
     } catch (error) {
         console.error("Error fetching product, falling back to static config", error);
-        return MAIN_PRODUCT; // Fallback
+        return MAIN_PRODUCT;
     }
 };
 
 export const fetchReviews = () => apiFetch<Review[]>('/reviews');
 export const fetchBlogPosts = () => apiFetch<BlogPost[]>('/blog');
+
+// --- Auth Services ---
+
+export const loginUser = (data: any) => apiFetch<{ token: string, user: User }>('/auth/login', { method: 'POST', body: JSON.stringify(data) });
+export const signupUser = (data: any) => apiFetch<{ token: string, user: User }>('/auth/signup', { method: 'POST', body: JSON.stringify(data) });
+export const fetchCurrentUser = () => apiFetch<User>('/auth/me');
+export const updateUserProfile = (data: Partial<User>) => apiFetch<User>('/auth/profile', { method: 'PUT', body: JSON.stringify(data) });
+export const fetchUserOrders = () => apiFetch<Order[]>('/orders/my-orders');
 
 // --- Checkout Services ---
 
@@ -138,44 +246,14 @@ export const subscribeNewsletter = (email: string, source: string) => {
 // --- Admin Services ---
 
 export const fetchAdminStats = () => apiFetch<{ totalRevenue: number, totalOrders: number, avgOrderValue: number }>('/admin/stats');
-
 export const fetchAdminOrders = () => apiFetch<Order[]>('/admin/orders');
-
-export const updateOrderStatus = (id: string, status: string) => 
-    apiFetch<Order>(`/admin/orders/${id}`, { method: 'PUT', body: JSON.stringify({ status }) });
-
-/**
- * Updates Product Prices/Stock only.
- * Ignores Title/Description updates as they are hardcoded.
- */
-export const updateProduct = (id: string, data: any) => 
-    apiFetch(`/admin/products/${id}`, { method: 'PUT', body: JSON.stringify(data) });
-
+export const updateOrderStatus = (id: string, status: string) => apiFetch<Order>(`/admin/orders/${id}`, { method: 'PUT', body: JSON.stringify({ status }) });
+export const updateProduct = (id: string, data: any) => apiFetch(`/admin/products/${id}`, { method: 'PUT', body: JSON.stringify(data) });
 export const fetchDiscounts = () => apiFetch<Discount[]>('/admin/discounts');
-
-export const createDiscount = (data: Partial<Discount>) => 
-    apiFetch<Discount>('/admin/discounts', { method: 'POST', body: JSON.stringify(data) });
-
-export const deleteDiscount = (id: string) => 
-    apiFetch(`/admin/discounts/${id}`, { method: 'DELETE' });
-
+export const createDiscount = (data: Partial<Discount>) => apiFetch<Discount>('/admin/discounts', { method: 'POST', body: JSON.stringify(data) });
+export const deleteDiscount = (id: string) => apiFetch(`/admin/discounts/${id}`, { method: 'DELETE' });
 export const fetchAdminReviews = () => apiFetch<Review[]>('/admin/reviews');
-
-export const updateReviewStatus = (id: string, status: string) => 
-    apiFetch<Review>(`/admin/reviews/${id}`, { method: 'PUT', body: JSON.stringify({ status }) });
-
-export const deleteReview = (id: string) => 
-    apiFetch(`/admin/reviews/${id}`, { method: 'DELETE' });
-
+export const updateReviewStatus = (id: string, status: string) => apiFetch<Review>(`/admin/reviews/${id}`, { method: 'PUT', body: JSON.stringify({ status }) });
+export const deleteReview = (id: string) => apiFetch(`/admin/reviews/${id}`, { method: 'DELETE' });
 export const fetchSubscribers = () => apiFetch<Subscriber[]>('/admin/subscribers');
-
-export interface InventoryLog {
-  id: string;
-  sku: string;
-  action: 'RESTOCK' | 'SALE' | 'ADJUSTMENT';
-  quantity: number;
-  date: string;
-  user: string;
-}
-
 export const fetchInventoryLogs = () => apiFetch<InventoryLog[]>('/admin/inventory-logs');

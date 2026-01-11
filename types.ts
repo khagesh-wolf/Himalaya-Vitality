@@ -1,9 +1,26 @@
 
-
 export enum BundleType {
   SINGLE = 'SINGLE',
   DOUBLE = 'DOUBLE',
   TRIPLE = 'TRIPLE'
+}
+
+export type UserRole = 'CUSTOMER' | 'ADMIN';
+
+export interface User {
+  id: string;
+  email: string;
+  name?: string;
+  role: UserRole;
+  avatar?: string;
+  // Address Profile Fields
+  firstName?: string;
+  lastName?: string;
+  phone?: string;
+  address?: string;
+  city?: string;
+  country?: string;
+  zip?: string;
 }
 
 export interface ProductVariant {
@@ -47,7 +64,7 @@ export interface Review {
   title: string;
   content: string;
   verified: boolean;
-  tags?: string[]; // Added tags support
+  tags?: string[];
   status?: 'Approved' | 'Hidden' | 'Pending' | 'Spam';
 }
 
@@ -60,6 +77,7 @@ export interface Order {
   total: number;
   status: 'Pending' | 'Paid' | 'Fulfilled' | 'Delivered';
   items: number;
+  itemsDetails?: any[]; // For detailed view
 }
 
 export interface Discount {
@@ -105,4 +123,13 @@ export interface RegionConfig {
   shippingCost: number;
   taxRate: number;
   eta: string;
+}
+
+export interface InventoryLog {
+  id: string;
+  sku: string;
+  action: string;
+  quantity: number;
+  user: string;
+  date: string;
 }
