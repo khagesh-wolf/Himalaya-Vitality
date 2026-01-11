@@ -1,4 +1,3 @@
-
 import React, { useEffect, Suspense } from 'react';
 import { HashRouter, Routes, Route, useLocation } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -17,7 +16,7 @@ import { GlobalLoader } from './components/GlobalLoader';
 import { HomePage } from './pages/HomePage';
 import { ProductPage } from './pages/ProductPage';
 
-// Lazy load non-critical pages for performance
+// Lazy load
 const ReviewsPage = React.lazy(() => import('./pages/ReviewsPage').then(m => ({ default: m.ReviewsPage })));
 const CheckoutPage = React.lazy(() => import('./pages/CheckoutPage').then(m => ({ default: m.CheckoutPage })));
 const AdminDashboard = React.lazy(() => import('./pages/AdminDashboard').then(m => ({ default: m.AdminDashboard })));
@@ -28,8 +27,8 @@ const BlogPostPage = React.lazy(() => import('./pages/BlogPage').then(m => ({ de
 const NotFoundPage = React.lazy(() => import('./pages/NotFoundPage').then(m => ({ default: m.NotFoundPage })));
 const LoginPage = React.lazy(() => import('./pages/AuthPages').then(m => ({ default: m.LoginPage })));
 const SignupPage = React.lazy(() => import('./pages/AuthPages').then(m => ({ default: m.SignupPage })));
-const ForgotPasswordPage = React.lazy(() => import('./pages/AuthPages').then(m => ({ default: m.ForgotPasswordPage })));
 const VerifyEmailPage = React.lazy(() => import('./pages/AuthPages').then(m => ({ default: m.VerifyEmailPage })));
+const ForgotPasswordPage = React.lazy(() => import('./pages/AuthPages').then(m => ({ default: m.ForgotPasswordPage })));
 const ProfilePage = React.lazy(() => import('./pages/ProfilePage').then(m => ({ default: m.ProfilePage })));
 
 // Lazy load static pages
@@ -44,34 +43,9 @@ const HowToUsePage = React.lazy(() => import('./pages/StaticPages').then(m => ({
 const ShippingReturnsPage = React.lazy(() => import('./pages/StaticPages').then(m => ({ default: m.ShippingReturnsPage })));
 const SitemapPage = React.lazy(() => import('./pages/StaticPages').then(m => ({ default: m.SitemapPage })));
 
-const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      staleTime: 1000 * 60 * 5, // 5 minutes
-      retry: 1,
-    },
-  },
-});
-
-const ScrollToTop = () => {
-  const { pathname } = useLocation();
-  useEffect(() => {
-    window.scrollTo(0, 0);
-  }, [pathname]);
-  return null;
-};
-
-// Safe environment variable access helper
-const getEnvVar = (key: string) => {
-  try {
-    return (import.meta as any).env?.[key];
-  } catch (e) {
-    return undefined;
-  }
-};
-
-// Replace with your actual Google Client ID from console.cloud.google.com
-const GOOGLE_CLIENT_ID = getEnvVar('VITE_GOOGLE_CLIENT_ID') || "YOUR_GOOGLE_CLIENT_ID_PLACEHOLDER";
+const queryClient = new QueryClient();
+const ScrollToTop = () => { const { pathname } = useLocation(); useEffect(() => window.scrollTo(0, 0), [pathname]); return null; };
+const GOOGLE_CLIENT_ID = (import.meta as any).env?.VITE_GOOGLE_CLIENT_ID || "YOUR_GOOGLE_CLIENT_ID_PLACEHOLDER";
 
 const App: React.FC = () => {
   return (
@@ -97,8 +71,8 @@ const App: React.FC = () => {
                               <Route path="/checkout" element={<><SEO title="Secure Checkout" /><CheckoutPage /></>} />
                               <Route path="/login" element={<LoginPage />} />
                               <Route path="/signup" element={<SignupPage />} />
-                              <Route path="/forgot-password" element={<ForgotPasswordPage />} />
                               <Route path="/verify-email" element={<VerifyEmailPage />} />
+                              <Route path="/forgot-password" element={<ForgotPasswordPage />} />
                               <Route path="/profile" element={<ProfilePage />} />
                               <Route path="/admin" element={<AdminDashboard />} />
                               <Route path="/admin/login" element={<AdminLoginPage />} />

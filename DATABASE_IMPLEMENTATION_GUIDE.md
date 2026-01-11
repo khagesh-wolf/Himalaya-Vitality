@@ -3,7 +3,7 @@
 
 ## 1. The Schema (Copy this to prisma/schema.prisma)
 
-This schema is configured to handle the "Direct URL" requirement for Neon/Supabase and matches your frontend data structure exactly, including Admin Panel features and User Profile fields.
+This schema is configured to handle the "Direct URL" requirement for Neon/Supabase and matches your frontend data structure exactly, including Admin Panel features, User Profile fields, and Blog Posts.
 
 ```prisma
 generator client {
@@ -135,6 +135,21 @@ model InventoryLog {
   quantity  Int
   user      String   @default("System")
   createdAt DateTime @default(now())
+}
+
+model BlogPost {
+  id        String   @id @default(uuid())
+  slug      String   @unique
+  title     String
+  excerpt   String
+  content   String
+  author    String
+  date      String
+  image     String
+  category  String
+  published Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 ```
 

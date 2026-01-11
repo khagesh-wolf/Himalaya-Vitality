@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { User } from '../types';
 import { loginUser, signupUser, fetchCurrentUser, googleAuthenticate, verifyEmail as verifyEmailApi } from '../services/api';
@@ -45,12 +44,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setError(null);
     try {
       const { token, user: userData } = await loginUser(data);
-      // User is already verified if token is returned (handled by backend 403 otherwise)
+      // Backend throws 403 with requiresVerification if needed
       localStorage.setItem('hv_token', token);
       setUser(userData);
     } catch (err: any) {
       setError(err.message || 'Login failed');
-      // Pass the whole error object so component can detect "requiresVerification" flag
+      // Re-throw so page component can detect verification requirement
       throw err;
     } finally {
       setIsLoading(false);
@@ -62,14 +61,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setError(null);
     try {
       const result = await signupUser(data);
-      // If result has a token, they are logged in (unlikely with new verification flow)
-      // If result has "requiresVerification", the token won't be set yet.
       if (result.token && result.user) {
           localStorage.setItem('hv_token', result.token);
           setUser(result.user);
       } else if (result.requiresVerification) {
-          // Do nothing with state, throw specific error to redirect
-          throw { requiresVerification: true, email: result.email };
+          // No token yet, but user created. 
+          // Do NOT set user state, just let page handle redirect.
       }
     } catch (err: any) {
       setError(err.message || 'Signup failed');
@@ -83,7 +80,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setIsLoading(true);
       setError(null);
       try {
-          const { token, user: userData } = await verifyEmailApi({ email, otp });
+          const { token, user: userData } = await verifyEmailApi(email, otp);
           localStorage.setItem('hv_token', token);
           setUser(userData);
       } catch (err: any) {
@@ -111,7 +108,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const logout = () => {
     localStorage.removeItem('hv_token');
-    localStorage.removeItem('himalaya_admin_session'); // clear legacy admin token
+    localStorage.removeItem('himalaya_admin_session'); 
     setUser(null);
   };
 
@@ -122,7 +119,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       isAdmin: user?.role === 'ADMIN',
       isLoading, 
       login, 
-      signup,
+      signup, 
       verifyEmail,
       socialLogin,
       logout,
