@@ -1,1 +1,130 @@
-���Ȭʋ�>������
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model User {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  password  String?  // Nullable for OAuth users
+  name      String?
+  role      String   @default("CUSTOMER") // CUSTOMER, ADMIN
+  avatar    String?
+  provider  String   @default("EMAIL") // EMAIL, GOOGLE
+  
+  // Profile Fields
+  firstName String?
+  lastName  String?
+  phone     String?
+  address   String?
+  city      String?
+  country   String?
+  zip       String?
+
+  // Security & Verification
+  isVerified Boolean  @default(false)
+  otp        String?  // One Time Password
+  otpExpires DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  orders    Order[]
+}
+
+model Product {
+  id          String           @id
+  title       String
+  description String
+  rating      Float            @default(5.0)
+  reviewCount Int              @default(0)
+  features    String[]
+  images      String[]
+  variants    ProductVariant[]
+  reviews     Review[]
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+}
+
+model ProductVariant {
+  id             String   @id
+  productId      String
+  product        Product  @relation(fields: [productId], references: [id])
+  type           String   // SINGLE, DOUBLE, TRIPLE
+  name           String
+  price          Float
+  compareAtPrice Float
+  label          String
+  savings        String
+  isPopular      Boolean  @default(false)
+  stock          Int      @default(100)
+}
+
+model Review {
+  id        String   @id @default(uuid())
+  productId String
+  product   Product  @relation(fields: [productId], references: [id])
+  author    String
+  rating    Int
+  title     String?
+  content   String
+  date      String   // Keeping as string to match "2 days ago" format from frontend
+  verified  Boolean  @default(false)
+  tags      String[]
+  status    String   @default("Approved") // Approved, Pending, Hidden
+  createdAt DateTime @default(now())
+}
+
+model Order {
+  id            String      @id @default(uuid())
+  orderNumber   String      @unique
+  userId        String?
+  user          User?       @relation(fields: [userId], references: [id])
+  customerEmail String
+  customerName  String
+  shippingAddress Json
+  total         Float
+  status        String      // Paid, Pending, Fulfilled
+  paymentId     String?
+  items         OrderItem[]
+  createdAt     DateTime    @default(now())
+}
+
+model OrderItem {
+  id        String  @id @default(uuid())
+  orderId   String
+  order     Order   @relation(fields: [orderId], references: [id])
+  variantId String
+  quantity  Int
+  price     Float
+}
+
+model Subscriber {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  source    String?
+  createdAt DateTime @default(now())
+}
+
+model Discount {
+  id        String   @id @default(uuid())
+  code      String   @unique
+  type      String   // PERCENTAGE, FIXED
+  value     Float
+  active    Boolean  @default(true)
+  expiresAt String   @default("Never")
+  createdAt DateTime @default(now())
+}
+
+model InventoryLog {
+  id        String   @id @default(uuid())
+  sku       String
+  action    String   // RESTOCK, SALE, ADJUSTMENT
+  quantity  Int
+  user      String   @default("System")
+  createdAt DateTime @default(now())
+}
