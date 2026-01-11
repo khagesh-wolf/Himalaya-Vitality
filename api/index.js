@@ -5,6 +5,7 @@ const { PrismaClient } = require('@prisma/client');
 const cors = require('cors');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const crypto = require('crypto'); // For generating OTP
 
 // Initialize Prisma
 const prisma = new PrismaClient();
@@ -31,7 +32,23 @@ app.use((req, res, next) => {
     next();
 });
 
-// --- HELPER MIDDLEWARE ---
+// --- HELPER FUNCTIONS ---
+
+// Mock Email Sender (Logs to console for development)
+const sendEmail = async (to, subject, text) => {
+    console.log("==========================================");
+    console.log(`📧 MOCK EMAIL SENT TO: ${to}`);
+    console.log(`SUBJECT: ${subject}`);
+    console.log(`BODY: ${text}`);
+    console.log("==========================================");
+    // In production, use nodemailer here
+    return true;
+};
+
+// Generate 6 Digit OTP
+const generateOTP = () => {
+    return Math.floor(100000 + Math.random() * 900000).toString();
+};
 
 // Authenticate Token Middleware
 const authenticateToken = (req, res, next) => {
@@ -72,52 +89,44 @@ app.post('/api/auth/signup', async (req, res) => {
         const salt = await bcrypt.genSalt(10);
         const hashedPassword = await bcrypt.hash(password, salt);
 
-        // 3. Create User
+        // 3. Create User (Unverified)
         const user = await prisma.user.create({
             data: { 
                 name, 
                 email, 
                 password: hashedPassword, 
                 role: 'CUSTOMER',
-                provider: 'EMAIL'
+                provider: 'EMAIL',
+                isVerified: false
             }
         });
 
-        // 4. Generate Token
-        const token = jwt.sign(
-            { id: user.id, email: user.email, role: user.role },
-            JWT_SECRET,
-            { expiresIn: '7d' }
-        );
+        // 4. Generate OTP for Verification immediately
+        const otp = generateOTP();
+        const otpExpires = new Date(Date.now() + 10 * 60 * 1000); // 10 mins
 
-        // 5. Return Response (Exclude password)
+        await prisma.user.update({
+            where: { id: user.id },
+            data: { otp, otpExpires }
+        });
+
+        // 5. Send Verification Email
+        await sendEmail(email, "Verify Your Account - Himalaya Vitality", `Your verification code is: ${otp}`);
+
+        // 6. Return Response (Indicate verification needed)
         res.json({ 
-            token, 
-            user: { 
-                id: user.id, 
-                name: user.name, 
-                email: user.email, 
-                role: user.role,
-                avatar: user.avatar 
-            } 
+            message: 'Signup successful. Please verify your email.',
+            userId: user.id,
+            requiresVerification: true,
+            email: user.email
         });
 
     } catch (error) {
         console.error("Signup Error:", error);
-        
-        // Handle Missing Table Error Gracefully
         if (error.code === 'P2021') {
-            return res.status(500).json({ 
-                message: 'Database not initialized. Please run "npx prisma db push" to create tables.',
-                code: 'DB_NOT_INIT'
-            });
+            return res.status(500).json({ message: 'Database not initialized.', code: 'DB_NOT_INIT' });
         }
-
-        res.status(500).json({ 
-            message: 'Server error during signup.', 
-            error: error.message,
-            code: error.code
-        });
+        res.status(500).json({ message: 'Server error during signup.', error: error.message });
     }
 });
 
@@ -131,13 +140,27 @@ app.post('/api/auth/login', async (req, res) => {
         if (!user) return res.status(400).json({ message: 'Invalid credentials.' });
 
         // 2. Check Password
-        // If user logged in via Social provider before, they might not have a password
         if (!user.password) return res.status(400).json({ message: 'Please login with Google/Social.' });
 
         const isMatch = await bcrypt.compare(password, user.password);
         if (!isMatch) return res.status(400).json({ message: 'Invalid credentials.' });
 
-        // 3. Generate Token
+        // 3. Check Verification
+        if (!user.isVerified) {
+            // Trigger new OTP if login attempted on unverified account
+            const otp = generateOTP();
+            const otpExpires = new Date(Date.now() + 10 * 60 * 1000);
+            await prisma.user.update({ where: { id: user.id }, data: { otp, otpExpires } });
+            await sendEmail(email, "Verify Your Account", `Your verification code is: ${otp}`);
+
+            return res.status(403).json({ 
+                message: 'Email not verified. A new code has been sent.',
+                requiresVerification: true,
+                email: user.email
+            });
+        }
+
+        // 4. Generate Token
         const token = jwt.sign(
             { id: user.id, email: user.email, role: user.role },
             JWT_SECRET,
@@ -159,20 +182,132 @@ app.post('/api/auth/login', async (req, res) => {
 
     } catch (error) {
         console.error("Login Error:", error);
-        if (error.code === 'P2021') {
-            return res.status(500).json({ message: 'Database tables missing. Run "npx prisma db push".' });
-        }
         res.status(500).json({ message: 'Server error during login.', error: error.message });
     }
 });
 
-// GOOGLE AUTH LOGIN/SIGNUP
-app.post('/api/auth/google', async (req, res) => {
-    const { token } = req.body; // Receives Access Token from Frontend
+// VERIFY EMAIL (OTP)
+app.post('/api/auth/verify-email', async (req, res) => {
+    const { email, otp } = req.body;
 
     try {
-        // 1. Verify Token with Google
-        // We use the UserInfo endpoint to validate the access token and get user details
+        const user = await prisma.user.findUnique({ where: { email } });
+        if (!user) return res.status(404).json({ message: 'User not found.' });
+
+        if (user.isVerified) return res.status(200).json({ message: 'Already verified. Please login.' });
+
+        if (!user.otp || user.otp !== otp) {
+            return res.status(400).json({ message: 'Invalid code.' });
+        }
+
+        if (new Date() > new Date(user.otpExpires)) {
+            return res.status(400).json({ message: 'Code expired. Please request a new one.' });
+        }
+
+        // Verify User
+        await prisma.user.update({
+            where: { id: user.id },
+            data: { isVerified: true, otp: null, otpExpires: null }
+        });
+
+        // Auto-login after verification
+        const token = jwt.sign(
+            { id: user.id, email: user.email, role: user.role },
+            JWT_SECRET,
+            { expiresIn: '7d' }
+        );
+
+        res.json({ 
+            message: 'Email verified successfully!',
+            token,
+            user: { 
+                id: user.id, 
+                name: user.name, 
+                email: user.email, 
+                role: user.role,
+                avatar: user.avatar
+            }
+        });
+
+    } catch (error) {
+        res.status(500).json({ message: 'Verification failed.', error: error.message });
+    }
+});
+
+// FORGOT PASSWORD (Send OTP)
+app.post('/api/auth/forgot-password', async (req, res) => {
+    const { email } = req.body;
+
+    try {
+        const user = await prisma.user.findUnique({ where: { email } });
+        if (!user) {
+            // For security, do not reveal that user doesn't exist, but simulate success
+            return res.json({ message: 'If an account exists, a code has been sent.' });
+        }
+
+        const otp = generateOTP();
+        const otpExpires = new Date(Date.now() + 15 * 60 * 1000); // 15 mins
+
+        await prisma.user.update({
+            where: { id: user.id },
+            data: { otp, otpExpires }
+        });
+
+        await sendEmail(email, "Reset Password - Himalaya Vitality", `Your password reset code is: ${otp}`);
+
+        res.json({ message: 'Reset code sent to email.' });
+
+    } catch (error) {
+        res.status(500).json({ message: 'Failed to process request.' });
+    }
+});
+
+// RESET PASSWORD (Verify OTP + New Password)
+app.post('/api/auth/reset-password', async (req, res) => {
+    const { email, otp, newPassword } = req.body;
+
+    if (!newPassword || newPassword.length < 6) {
+        return res.status(400).json({ message: 'Password must be at least 6 characters.' });
+    }
+
+    try {
+        const user = await prisma.user.findUnique({ where: { email } });
+        if (!user) return res.status(404).json({ message: 'User not found.' });
+
+        if (!user.otp || user.otp !== otp) {
+            return res.status(400).json({ message: 'Invalid code.' });
+        }
+
+        if (new Date() > new Date(user.otpExpires)) {
+            return res.status(400).json({ message: 'Code expired.' });
+        }
+
+        // Hash new password
+        const salt = await bcrypt.genSalt(10);
+        const hashedPassword = await bcrypt.hash(newPassword, salt);
+
+        await prisma.user.update({
+            where: { id: user.id },
+            data: { 
+                password: hashedPassword, 
+                otp: null, 
+                otpExpires: null,
+                isVerified: true // Implicitly verify if they have email access
+            }
+        });
+
+        res.json({ message: 'Password reset successfully. You can now login.' });
+
+    } catch (error) {
+        res.status(500).json({ message: 'Failed to reset password.' });
+    }
+});
+
+// GOOGLE AUTH LOGIN/SIGNUP (Updated to set isVerified: true)
+app.post('/api/auth/google', async (req, res) => {
+    const { token } = req.body; 
+
+    try {
         const googleResponse = await fetch(`https://www.googleapis.com/oauth2/v3/userinfo?access_token=${token}`);
         
         if (!googleResponse.ok) {
@@ -184,7 +319,6 @@ app.post('/api/auth/google', async (req, res) => {
 
         if (!email) return res.status(400).json({ message: 'Google account missing email' });
 
-        // 2. Check or Create User in DB
         let user = await prisma.user.findUnique({ where: { email } });
 
         if (!user) {
@@ -195,20 +329,19 @@ app.post('/api/auth/google', async (req, res) => {
                     avatar: picture,
                     role: 'CUSTOMER',
                     provider: 'GOOGLE',
-                    password: null // No password for social logins
+                    password: null,
+                    isVerified: true // Google emails are trusted
                 }
             });
         } else {
-            // Optional: Update avatar if changed
             if (picture && user.avatar !== picture) {
                 user = await prisma.user.update({
                     where: { id: user.id },
-                    data: { avatar: picture }
+                    data: { avatar: picture, isVerified: true } // Ensure verified on google login
                 });
             }
         }
 
-        // 3. Generate App JWT
         const appToken = jwt.sign(
             { id: user.id, email: user.email, role: user.role },
             JWT_SECRET,
@@ -230,14 +363,9 @@ app.post('/api/auth/google', async (req, res) => {
 
     } catch (error) {
         console.error("Google Auth Error:", error);
-        
         if (error.code === 'P2021') {
-            return res.status(500).json({ 
-                message: 'Database tables missing. Run "npx prisma db push".',
-                code: 'DB_NOT_INIT'
-            });
+            return res.status(500).json({ message: 'Database tables missing.', code: 'DB_NOT_INIT' });
         }
-
         res.status(500).json({ message: 'Google authentication failed', error: error.message });
     }
 });
@@ -245,7 +373,6 @@ app.post('/api/auth/google', async (req, res) => {
 // GET CURRENT USER (Protected)
 app.get('/api/auth/me', authenticateToken, async (req, res) => {
     try {
-        // req.user.id comes from the middleware decoding the token
         const user = await prisma.user.findUnique({
             where: { id: req.user.id },
             select: { 
@@ -260,7 +387,8 @@ app.get('/api/auth/me', authenticateToken, async (req, res) => {
                 address: true,
                 city: true,
                 country: true,
-                zip: true
+                zip: true,
+                isVerified: true
             }
         });
 
@@ -275,11 +403,7 @@ app.get('/api/auth/me', authenticateToken, async (req, res) => {
 // UPDATE PROFILE (Protected)
 app.put('/api/auth/profile', authenticateToken, async (req, res) => {
     try {
-        // Exclude sensitive fields from being updated directly via this route
-        const { id, email, password, role, ...updateData } = req.body; 
-
-        // Validate that updateData only contains known columns is handled by Prisma (it throws if unknown)
-        // But we should be safe since we updated the schema to include address fields.
+        const { id, email, password, role, isVerified, otp, otpExpires, ...updateData } = req.body; 
         
         const updatedUser = await prisma.user.update({
             where: { id: req.user.id },
@@ -310,7 +434,7 @@ app.put('/api/auth/profile', authenticateToken, async (req, res) => {
 app.get('/api/orders/my-orders', authenticateToken, async (req, res) => {
     try {
         const orders = await prisma.order.findMany({
-            where: { customerEmail: req.user.email }, // Assuming orders linked by email
+            where: { customerEmail: req.user.email }, 
             orderBy: { createdAt: 'desc' },
             include: { items: true }
         });
@@ -397,7 +521,6 @@ app.post('/api/create-payment-intent', async (req, res) => {
 app.post('/api/orders', async (req, res) => {
     const { customer, items, total, paymentId } = req.body;
     try {
-        // Try to find user to link, otherwise null
         const user = await prisma.user.findUnique({ where: { email: customer.email } });
 
         const order = await prisma.order.create({
@@ -409,7 +532,7 @@ app.post('/api/orders', async (req, res) => {
                 total: total,
                 status: 'Paid',
                 paymentId: paymentId,
-                userId: user ? user.id : null, // Link to user if exists
+                userId: user ? user.id : null,
                 items: {
                     create: items.map(item => ({
                         variantId: item.variantId,
@@ -420,7 +543,6 @@ app.post('/api/orders', async (req, res) => {
             }
         });
         
-        // Update Stock
         for (const item of items) {
             await prisma.productVariant.update({
                 where: { id: item.variantId },
@@ -448,7 +570,7 @@ app.post('/api/subscribe', async (req, res) => {
     }
 });
 
-// --- ADMIN ROUTES (Protected + Role Check ideally) ---
+// --- ADMIN ROUTES (Protected) ---
 
 // Get Admin Stats
 app.get('/api/admin/stats', authenticateToken, async (req, res) => {

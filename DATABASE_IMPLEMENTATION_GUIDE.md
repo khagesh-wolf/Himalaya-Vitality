@@ -34,6 +34,11 @@ model User {
   country   String?
   zip       String?
 
+  // Security & Verification
+  isVerified Boolean  @default(false)
+  otp        String?  // One Time Password
+  otpExpires DateTime?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   orders    Order[]

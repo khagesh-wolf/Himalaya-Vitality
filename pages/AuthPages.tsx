@@ -1,11 +1,12 @@
 
 import React, { useState, useEffect } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
-import { Mail, Lock, User, AlertCircle } from 'lucide-react';
+import { useNavigate, Link, useLocation } from 'react-router-dom';
+import { Mail, Lock, User, AlertCircle, ArrowLeft, CheckCircle, Key } from 'lucide-react';
 import { useGoogleLogin } from '@react-oauth/google';
 import { Button, Card, Container } from '../components/UI';
 import { useAuth } from '../context/AuthContext';
 import { SEO } from '../components/SEO';
+import { sendForgotPassword, resetPassword } from '../services/api';
 
 const SocialButton = ({ onClick }: { onClick: () => void }) => {
     return (
@@ -43,8 +44,11 @@ export const LoginPage = () => {
         try {
             await login({ email, password });
             navigate('/profile');
-        } catch (e) {
-            // Error handled in context
+        } catch (e: any) {
+            // Handle verification required explicitly
+            if (e.requiresVerification) {
+                navigate('/verify-email', { state: { email: e.email } });
+            }
         }
     };
 
@@ -97,7 +101,7 @@ export const LoginPage = () => {
                         <div className="space-y-1">
                             <div className="flex justify-between">
                                 <label className="text-xs font-bold text-gray-500 uppercase">Password</label>
-                                <a href="#" className="text-xs text-brand-red font-bold hover:underline">Forgot?</a>
+                                <Link to="/forgot-password" className="text-xs text-brand-red font-bold hover:underline">Forgot?</Link>
                             </div>
                             <div className="relative">
                                 <input 
@@ -151,9 +155,13 @@ export const SignupPage = () => {
         e.preventDefault();
         try {
             await signup({ name, email, password });
-            navigate('/profile');
-        } catch (e) {
-            // Error handled in context
+            // Note: Signup might throw "requiresVerification" via AuthContext/API logic
+            // But usually successful signup with email now requires OTP
+            navigate('/verify-email', { state: { email } });
+        } catch (e: any) {
+            if (e.requiresVerification) {
+                navigate('/verify-email', { state: { email: e.email } });
+            }
         }
     };
 
@@ -247,6 +255,223 @@ export const SignupPage = () => {
 
                 <p className="text-center text-sm text-gray-500 mt-8">
                     Already have an account? <Link to="/login" className="text-brand-red font-bold hover:underline">Login</Link>
+                </p>
+            </Container>
+        </div>
+    );
+};
+
+export const ForgotPasswordPage = () => {
+    const [step, setStep] = useState<1 | 2>(1);
+    const [email, setEmail] = useState('');
+    const [otp, setOtp] = useState('');
+    const [newPassword, setNewPassword] = useState('');
+    const [isLoading, setIsLoading] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+    const [successMsg, setSuccessMsg] = useState('');
+    const navigate = useNavigate();
+
+    const handleSendCode = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setIsLoading(true);
+        setError(null);
+        try {
+            await sendForgotPassword(email);
+            setStep(2);
+            // In a real app, this goes to email. Here we prompt to check console.
+            console.info("CHECK CONSOLE FOR OTP"); 
+        } catch (err: any) {
+            setError(err.message || 'Failed to send code');
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    const handleReset = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setIsLoading(true);
+        setError(null);
+        try {
+            await resetPassword({ email, otp, newPassword });
+            setSuccessMsg('Password reset successfully!');
+            setTimeout(() => navigate('/login'), 2000);
+        } catch (err: any) {
+            setError(err.message || 'Failed to reset password');
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    return (
+        <div className="min-h-screen bg-gray-50 flex items-center justify-center py-20">
+            <SEO title="Reset Password" />
+            <Container className="max-w-md w-full">
+                <div className="text-center mb-8">
+                    <h1 className="font-heading font-extrabold text-3xl text-brand-dark mb-2">Reset Password</h1>
+                    <p className="text-gray-500">
+                        {step === 1 ? 'Enter your email to receive a recovery code.' : 'Enter the code and your new password.'}
+                    </p>
+                </div>
+
+                <Card className="p-8 border-none shadow-xl">
+                    {successMsg ? (
+                        <div className="text-center text-green-600 font-bold p-4 bg-green-50 rounded-xl mb-4">
+                            <CheckCircle size={32} className="mx-auto mb-2" />
+                            {successMsg}
+                        </div>
+                    ) : step === 1 ? (
+                        <form onSubmit={handleSendCode} className="space-y-5">
+                            <div className="space-y-1">
+                                <label className="text-xs font-bold text-gray-500 uppercase">Email</label>
+                                <div className="relative">
+                                    <input 
+                                        type="email" 
+                                        value={email}
+                                        onChange={(e) => setEmail(e.target.value)}
+                                        className="w-full p-3.5 pl-10 border border-gray-200 rounded-xl focus:ring-2 focus:ring-brand-red outline-none" 
+                                        placeholder="you@example.com"
+                                        required
+                                    />
+                                    <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+                                </div>
+                            </div>
+                            
+                            {error && <div className="text-red-500 text-sm bg-red-50 p-3 rounded-lg text-center">{error}</div>}
+                            
+                            <Button fullWidth size="lg" disabled={isLoading}>
+                                {isLoading ? 'Sending...' : 'Send Code'}
+                            </Button>
+                        </form>
+                    ) : (
+                        <form onSubmit={handleReset} className="space-y-5">
+                            <div className="space-y-1">
+                                <label className="text-xs font-bold text-gray-500 uppercase">Verification Code</label>
+                                <div className="relative">
+                                    <input 
+                                        type="text" 
+                                        value={otp}
+                                        onChange={(e) => setOtp(e.target.value)}
+                                        className="w-full p-3.5 pl-10 border border-gray-200 rounded-xl focus:ring-2 focus:ring-brand-red outline-none" 
+                                        placeholder="123456"
+                                        required
+                                    />
+                                    <Key className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+                                </div>
+                            </div>
+                            <div className="space-y-1">
+                                <label className="text-xs font-bold text-gray-500 uppercase">New Password</label>
+                                <div className="relative">
+                                    <input 
+                                        type="password" 
+                                        value={newPassword}
+                                        onChange={(e) => setNewPassword(e.target.value)}
+                                        className="w-full p-3.5 pl-10 border border-gray-200 rounded-xl focus:ring-2 focus:ring-brand-red outline-none" 
+                                        placeholder="New password"
+                                        required
+                                        minLength={6}
+                                    />
+                                    <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+                                </div>
+                            </div>
+
+                            {error && <div className="text-red-500 text-sm bg-red-50 p-3 rounded-lg text-center">{error}</div>}
+
+                            <Button fullWidth size="lg" disabled={isLoading}>
+                                {isLoading ? 'Updating...' : 'Reset Password'}
+                            </Button>
+                        </form>
+                    )}
+                </Card>
+
+                <p className="text-center text-sm text-gray-500 mt-8">
+                    Remembered it? <Link to="/login" className="text-brand-red font-bold hover:underline">Login</Link>
+                </p>
+            </Container>
+        </div>
+    );
+};
+
+export const VerifyEmailPage = () => {
+    const { state } = useLocation();
+    const { verifyEmail: verifyEmailAction, isAuthenticated } = useAuth(); // We need to expose verifyEmail in Context or call API directly
+    const navigate = useNavigate();
+    const [otp, setOtp] = useState('');
+    const [isLoading, setIsLoading] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+
+    // If no email in state, redirect to login (or show error)
+    const email = state?.email;
+
+    useEffect(() => {
+        if (!email) navigate('/login');
+    }, [email, navigate]);
+
+    // If verified, redirect
+    useEffect(() => {
+        if (isAuthenticated) navigate('/profile');
+    }, [isAuthenticated, navigate]);
+
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setIsLoading(true);
+        setError(null);
+        try {
+            await verifyEmailAction(email, otp);
+            // Context handles the redirect on success via isAuthenticated change
+        } catch (err: any) {
+            setError(err.message || 'Verification failed');
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    return (
+        <div className="min-h-screen bg-gray-50 flex items-center justify-center py-20">
+            <SEO title="Verify Email" />
+            <Container className="max-w-md w-full">
+                <div className="text-center mb-8">
+                    <h1 className="font-heading font-extrabold text-3xl text-brand-dark mb-2">Check Your Email</h1>
+                    <p className="text-gray-500">
+                        We sent a code to <span className="font-bold">{email}</span>. <br/>
+                        <span className="text-xs text-brand-red">(Check the console logs for the code in this demo)</span>
+                    </p>
+                </div>
+
+                <Card className="p-8 border-none shadow-xl">
+                    <form onSubmit={handleSubmit} className="space-y-5">
+                        <div className="space-y-1">
+                            <label className="text-xs font-bold text-gray-500 uppercase">Verification Code</label>
+                            <div className="relative">
+                                <input 
+                                    type="text" 
+                                    value={otp}
+                                    onChange={(e) => setOtp(e.target.value)}
+                                    className="w-full p-3.5 pl-10 border border-gray-200 rounded-xl focus:ring-2 focus:ring-brand-red outline-none text-center text-lg tracking-widest font-bold" 
+                                    placeholder="123456"
+                                    required
+                                    maxLength={6}
+                                />
+                                <Key className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+                            </div>
+                        </div>
+
+                        {error && (
+                            <div className="bg-red-50 text-red-600 p-3 rounded-lg text-sm flex items-start">
+                                <AlertCircle size={16} className="mr-2 shrink-0 mt-0.5"/> 
+                                <span>{error}</span>
+                            </div>
+                        )}
+
+                        <Button fullWidth size="lg" className="h-12" disabled={isLoading}>
+                            {isLoading ? 'Verifying...' : 'Verify Email'}
+                        </Button>
+                    </form>
+                </Card>
+
+                <p className="text-center text-sm text-gray-500 mt-8">
+                    <Link to="/login" className="flex items-center justify-center text-gray-600 hover:text-brand-dark">
+                        <ArrowLeft size={16} className="mr-1" /> Back to Login
+                    </Link>
                 </p>
             </Container>
         </div>

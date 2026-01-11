@@ -50,10 +50,17 @@ async function apiFetch<T>(endpoint: string, options: RequestInit = {}): Promise
             try {
                 const errorData = await response.json();
                 errorMessage = errorData.message || errorData.error || errorMessage;
-                // Log server details to console for debugging
+                
+                // Pass back special flags if needed (e.g. requiresVerification)
+                if (errorData.requiresVerification) {
+                    throw { message: errorMessage, requiresVerification: true, email: errorData.email };
+                }
+
                 console.error("Server Error Response:", errorData);
             } catch (e) {
-                // If parsing JSON fails, try text (often happens with 500 Vercel errors)
+                // If the error object we just created has the custom flags, rethrow it
+                if (e.requiresVerification) throw e;
+
                 const text = await response.text().catch(() => '');
                 if (text) errorMessage = `API Error (${response.status}): ${text.substring(0, 100)}`;
             }
@@ -127,6 +134,17 @@ async function mockAdapter(endpoint: string, options: RequestInit): Promise<any>
         MOCK_USERS.push(newUser);
         saveMockUsers(); // Persist new user
         return { token: `mock_token_${newUser.id}`, user: newUser };
+    }
+
+    // NEW MOCK ENDPOINTS FOR PASSWORD/VERIFICATION
+    if (endpoint === '/auth/forgot-password') {
+        return { message: 'Reset code sent (Mock Mode: Check Console)' };
+    }
+    if (endpoint === '/auth/verify-email') {
+        return { message: 'Verified (Mock Mode)', token: 'mock_token_verified', user: MOCK_USERS[0] };
+    }
+    if (endpoint === '/auth/reset-password') {
+        return { message: 'Password reset successfully (Mock Mode)' };
     }
 
     // Mock Google Login
@@ -239,11 +257,16 @@ export const fetchBlogPosts = () => apiFetch<BlogPost[]>('/blog');
 // --- Auth Services ---
 
 export const loginUser = (data: any) => apiFetch<{ token: string, user: User }>('/auth/login', { method: 'POST', body: JSON.stringify(data) });
-export const signupUser = (data: any) => apiFetch<{ token: string, user: User }>('/auth/signup', { method: 'POST', body: JSON.stringify(data) });
+export const signupUser = (data: any) => apiFetch<{ token?: string, user?: User, requiresVerification?: boolean, email?: string }>('/auth/signup', { method: 'POST', body: JSON.stringify(data) });
 export const googleAuthenticate = (token: string) => apiFetch<{ token: string, user: User }>('/auth/google', { method: 'POST', body: JSON.stringify({ token }) });
 export const fetchCurrentUser = () => apiFetch<User>('/auth/me');
 export const updateUserProfile = (data: Partial<User>) => apiFetch<User>('/auth/profile', { method: 'PUT', body: JSON.stringify(data) });
 export const fetchUserOrders = () => apiFetch<Order[]>('/orders/my-orders');
+
+// NEW AUTH ENDPOINTS
+export const sendForgotPassword = (email: string) => apiFetch('/auth/forgot-password', { method: 'POST', body: JSON.stringify({ email }) });
+export const verifyEmail = (data: { email: string, otp: string }) => apiFetch<{ token: string, user: User }>('/auth/verify-email', { method: 'POST', body: JSON.stringify(data) });
+export const resetPassword = (data: any) => apiFetch('/auth/reset-password', { method: 'POST', body: JSON.stringify(data) });
 
 // --- Checkout Services ---
 

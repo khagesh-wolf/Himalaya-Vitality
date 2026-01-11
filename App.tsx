@@ -1,3 +1,4 @@
+
 import React, { useEffect, Suspense } from 'react';
 import { HashRouter, Routes, Route, useLocation } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -27,6 +28,8 @@ const BlogPostPage = React.lazy(() => import('./pages/BlogPage').then(m => ({ de
 const NotFoundPage = React.lazy(() => import('./pages/NotFoundPage').then(m => ({ default: m.NotFoundPage })));
 const LoginPage = React.lazy(() => import('./pages/AuthPages').then(m => ({ default: m.LoginPage })));
 const SignupPage = React.lazy(() => import('./pages/AuthPages').then(m => ({ default: m.SignupPage })));
+const ForgotPasswordPage = React.lazy(() => import('./pages/AuthPages').then(m => ({ default: m.ForgotPasswordPage })));
+const VerifyEmailPage = React.lazy(() => import('./pages/AuthPages').then(m => ({ default: m.VerifyEmailPage })));
 const ProfilePage = React.lazy(() => import('./pages/ProfilePage').then(m => ({ default: m.ProfilePage })));
 
 // Lazy load static pages
@@ -94,6 +97,8 @@ const App: React.FC = () => {
                               <Route path="/checkout" element={<><SEO title="Secure Checkout" /><CheckoutPage /></>} />
                               <Route path="/login" element={<LoginPage />} />
                               <Route path="/signup" element={<SignupPage />} />
+                              <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+                              <Route path="/verify-email" element={<VerifyEmailPage />} />
                               <Route path="/profile" element={<ProfilePage />} />
                               <Route path="/admin" element={<AdminDashboard />} />
                               <Route path="/admin/login" element={<AdminLoginPage />} />
