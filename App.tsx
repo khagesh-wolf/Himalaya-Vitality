@@ -58,8 +58,17 @@ const ScrollToTop = () => {
   return null;
 };
 
+// Safe environment variable access helper
+const getEnvVar = (key: string) => {
+  try {
+    return (import.meta as any).env?.[key];
+  } catch (e) {
+    return undefined;
+  }
+};
+
 // Replace with your actual Google Client ID from console.cloud.google.com
-const GOOGLE_CLIENT_ID = (import.meta as any).env.VITE_GOOGLE_CLIENT_ID || "YOUR_GOOGLE_CLIENT_ID_PLACEHOLDER";
+const GOOGLE_CLIENT_ID = getEnvVar('VITE_GOOGLE_CLIENT_ID') || "YOUR_GOOGLE_CLIENT_ID_PLACEHOLDER";
 
 const App: React.FC = () => {
   return (

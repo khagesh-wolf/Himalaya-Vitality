@@ -46,8 +46,18 @@ async function apiFetch<T>(endpoint: string, options: RequestInit = {}): Promise
         });
 
         if (!response.ok) {
-            const error = await response.json().catch(() => ({ message: 'Network response was not ok' }));
-            throw new Error(error.message || `API Error: ${response.status}`);
+            let errorMessage = `API Error: ${response.status}`;
+            try {
+                const errorData = await response.json();
+                errorMessage = errorData.message || errorData.error || errorMessage;
+                // Log server details to console for debugging
+                console.error("Server Error Response:", errorData);
+            } catch (e) {
+                // If parsing JSON fails, try text (often happens with 500 Vercel errors)
+                const text = await response.text().catch(() => '');
+                if (text) errorMessage = `API Error (${response.status}): ${text.substring(0, 100)}`;
+            }
+            throw new Error(errorMessage);
         }
 
         return response.json();
