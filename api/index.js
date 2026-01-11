@@ -24,6 +24,13 @@ const PORT = process.env.PORT || 3000;
 app.use(cors());
 app.use(express.json());
 
+// Security Headers Middleware (Fixes Google Auth COOP Warnings)
+app.use((req, res, next) => {
+    res.setHeader('Cross-Origin-Opener-Policy', 'same-origin-allow-popups');
+    res.setHeader('Cross-Origin-Embedder-Policy', 'unsafe-none');
+    next();
+});
+
 // --- HELPER MIDDLEWARE ---
 
 // Authenticate Token Middleware
@@ -97,11 +104,19 @@ app.post('/api/auth/signup', async (req, res) => {
 
     } catch (error) {
         console.error("Signup Error:", error);
-        // Explicitly return the error message for debugging
+        
+        // Handle Missing Table Error Gracefully
+        if (error.code === 'P2021') {
+            return res.status(500).json({ 
+                message: 'Database not initialized. Please run "npx prisma db push" to create tables.',
+                code: 'DB_NOT_INIT'
+            });
+        }
+
         res.status(500).json({ 
             message: 'Server error during signup.', 
             error: error.message,
-            code: error.code // Prisma error code
+            code: error.code
         });
     }
 });
@@ -137,13 +152,16 @@ app.post('/api/auth/login', async (req, res) => {
                 email: user.email, 
                 role: user.role,
                 avatar: user.avatar,
-                firstName: user.name?.split(' ')[0] || '', // Simple split fallback
-                lastName: user.name?.split(' ')[1] || ''
+                firstName: user.firstName || user.name?.split(' ')[0] || '',
+                lastName: user.lastName || user.name?.split(' ')[1] || ''
             } 
         });
 
     } catch (error) {
         console.error("Login Error:", error);
+        if (error.code === 'P2021') {
+            return res.status(500).json({ message: 'Database tables missing. Run "npx prisma db push".' });
+        }
         res.status(500).json({ message: 'Server error during login.', error: error.message });
     }
 });
@@ -203,13 +221,23 @@ app.post('/api/auth/google', async (req, res) => {
                 id: user.id, 
                 name: user.name, 
                 email: user.email, 
-                role: user.role,
-                avatar: user.avatar
+                role: user.role, 
+                avatar: user.avatar,
+                firstName: user.firstName || user.name?.split(' ')[0] || '',
+                lastName: user.lastName || user.name?.split(' ')[1] || ''
             } 
         });
 
     } catch (error) {
         console.error("Google Auth Error:", error);
+        
+        if (error.code === 'P2021') {
+            return res.status(500).json({ 
+                message: 'Database tables missing. Run "npx prisma db push".',
+                code: 'DB_NOT_INIT'
+            });
+        }
+
         res.status(500).json({ message: 'Google authentication failed', error: error.message });
     }
 });
@@ -226,10 +254,13 @@ app.get('/api/auth/me', authenticateToken, async (req, res) => {
                 email: true, 
                 role: true, 
                 avatar: true,
-                // Include address fields if they exist in your schema update
-                // firstName: true, 
-                // lastName: true, 
-                // address: true...
+                firstName: true,
+                lastName: true,
+                phone: true,
+                address: true,
+                city: true,
+                country: true,
+                zip: true
             }
         });
 
@@ -244,8 +275,12 @@ app.get('/api/auth/me', authenticateToken, async (req, res) => {
 // UPDATE PROFILE (Protected)
 app.put('/api/auth/profile', authenticateToken, async (req, res) => {
     try {
+        // Exclude sensitive fields from being updated directly via this route
         const { id, email, password, role, ...updateData } = req.body; 
 
+        // Validate that updateData only contains known columns is handled by Prisma (it throws if unknown)
+        // But we should be safe since we updated the schema to include address fields.
+        
         const updatedUser = await prisma.user.update({
             where: { id: req.user.id },
             data: updateData,
@@ -253,14 +288,21 @@ app.put('/api/auth/profile', authenticateToken, async (req, res) => {
                 id: true,
                 name: true,
                 email: true,
-                role: true,
+                role: true, 
                 avatar: true,
-                // Add address fields here based on schema
+                firstName: true,
+                lastName: true,
+                phone: true,
+                address: true,
+                city: true,
+                country: true,
+                zip: true
             }
         });
         res.json(updatedUser);
     } catch (error) {
-        res.status(500).json({ message: 'Update failed' });
+        console.error("Profile Update Error:", error);
+        res.status(500).json({ message: 'Update failed', error: error.message });
     }
 });
 
@@ -308,6 +350,9 @@ app.get('/api/products/:id', async (req, res) => {
         }
         res.json(product);
     } catch (error) {
+        if (error.code === 'P2021') {
+            return res.status(500).json({ error: 'Database Not Initialized (Table missing)' });
+        }
         res.status(500).json({ error: 'Database connection failed' });
     }
 });

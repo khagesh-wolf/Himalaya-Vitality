@@ -3,7 +3,7 @@
 
 ## 1. The Schema (Copy this to prisma/schema.prisma)
 
-This schema is configured to handle the "Direct URL" requirement for Neon/Supabase and matches your frontend data structure exactly, including Admin Panel features like Discounts and Inventory Logs.
+This schema is configured to handle the "Direct URL" requirement for Neon/Supabase and matches your frontend data structure exactly, including Admin Panel features and User Profile fields.
 
 ```prisma
 generator client {
@@ -23,7 +23,17 @@ model User {
   name      String?
   role      String   @default("CUSTOMER") // CUSTOMER, ADMIN
   avatar    String?
-  provider  String   @default("EMAIL") // EMAIL, GOOGLE, GITHUB
+  provider  String   @default("EMAIL") // EMAIL, GOOGLE
+  
+  // Profile Fields
+  firstName String?
+  lastName  String?
+  phone     String?
+  address   String?
+  city      String?
+  country   String?
+  zip       String?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   orders    Order[]
