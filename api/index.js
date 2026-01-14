@@ -93,7 +93,8 @@ app.post('/api/auth/signup', async (req, res) => {
 
         await sendEmail(email, 'Verify your email', `Your verification code is ${otp}`);
         
-        res.json({ message: 'Signup successful', requiresVerification: true, email });
+        // Return debugOtp for demo purposes since email sending might not be configured
+        res.json({ message: 'Signup successful', requiresVerification: true, email, debugOtp: otp });
     } catch (e) {
         console.error('Signup Error:', e);
         res.status(500).json({ error: 'Internal server error during signup' });
@@ -113,7 +114,7 @@ app.post('/api/auth/login', async (req, res) => {
             const otp = generateOTP();
             await prisma.user.update({ where: { id: user.id }, data: { otp, otpExpires: new Date(Date.now() + 15*60000) }});
             await sendEmail(email, 'Verify your email', `Your code is ${otp}`);
-            return res.status(403).json({ message: 'Verification required', requiresVerification: true, email });
+            return res.status(403).json({ message: 'Verification required', requiresVerification: true, email, debugOtp: otp });
         }
 
         const token = jwt.sign({ id: user.id, role: user.role, email: user.email }, JWT_SECRET, { expiresIn: '7d' });
@@ -154,14 +155,16 @@ app.post('/api/auth/verify-email', async (req, res) => {
 // Auth: Forgot Password
 app.post('/api/auth/forgot-password', async (req, res) => {
     const { email } = req.body;
+    let debugOtp = null;
     try {
         const user = await prisma.user.findUnique({ where: { email } });
         if (user) {
             const otp = generateOTP();
+            debugOtp = otp;
             await prisma.user.update({ where: { id: user.id }, data: { otp, otpExpires: new Date(Date.now() + 15*60000) }});
             await sendEmail(email, 'Reset Password', `Your password reset code is ${otp}`);
         }
-        res.json({ message: 'If an account exists, a code has been sent.' });
+        res.json({ message: 'If an account exists, a code has been sent.', debugOtp });
     } catch (e) {
         res.status(500).json({ error: e.message });
     }

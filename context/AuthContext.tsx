@@ -8,7 +8,7 @@ interface AuthContextType {
   isAdmin: boolean;
   isLoading: boolean;
   login: (data: any) => Promise<void>;
-  signup: (data: any) => Promise<void>;
+  signup: (data: any) => Promise<any>;
   verifyEmail: (email: string, otp: string) => Promise<void>;
   socialLogin: (token: string, provider?: 'google') => Promise<void>;
   logout: () => void;
@@ -64,10 +64,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (result.token && result.user) {
           localStorage.setItem('hv_token', result.token);
           setUser(result.user);
-      } else if (result.requiresVerification) {
-          // No token yet, but user created. 
-          // Do NOT set user state, just let page handle redirect.
       }
+      // Return result so component can handle 'requiresVerification' and 'debugOtp'
+      return result;
     } catch (err: any) {
       setError(err.message || 'Signup failed');
       throw err;
