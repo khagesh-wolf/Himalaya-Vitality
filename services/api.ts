@@ -18,82 +18,70 @@ async function apiFetch<T>(endpoint: string, options: RequestInit = {}): Promise
 
     try {
         const res = await fetch(`${API_URL}${endpoint}`, { ...options, headers });
-        
-        // Handle non-JSON responses (like Vercel 500 HTML errors)
         const contentType = res.headers.get("content-type");
+        
         let data;
         if (contentType && contentType.includes("application/json")) {
             data = await res.json();
         } else {
             const text = await res.text();
-            // If response is not OK and not JSON, throw the text body as error
-            if (!res.ok) {
-                console.error('API Error (Non-JSON):', text);
-                throw new Error(`Server Error: ${res.status} ${res.statusText}`);
-            }
-            // Fallback for successful non-JSON responses (rare for this API)
+            if (!res.ok) throw new Error(`Server Error: ${res.statusText}`);
             data = text;
         }
 
         if (!res.ok) {
-            // Pass special verification flags for UI handling
+            // Special auth handling
             if (res.status === 403 && data.requiresVerification) {
-                throw { 
-                    message: data.message, 
-                    requiresVerification: true, 
-                    email: data.email 
-                };
+                throw { message: data.message, requiresVerification: true, email: data.email };
             }
             throw new Error(data.message || data.error || 'API Error');
         }
         return data as T;
     } catch (error: any) {
-        // Re-throw formatted errors
         if (error.requiresVerification) throw error;
         console.error("Fetch error:", error);
         throw new Error(error.message || "Network request failed");
     }
 }
 
-// --- MOCK ADAPTER (Fallback) ---
-// Simplified mock logic for development without backend
+// --- MOCK ADAPTER ---
 async function mockAdapter(endpoint: string, options: any) {
     await new Promise(r => setTimeout(r, 500));
     if (endpoint === '/auth/login') return { token: 'mock', user: { id: '1', name: 'Demo User', role: 'CUSTOMER' } };
     if (endpoint.startsWith('/products')) return MAIN_PRODUCT;
-    if (endpoint === '/auth/me') return { id: '1', name: 'Demo User', email: 'demo@example.com', role: 'CUSTOMER' };
+    if (endpoint === '/create-payment-intent') return { clientSecret: 'pi_mock_secret_123' };
+    if (endpoint === '/orders') return { success: true, orderId: 'HV-MOCK-123' };
     return {};
 }
 
 // --- AUTH SERVICES ---
 export const loginUser = (data: any) => apiFetch<{ token: string, user: User }>('/auth/login', { method: 'POST', body: JSON.stringify(data) });
-
 export const signupUser = (data: any) => apiFetch<{ token?: string, user?: User, requiresVerification?: boolean, email?: string }>('/auth/signup', { method: 'POST', body: JSON.stringify(data) });
-
 export const verifyEmail = (email: string, otp: string) => apiFetch<{ token: string, user: User }>('/auth/verify-email', { method: 'POST', body: JSON.stringify({ email, otp }) });
-
 export const sendForgotPassword = (email: string) => apiFetch<{ message: string }>('/auth/forgot-password', { method: 'POST', body: JSON.stringify({ email }) });
-
 export const resetPassword = (data: any) => apiFetch('/auth/reset-password', { method: 'POST', body: JSON.stringify(data) });
-
 export const googleAuthenticate = (token: string) => apiFetch<{ token: string, user: User }>('/auth/google', { method: 'POST', body: JSON.stringify({ token }) });
-
 export const fetchCurrentUser = () => apiFetch<User>('/auth/me');
-
 export const updateUserProfile = (data: Partial<User>) => apiFetch<User>('/auth/profile', { method: 'PUT', body: JSON.stringify(data) });
 
 // --- DATA SERVICES ---
 export const fetchProduct = (id: string) => apiFetch<Product>(`/products/${id}`);
-
 export const fetchReviews = () => apiFetch<Review[]>('/reviews');
-
 export const fetchBlogPosts = () => apiFetch<BlogPost[]>('/blog');
-
 export const fetchUserOrders = () => apiFetch<Order[]>('/orders/my-orders');
 
-export const createPaymentIntent = (items: CartItem[], currency: string) => apiFetch<{ clientSecret: string }>('/create-payment-intent', { method: 'POST', body: JSON.stringify({ items, currency }) });
+export const createPaymentIntent = (items: CartItem[], currency: string) => 
+    apiFetch<{ clientSecret: string; mockSecret?: string }>('/create-payment-intent', { 
+        method: 'POST', 
+        body: JSON.stringify({ items, currency }) 
+    });
 
-export const createOrder = (data: any) => apiFetch<{ success: boolean, orderId: string }>('/orders', { method: 'POST', body: JSON.stringify(data) });
+// Updated to include userId
+export const createOrder = (data: { customer: any, items: CartItem[], total: number, paymentId: string, userId?: string }) => 
+    apiFetch<{ success: boolean, orderId: string }>('/orders', { 
+        method: 'POST', 
+        body: JSON.stringify(data) 
+    });
 
 // --- ADMIN SERVICES ---
 export const fetchAdminStats = () => apiFetch('/admin/stats');

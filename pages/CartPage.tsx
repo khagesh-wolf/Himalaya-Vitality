@@ -1,37 +1,16 @@
-
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Trash2, Plus, Minus, ArrowRight, ShieldCheck, ShoppingBag, Tag, X, Truck, ChevronDown, Loader2, Check } from 'lucide-react';
+import { Trash2, Plus, Minus, ArrowRight, ShieldCheck, ShoppingBag, Tag, X } from 'lucide-react';
 import { Container, Button, Card, Reveal } from '../components/UI';
 import { useCart } from '../context/CartContext';
 import { useCurrency } from '../context/CurrencyContext';
-import { simulateShipping, getDeliverableCountries } from '../utils';
 
 export const CartPage = () => {
-  const { cartItems, removeFromCart, updateQuantity, cartSubtotal, cartTotal, applyDiscount, discount, removeDiscount, cartCount } = useCart();
+  const { cartItems, removeFromCart, updateQuantity, cartSubtotal, cartTotal, applyDiscount, discount, removeDiscount } = useCart();
   const { formatPrice } = useCurrency();
   const [promoCode, setPromoCode] = useState('');
   const [promoError, setPromoError] = useState('');
   const [promoSuccess, setPromoSuccess] = useState('');
-
-  // Shipping Calculator State
-  const [shippingCountry, setShippingCountry] = useState('US');
-  const [shippingEstimate, setShippingEstimate] = useState<{ cost: number, eta: string } | null>(null);
-  const [isCalculatingShipping, setIsCalculatingShipping] = useState(false);
-  const [regions, setRegions] = useState(getDeliverableCountries());
-
-  useEffect(() => {
-    const fetchShipping = async () => {
-      setIsCalculatingShipping(true);
-      const result = await simulateShipping(shippingCountry, cartTotal, cartCount);
-      setShippingEstimate(result);
-      setIsCalculatingShipping(false);
-    };
-
-    if (cartItems.length > 0) {
-        fetchShipping();
-    }
-  }, [shippingCountry, cartTotal, cartCount]);
 
   const handleApplyPromo = () => {
     setPromoError('');
@@ -173,27 +152,6 @@ export const CartPage = () => {
                     {promoSuccess && <p className="text-xs text-green-600 mt-2 font-bold">{promoSuccess}</p>}
                 </div>
 
-                {/* Shipping Estimator Sidebar */}
-                <div className="mb-6 pb-6 border-b border-gray-100">
-                    <div className="flex items-center justify-between mb-2">
-                        <span className="text-sm font-bold text-gray-600">Shipping To</span>
-                    </div>
-                    <div className="relative">
-                            <select
-                                value={shippingCountry}
-                                onChange={(e) => setShippingCountry(e.target.value)}
-                                className="w-full appearance-none bg-white border border-gray-200 rounded-lg py-2 px-3 pr-8 text-sm font-medium focus:ring-2 focus:ring-brand-red outline-none text-brand-dark cursor-pointer"
-                            >
-                                {regions.map((region) => (
-                                    <option key={region.code} value={region.code}>
-                                        {region.name}
-                                    </option>
-                                ))}
-                            </select>
-                            <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
-                        </div>
-                </div>
-
                 <div className="space-y-3 mb-6 pb-6 border-b border-gray-100 text-sm font-medium">
                     <div className="flex justify-between text-gray-600">
                     <span>Subtotal</span>
@@ -207,18 +165,14 @@ export const CartPage = () => {
                     )}
                     <div className="flex justify-between text-gray-600">
                     <span>Shipping</span>
-                    <span className="text-brand-dark font-bold">
-                        {isCalculatingShipping ? '...' : (
-                            shippingEstimate?.cost === 0 ? <span className="text-green-600">FREE (3+ Items)</span> : formatPrice(shippingEstimate?.cost || 0)
-                        )}
-                    </span>
+                    <span className="text-brand-dark font-medium text-xs">Calculated at checkout</span>
                     </div>
                 </div>
 
                 <div className="flex justify-between items-center mb-8">
                     <span className="font-heading font-bold text-xl text-brand-dark">Total</span>
                     <span className="font-heading font-bold text-xl text-brand-red">
-                        {formatPrice(cartTotal + (shippingEstimate?.cost || 0))}
+                        {formatPrice(cartTotal)}
                     </span>
                 </div>
 

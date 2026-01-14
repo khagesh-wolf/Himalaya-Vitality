@@ -25,7 +25,7 @@ model User {
   avatar    String?
   provider  String   @default("EMAIL") // EMAIL, GOOGLE
   
-  // Profile Fields
+  // Profile Fields (Synced with Checkout)
   firstName String?
   lastName  String?
   phone     String?
@@ -41,6 +41,8 @@ model User {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+  
+  // Relations
   orders    Order[]
 }
 
@@ -90,14 +92,18 @@ model Review {
 model Order {
   id            String      @id @default(uuid())
   orderNumber   String      @unique
+  
+  // User Relation (Optional for Guest Checkout)
   userId        String?
   user          User?       @relation(fields: [userId], references: [id])
+  
   customerEmail String
   customerName  String
-  shippingAddress Json
+  shippingAddress Json      // Stores full address snapshot at time of purchase
   total         Float
-  status        String      // Paid, Pending, Fulfilled
+  status        String      // Paid, Pending, Fulfilled, Delivered
   paymentId     String?
+  
   items         OrderItem[]
   createdAt     DateTime    @default(now())
 }
@@ -108,7 +114,7 @@ model OrderItem {
   order     Order   @relation(fields: [orderId], references: [id])
   variantId String
   quantity  Int
-  price     Float
+  price     Float   // Price at time of purchase
 }
 
 model Subscriber {

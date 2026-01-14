@@ -1,11 +1,11 @@
-
 import React, { useState, useEffect } from 'react';
 import { Link, useSearchParams, useNavigate } from 'react-router-dom';
-import { ShieldCheck, Lock, ArrowLeft, Loader2, Info, CheckCircle, AlertCircle } from 'lucide-react';
+import { ShieldCheck, Lock, ArrowLeft, Loader2, AlertCircle, CheckCircle, Package, UserCircle } from 'lucide-react';
 import { Button, Card, Container } from '../components/UI';
 import { MAIN_PRODUCT } from '../constants';
 import { useCurrency } from '../context/CurrencyContext';
 import { useCart } from '../context/CartContext';
+import { useAuth } from '../context/AuthContext';
 import { CartItem } from '../types';
 import { useLoading } from '../context/LoadingContext';
 import { getDeliverableCountries, simulateShipping } from '../utils';
@@ -16,13 +16,12 @@ import { loadStripe } from '@stripe/stripe-js';
 import { Elements, PaymentElement, useStripe, useElements } from '@stripe/react-stripe-js';
 
 // Form & Validation
-import { useForm, FormProvider, useFormContext } from 'react-hook-form';
+import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 
 // --- CONFIGURATION ---
-// In production, use your real publishable key from environment variables
-const STRIPE_PUBLIC_KEY = 'pk_test_51MockKeyForDemoPurposesOnly12345'; 
+const STRIPE_PUBLIC_KEY = (import.meta as any).env?.VITE_STRIPE_PUBLIC_KEY || 'pk_test_TYooMQauvdEDq54NiTphI7jx'; 
 const stripePromise = loadStripe(STRIPE_PUBLIC_KEY);
 
 // --- ZOD SCHEMAS ---
@@ -39,39 +38,25 @@ const addressSchema = z.object({
 
 type CheckoutFormData = z.infer<typeof addressSchema>;
 
-// --- COMPONENT: CHECKOUT FORM (Steps 1 & 2) ---
-const CheckoutForm = ({ 
+// --- COMPONENT: PAYMENT STEP ---
+const PaymentStep = ({ 
     items, 
     total, 
-    clientSecret,
-    onSuccess 
+    customerData,
+    onSuccess,
+    onBack
 }: { 
     items: CartItem[], 
     total: number, 
-    clientSecret: string,
-    onSuccess: (orderId: string) => void
+    customerData: CheckoutFormData,
+    onSuccess: (orderId: string) => void,
+    onBack: () => void
 }) => {
     const stripe = useStripe();
     const elements = useElements();
     const { setIsLoading } = useLoading();
+    const { user } = useAuth();
     const [message, setMessage] = useState<string | null>(null);
-    const [step, setStep] = useState<1 | 2>(1);
-    
-    // React Hook Form
-    const methods = useForm<CheckoutFormData>({
-        resolver: zodResolver(addressSchema),
-        defaultValues: { country: 'US' }
-    });
-
-    const { register, handleSubmit, formState: { errors }, watch } = methods;
-    const selectedCountry = watch('country');
-
-    const onSubmitStep1 = (data: CheckoutFormData) => {
-        // Just validate and move to next step
-        setStep(2);
-    };
-
-    const handleBack = () => setStep(1);
 
     const handlePaymentSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -81,173 +66,174 @@ const CheckoutForm = ({
         setIsLoading(true, 'Processing Payment...');
         setMessage(null);
 
-        // 1. Confirm Payment with Stripe
-        // Note: In a real redirect flow, return_url handles the completion.
-        // For this demo with 'mock' secret, we simulate success if key is test.
-        
-        let paymentResult;
-        
         try {
-             // Simulate real API call to stripe (will fail with mock key in real network, so we catch)
-            if(STRIPE_PUBLIC_KEY.includes('Mock')) {
-                // MOCK SUCCESS FOR DEMO
-                await new Promise(r => setTimeout(r, 2000));
-                paymentResult = { paymentIntent: { status: 'succeeded', id: 'pi_mock_123' } };
-            } else {
-                // REAL STRIPE CALL
-                paymentResult = await stripe.confirmPayment({
-                    elements,
-                    confirmParams: {
-                        return_url: `${window.location.origin}/order-confirmation`,
-                    },
-                    redirect: 'if_required' 
-                });
-            }
-        } catch(err) {
-             setMessage("Payment failed. Please try again.");
-             setIsLoading(false);
-             return;
-        }
+            const { error, paymentIntent } = await stripe.confirmPayment({
+                elements,
+                confirmParams: {
+                    return_url: `${window.location.origin}/order-confirmation`, // Handled by redirect='if_required' usually
+                    payment_method_data: {
+                        billing_details: {
+                            name: `${customerData.firstName} ${customerData.lastName}`,
+                            email: customerData.email,
+                            address: {
+                                country: customerData.country,
+                                postal_code: customerData.zip,
+                                city: customerData.city,
+                                line1: customerData.address,
+                            }
+                        }
+                    }
+                },
+                redirect: 'if_required' 
+            });
 
-        if (paymentResult.error) {
-            setMessage(paymentResult.error.message || "An unexpected error occurred.");
-            setIsLoading(false);
-        } else if (paymentResult.paymentIntent && paymentResult.paymentIntent.status === 'succeeded') {
-            // 2. Create Order in Backend
-            const formData = methods.getValues();
-            try {
+            if (error) {
+                setMessage(error.message || "An unexpected error occurred.");
+                setIsLoading(false);
+            } else if (paymentIntent && paymentIntent.status === 'succeeded') {
+                // Payment succeeded, create order in DB
                 const order = await createOrder({
-                    customer: formData,
+                    customer: customerData,
                     items,
                     total,
-                    paymentId: paymentResult.paymentIntent.id
+                    paymentId: paymentIntent.id,
+                    userId: user?.id 
                 });
                 onSuccess(order.orderId);
-            } catch (err) {
-                setMessage("Payment succeeded but order creation failed. Contact support.");
-            } finally {
                 setIsLoading(false);
             }
+        } catch(err: any) {
+             setMessage(err.message || "Payment failed. Please try again.");
+             setIsLoading(false);
         }
     };
 
     return (
-        <div className="space-y-6">
-            {/* Step Indicator */}
-            <div className="flex items-center space-x-4 text-sm font-bold mb-8">
-                <div className={`flex items-center ${step >= 1 ? 'text-brand-dark' : 'text-gray-400'}`}>
-                    <div className={`w-6 h-6 rounded-full flex items-center justify-center mr-2 ${step >= 1 ? 'bg-brand-dark text-white' : 'bg-gray-200'}`}>1</div>
-                    Shipping
+        <div>
+            <div className="bg-gray-50 p-4 rounded-xl mb-6 flex justify-between items-center border border-gray-200">
+                <div className="text-sm">
+                    <span className="text-gray-500 block text-xs uppercase font-bold mb-1">Shipping To</span>
+                    <div className="font-bold text-brand-dark">{customerData.firstName} {customerData.lastName}</div>
+                    <div className="text-gray-600">{customerData.address}, {customerData.city}, {customerData.country}</div>
                 </div>
-                <div className="h-px w-8 bg-gray-200"></div>
-                <div className={`flex items-center ${step >= 2 ? 'text-brand-dark' : 'text-gray-400'}`}>
-                    <div className={`w-6 h-6 rounded-full flex items-center justify-center mr-2 ${step >= 2 ? 'bg-brand-dark text-white' : 'bg-gray-200'}`}>2</div>
-                    Payment
-                </div>
+                <button onClick={onBack} className="text-brand-red text-xs font-bold hover:underline">Edit</button>
             </div>
 
-            {/* Error Message */}
             {message && (
-                <div className="bg-red-50 text-red-600 p-4 rounded-lg flex items-start gap-2 text-sm">
+                <div className="bg-red-50 text-red-600 p-4 rounded-lg flex items-start gap-2 text-sm border border-red-100 mb-6">
                     <AlertCircle size={16} className="mt-0.5 shrink-0" />
                     <span>{message}</span>
                 </div>
             )}
 
-            {/* Step 1: Shipping Details */}
-            <div className={step === 1 ? 'block' : 'hidden'}>
-                <form onSubmit={handleSubmit(onSubmitStep1)} className="space-y-5">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                        <div className="space-y-1">
-                            <label className="text-xs font-bold text-gray-500 uppercase">Email</label>
-                            <input {...register('email')} type="email" placeholder="you@example.com" className={`w-full p-3.5 bg-gray-50 border rounded-lg outline-none transition-all ${errors.email ? 'border-red-500' : 'border-gray-200 focus:border-brand-red'}`} />
-                            {errors.email && <p className="text-red-500 text-xs">{errors.email.message}</p>}
-                        </div>
-                        <div className="space-y-1">
-                            <label className="text-xs font-bold text-gray-500 uppercase">Phone (Optional)</label>
-                            <input {...register('phone')} type="tel" className="w-full p-3.5 bg-gray-50 border border-gray-200 rounded-lg outline-none focus:border-brand-red" />
-                        </div>
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                        <div className="space-y-1">
-                            <label className="text-xs font-bold text-gray-500 uppercase">First Name</label>
-                            <input {...register('firstName')} type="text" className={`w-full p-3.5 bg-gray-50 border rounded-lg outline-none ${errors.firstName ? 'border-red-500' : 'border-gray-200 focus:border-brand-red'}`} />
-                        </div>
-                        <div className="space-y-1">
-                            <label className="text-xs font-bold text-gray-500 uppercase">Last Name</label>
-                            <input {...register('lastName')} type="text" className={`w-full p-3.5 bg-gray-50 border rounded-lg outline-none ${errors.lastName ? 'border-red-500' : 'border-gray-200 focus:border-brand-red'}`} />
-                        </div>
-                    </div>
-
-                    <div className="space-y-1">
-                        <label className="text-xs font-bold text-gray-500 uppercase">Address</label>
-                        <input {...register('address')} type="text" className={`w-full p-3.5 bg-gray-50 border rounded-lg outline-none ${errors.address ? 'border-red-500' : 'border-gray-200 focus:border-brand-red'}`} />
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-                        <div className="space-y-1">
-                            <label className="text-xs font-bold text-gray-500 uppercase">Country</label>
-                            <select {...register('country')} className="w-full p-3.5 bg-gray-50 border border-gray-200 rounded-lg outline-none focus:border-brand-red">
-                                {getDeliverableCountries().map(c => <option key={c.id} value={c.code}>{c.name}</option>)}
-                            </select>
-                        </div>
-                        <div className="space-y-1">
-                            <label className="text-xs font-bold text-gray-500 uppercase">City</label>
-                            <input {...register('city')} type="text" className={`w-full p-3.5 bg-gray-50 border rounded-lg outline-none ${errors.city ? 'border-red-500' : 'border-gray-200 focus:border-brand-red'}`} />
-                        </div>
-                        <div className="space-y-1">
-                            <label className="text-xs font-bold text-gray-500 uppercase">ZIP</label>
-                            <input {...register('zip')} type="text" className={`w-full p-3.5 bg-gray-50 border rounded-lg outline-none ${errors.zip ? 'border-red-500' : 'border-gray-200 focus:border-brand-red'}`} />
-                        </div>
-                    </div>
-
-                    <Button type="submit" fullWidth size="lg" className="mt-4">Continue to Payment</Button>
-                </form>
-            </div>
-
-            {/* Step 2: Payment */}
-            <div className={step === 2 ? 'block' : 'hidden'}>
-                <div className="bg-gray-50 p-4 rounded-xl mb-6 flex justify-between items-center border border-gray-200">
-                    <div className="text-sm">
-                        <span className="text-gray-500 block text-xs uppercase font-bold">Ship To</span>
-                        <span className="font-bold text-brand-dark">{methods.getValues('address')}, {methods.getValues('city')}</span>
-                    </div>
-                    <button onClick={handleBack} className="text-brand-red text-xs font-bold hover:underline">Edit</button>
+            <form onSubmit={handlePaymentSubmit} className="space-y-6">
+                <div className="p-4 border border-gray-200 rounded-xl bg-white shadow-sm">
+                    <PaymentElement />
                 </div>
-
-                <form onSubmit={handlePaymentSubmit} className="space-y-6">
-                    <div className="p-4 border border-gray-200 rounded-xl bg-white shadow-sm">
-                        <PaymentElement />
-                    </div>
-                    
-                    <Button type="submit" fullWidth size="lg" className="h-14 shadow-xl shadow-brand-red/20" disabled={!stripe || !elements}>
-                        Pay Securely
-                    </Button>
-                    
-                    <div className="flex justify-center items-center space-x-2 text-gray-400 text-xs font-medium">
-                        <ShieldCheck size={14} />
-                        <span>256-bit SSL Encrypted Payment</span>
-                    </div>
-                </form>
-            </div>
+                
+                <Button type="submit" fullWidth size="lg" className="h-14 shadow-xl shadow-brand-red/20 text-lg" disabled={!stripe || !elements}>
+                    Pay Securely
+                </Button>
+                
+                <div className="flex justify-center items-center space-x-2 text-gray-400 text-xs font-medium">
+                    <ShieldCheck size={14} />
+                    <span>256-bit SSL Encrypted Payment</span>
+                </div>
+            </form>
         </div>
     );
 };
 
+// --- COMPONENT: ADDRESS FORM ---
+const AddressStep = ({ 
+    initialData, 
+    onSubmit 
+}: { 
+    initialData: Partial<CheckoutFormData>, 
+    onSubmit: (data: CheckoutFormData) => void 
+}) => {
+    const { register, handleSubmit, formState: { errors } } = useForm<CheckoutFormData>({
+        resolver: zodResolver(addressSchema),
+        defaultValues: { country: 'US', ...initialData }
+    });
+
+    return (
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-5 animate-in fade-in">
+            <div className="bg-gray-50 p-4 rounded-xl border border-gray-100 space-y-4">
+                <div className="flex items-center gap-2 mb-2 text-brand-dark font-bold text-sm uppercase tracking-wide">
+                    <UserCircle size={18}/> Contact Info
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-1">
+                        <label className="text-xs font-bold text-gray-500 uppercase">Email</label>
+                        <input {...register('email')} type="email" className={`w-full p-3 bg-white border rounded-lg outline-none transition-all ${errors.email ? 'border-red-500' : 'border-gray-200 focus:border-brand-red'}`} placeholder="email@example.com" />
+                        {errors.email && <p className="text-red-500 text-xs">{errors.email.message}</p>}
+                    </div>
+                    <div className="space-y-1">
+                        <label className="text-xs font-bold text-gray-500 uppercase">Phone</label>
+                        <input {...register('phone')} type="tel" className="w-full p-3 bg-white border border-gray-200 rounded-lg outline-none focus:border-brand-red" placeholder="(555) 555-5555" />
+                    </div>
+                </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-1">
+                    <label className="text-xs font-bold text-gray-500 uppercase">First Name</label>
+                    <input {...register('firstName')} type="text" className={`w-full p-3 bg-gray-50 border rounded-lg outline-none ${errors.firstName ? 'border-red-500' : 'border-gray-200 focus:border-brand-red'}`} />
+                    {errors.firstName && <p className="text-red-500 text-xs">{errors.firstName.message}</p>}
+                </div>
+                <div className="space-y-1">
+                    <label className="text-xs font-bold text-gray-500 uppercase">Last Name</label>
+                    <input {...register('lastName')} type="text" className={`w-full p-3 bg-gray-50 border rounded-lg outline-none ${errors.lastName ? 'border-red-500' : 'border-gray-200 focus:border-brand-red'}`} />
+                    {errors.lastName && <p className="text-red-500 text-xs">{errors.lastName.message}</p>}
+                </div>
+            </div>
+
+            <div className="space-y-1">
+                <label className="text-xs font-bold text-gray-500 uppercase">Address</label>
+                <input {...register('address')} type="text" className={`w-full p-3 bg-gray-50 border rounded-lg outline-none ${errors.address ? 'border-red-500' : 'border-gray-200 focus:border-brand-red'}`} />
+                {errors.address && <p className="text-red-500 text-xs">{errors.address.message}</p>}
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="space-y-1">
+                    <label className="text-xs font-bold text-gray-500 uppercase">Country</label>
+                    <select {...register('country')} className="w-full p-3 bg-gray-50 border border-gray-200 rounded-lg outline-none focus:border-brand-red">
+                        {getDeliverableCountries().map(c => <option key={c.id} value={c.code}>{c.name}</option>)}
+                    </select>
+                </div>
+                <div className="space-y-1">
+                    <label className="text-xs font-bold text-gray-500 uppercase">City</label>
+                    <input {...register('city')} type="text" className={`w-full p-3 bg-gray-50 border rounded-lg outline-none ${errors.city ? 'border-red-500' : 'border-gray-200 focus:border-brand-red'}`} />
+                    {errors.city && <p className="text-red-500 text-xs">{errors.city.message}</p>}
+                </div>
+                <div className="space-y-1">
+                    <label className="text-xs font-bold text-gray-500 uppercase">ZIP</label>
+                    <input {...register('zip')} type="text" className={`w-full p-3 bg-gray-50 border rounded-lg outline-none ${errors.zip ? 'border-red-500' : 'border-gray-200 focus:border-brand-red'}`} />
+                    {errors.zip && <p className="text-red-500 text-xs">{errors.zip.message}</p>}
+                </div>
+            </div>
+
+            <Button type="submit" fullWidth size="lg" className="mt-4 shadow-xl shadow-brand-red/20 h-14 text-lg">
+                Continue to Payment
+            </Button>
+        </form>
+    );
+};
 
 // --- MAIN PAGE COMPONENT ---
 export const CheckoutPage = () => {
     const { formatPrice } = useCurrency();
-    const { cartItems, cartTotal } = useCart();
+    const { cartItems, cartTotal, clearCart } = useCart();
+    const { user, isAuthenticated } = useAuth();
     const [searchParams] = useSearchParams();
     const navigate = useNavigate();
+    const { setIsLoading } = useLoading();
     
-    // Direct Buy Logic
+    // Logic for Direct Buy vs Cart
     const variantId = searchParams.get('variantId');
     const directVariant = variantId ? MAIN_PRODUCT.variants.find(v => v.id === variantId) : null;
     
-    // Derived Items & Totals
     const checkoutItems: CartItem[] = directVariant ? [{
         variantId: directVariant.id,
         productTitle: MAIN_PRODUCT.title,
@@ -261,103 +247,145 @@ export const CheckoutPage = () => {
     const baseSubtotal = directVariant ? directVariant.price : cartTotal;
     const itemCount = checkoutItems.reduce((acc, item) => acc + item.quantity, 0);
 
-    // Shipping & Tax State
-    // In a real app, this should be recalculated on the server or via API when address changes
-    // Here we use the local simulation for the initial load
+    // State
+    const [step, setStep] = useState<1 | 2>(1);
     const [shippingData, setShippingData] = useState({ cost: 0, tax: 0 });
     const [clientSecret, setClientSecret] = useState<string>('');
-    const [isInitializing, setIsInitializing] = useState(true);
+    const [customerData, setCustomerData] = useState<CheckoutFormData | null>(null);
 
-    // 1. Redirect if empty
+    // Prepare User Data for Form
+    const userData = user ? {
+        email: user.email,
+        firstName: user.firstName || user.name?.split(' ')[0],
+        lastName: user.lastName || user.name?.split(' ')[1],
+        address: user.address,
+        city: user.city,
+        country: user.country || 'US',
+        zip: user.zip,
+        phone: user.phone
+    } : {};
+
     useEffect(() => {
         if (!directVariant && cartItems.length === 0) navigate('/');
     }, [cartItems, directVariant, navigate]);
 
-    // 2. Initial Setup: Calculate Cost & Create Intent
-    useEffect(() => {
-        const initCheckout = async () => {
-            setIsInitializing(true);
-            
-            // A. Calculate estimated costs (Default US)
-            const shipping = await simulateShipping('US', baseSubtotal, itemCount);
+    // Handle Address Submission (Step 1 -> 2)
+    const handleAddressSubmit = async (data: CheckoutFormData) => {
+        setCustomerData(data);
+        setIsLoading(true, 'Calculating Shipping & Taxes...');
+        
+        try {
+            // 1. Calculate Shipping based on address
+            const shipping = await simulateShipping(data.country, baseSubtotal, itemCount);
             setShippingData({ cost: shipping.cost, tax: shipping.tax });
             
-            // B. Create Payment Intent
-            try {
-                const { clientSecret } = await createPaymentIntent(checkoutItems, 'USD');
-                setClientSecret(clientSecret);
-            } catch (error) {
-                console.error("Failed to init payment", error);
-            } finally {
-                setIsInitializing(false);
-            }
-        };
-        
-        if (checkoutItems.length > 0) {
-            initCheckout();
+            // 2. Create/Update Payment Intent with FINAL Total
+            // Note: We create a brand new intent for simplicity in this demo flow
+            const finalTotal = baseSubtotal + shipping.cost + shipping.tax;
+            const { clientSecret, mockSecret } = await createPaymentIntent(checkoutItems, 'USD'); 
+            // Ideally backend calculates total, here we mock it or pass items.
+            // In a real app, passing shipping cost to backend is needed if backend calculates total.
+            
+            setClientSecret(clientSecret || mockSecret || '');
+            setStep(2);
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        } catch (error) {
+            console.error("Checkout init failed", error);
+            alert("Could not initialize payment. Please try again.");
+        } finally {
+            setIsLoading(false);
         }
-    }, [baseSubtotal, itemCount]);
+    };
 
     const finalTotal = baseSubtotal + shippingData.cost + shippingData.tax;
 
-    // Success Handler
     const handleSuccess = (orderId: string) => {
-        alert(`Order ${orderId} placed successfully! Check console for mock details.`);
-        navigate('/');
-    };
-
-    if (isInitializing) {
-        return <div className="min-h-screen flex items-center justify-center"><Loader2 className="w-8 h-8 animate-spin text-brand-red"/></div>;
-    }
-
-    const appearance = {
-        theme: 'stripe',
-        variables: {
-            colorPrimary: '#D0202F',
-            colorBackground: '#ffffff',
-            colorText: '#111111',
-            borderRadius: '12px',
-        },
+        clearCart();
+        alert(`Order ${orderId} placed successfully! Check your email.`);
+        navigate('/profile');
     };
 
     return (
         <div className="min-h-screen bg-gray-50 pb-20">
             {/* Header */}
-            <div className="bg-white border-b border-gray-200 py-5 sticky top-0 z-50">
+            <div className="bg-white border-b border-gray-200 py-5 sticky top-0 z-50 shadow-sm">
                 <Container>
                     <div className="flex justify-between items-center">
                         <Link to="/" className="flex items-center gap-2">
                             <div className="w-8 h-8 bg-brand-red text-white flex items-center justify-center font-heading font-extrabold text-sm rounded-lg">HV</div>
-                            <span className="font-heading font-bold text-lg text-brand-dark uppercase">Himalaya</span>
+                            <span className="font-heading font-bold text-lg text-brand-dark uppercase hidden sm:block">Himalaya Vitality</span>
                         </Link>
-                        <div className="flex items-center text-xs font-bold text-gray-500">
-                            <Lock size={14} className="mr-1 text-green-600" /> SECURE CHECKOUT
+                        <div className="flex items-center text-xs font-bold text-gray-500 bg-gray-50 px-3 py-1.5 rounded-full">
+                            <Lock size={12} className="mr-1.5 text-green-600" /> SECURE CHECKOUT
                         </div>
                     </div>
                 </Container>
             </div>
 
-            <Container className="pt-10">
+            <Container className="pt-8">
                 <div className="mb-6">
-                    <Link to="/cart" className="text-sm text-gray-500 flex items-center hover:text-brand-dark w-fit">
-                        <ArrowLeft size={14} className="mr-1" /> Return to Cart
+                    <Link to="/cart" className="text-sm text-gray-500 flex items-center hover:text-brand-dark w-fit font-bold">
+                        <ArrowLeft size={16} className="mr-1" /> Return to Cart
                     </Link>
                 </div>
 
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 lg:gap-12">
                     
-                    {/* LEFT: Checkout Form */}
-                    <div className="lg:col-span-2">
-                        <div className="bg-white p-8 rounded-2xl shadow-sm border border-gray-100">
-                            {clientSecret && (
-                                <Elements options={{ clientSecret, appearance: appearance as any }} stripe={stripePromise}>
-                                    <CheckoutForm 
-                                        items={checkoutItems} 
-                                        total={finalTotal} 
-                                        clientSecret={clientSecret}
-                                        onSuccess={handleSuccess}
-                                    />
-                                </Elements>
+                    {/* LEFT: Forms */}
+                    <div className="lg:col-span-2 space-y-6">
+                        
+                        {/* Auth Banner for Guests */}
+                        {!isAuthenticated && step === 1 && (
+                            <div className="bg-brand-dark text-white p-6 rounded-2xl shadow-lg flex flex-col sm:flex-row items-center justify-between gap-4 animate-in fade-in slide-in-from-top-4">
+                                <div>
+                                    <h3 className="font-bold text-lg mb-1">Have an account?</h3>
+                                    <p className="text-gray-400 text-sm">Sign in for a faster checkout experience.</p>
+                                </div>
+                                <div className="flex gap-3 w-full sm:w-auto">
+                                    <Link to="/login" state={{ from: '/checkout' }} className="w-full sm:w-auto">
+                                        <Button size="sm" fullWidth className="bg-brand-red border-none">Sign In</Button>
+                                    </Link>
+                                    <Link to="/signup" state={{ from: '/checkout' }} className="w-full sm:w-auto">
+                                        <Button size="sm" variant="outline" fullWidth className="border-gray-600 text-gray-300 hover:text-white">Create Account</Button>
+                                    </Link>
+                                </div>
+                            </div>
+                        )}
+
+                        <div className="bg-white p-6 md:p-8 rounded-2xl shadow-sm border border-gray-100">
+                            {/* Progress Indicator */}
+                            <div className="flex items-center space-x-4 text-sm font-bold mb-8">
+                                <div className={`flex items-center ${step >= 1 ? 'text-brand-dark' : 'text-gray-400'}`}>
+                                    <div className={`w-6 h-6 rounded-full flex items-center justify-center mr-2 text-xs transition-colors ${step >= 1 ? 'bg-brand-dark text-white' : 'bg-gray-200'}`}>1</div>
+                                    Shipping
+                                </div>
+                                <div className="h-px w-8 bg-gray-200"></div>
+                                <div className={`flex items-center ${step >= 2 ? 'text-brand-dark' : 'text-gray-400'}`}>
+                                    <div className={`w-6 h-6 rounded-full flex items-center justify-center mr-2 text-xs transition-colors ${step >= 2 ? 'bg-brand-dark text-white' : 'bg-gray-200'}`}>2</div>
+                                    Payment
+                                </div>
+                            </div>
+
+                            {step === 1 ? (
+                                <AddressStep initialData={userData} onSubmit={handleAddressSubmit} />
+                            ) : (
+                                clientSecret && customerData && (
+                                    <Elements options={{ 
+                                        clientSecret, 
+                                        appearance: { 
+                                            theme: 'stripe', 
+                                            variables: { colorPrimary: '#D0202F', borderRadius: '12px' } 
+                                        } 
+                                    }} stripe={stripePromise}>
+                                        <PaymentStep 
+                                            items={checkoutItems}
+                                            total={finalTotal}
+                                            customerData={customerData}
+                                            onSuccess={handleSuccess}
+                                            onBack={() => setStep(1)}
+                                        />
+                                    </Elements>
+                                )
                             )}
                         </div>
                     </div>
@@ -366,13 +394,13 @@ export const CheckoutPage = () => {
                     <div className="lg:col-span-1">
                         <div className="sticky top-28">
                             <Card className="p-6 bg-white border-gray-200 shadow-xl shadow-gray-200/50">
-                                <h3 className="font-heading font-bold text-brand-dark mb-6 text-lg">Order Summary</h3>
-                                <div className="space-y-4 mb-6 pb-6 border-b border-gray-100 max-h-80 overflow-y-auto">
+                                <h3 className="font-heading font-bold text-brand-dark mb-6 text-lg border-b border-gray-100 pb-4">Order Summary</h3>
+                                <div className="space-y-4 mb-6 pb-6 border-b border-gray-100 max-h-80 overflow-y-auto custom-scrollbar">
                                     {checkoutItems.map((item, idx) => (
                                         <div key={idx} className="flex items-start space-x-4">
                                             <div className="w-16 h-16 bg-gray-50 rounded-xl border border-gray-100 overflow-hidden relative shrink-0">
                                                 <img src={item.image} alt={item.productTitle} className="w-full h-full object-cover" />
-                                                <span className="absolute -top-1 -right-1 bg-brand-dark text-white text-[10px] w-5 h-5 flex items-center justify-center rounded-bl-lg font-bold">{item.quantity}</span>
+                                                <span className="absolute -top-1 -right-1 bg-brand-dark text-white text-[10px] w-5 h-5 flex items-center justify-center rounded-bl-lg font-bold shadow-sm">{item.quantity}</span>
                                             </div>
                                             <div className="flex-1">
                                                 <h4 className="font-bold text-xs text-brand-dark leading-tight mb-1">{item.productTitle}</h4>
@@ -389,21 +417,23 @@ export const CheckoutPage = () => {
                                     </div>
                                     <div className="flex justify-between items-center">
                                         <span>Shipping</span>
-                                        <span className={`font-bold ${shippingData.cost === 0 ? 'text-green-600' : 'text-brand-dark'}`}>
-                                            {shippingData.cost === 0 ? 'FREE' : formatPrice(shippingData.cost)}
+                                        <span className={`font-bold ${shippingData.cost === 0 && step === 2 ? 'text-green-600' : 'text-brand-dark'}`}>
+                                            {step === 1 ? 'Calculated next step' : (shippingData.cost === 0 ? 'FREE' : formatPrice(shippingData.cost))}
                                         </span>
                                     </div>
-                                    <div className="flex justify-between items-center">
-                                        <span>Tax / VAT</span>
-                                        <span className="text-brand-dark">{formatPrice(shippingData.tax)}</span>
-                                    </div>
+                                    {step === 2 && (
+                                        <div className="flex justify-between items-center">
+                                            <span>Tax (Est.)</span>
+                                            <span className="text-brand-dark">{formatPrice(shippingData.tax)}</span>
+                                        </div>
+                                    )}
                                 </div>
                                 <div className="flex justify-between border-t border-gray-100 pt-6 font-heading font-extrabold text-xl text-brand-dark">
                                     <span>Total</span>
-                                    <span>{formatPrice(finalTotal)}</span>
+                                    <span>{step === 1 ? formatPrice(baseSubtotal) : formatPrice(finalTotal)}</span>
                                 </div>
-                                <div className="mt-6 bg-gray-50 p-3 rounded-lg flex items-center justify-center text-xs text-gray-500">
-                                    <CheckCircle size={14} className="text-green-500 mr-2" />
+                                <div className="mt-6 bg-green-50 p-3 rounded-lg flex items-center justify-center text-xs text-green-700 font-bold border border-green-100">
+                                    <CheckCircle size={14} className="mr-2" />
                                     <span>30-Day Money Back Guarantee</span>
                                 </div>
                             </Card>

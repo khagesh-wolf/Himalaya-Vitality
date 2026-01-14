@@ -13,18 +13,22 @@ export const LoginPage = () => {
     const [password, setPassword] = useState('');
     const { login, socialLogin, error, isLoading, isAuthenticated } = useAuth();
     const navigate = useNavigate();
+    const location = useLocation();
+
+    // Handle Redirect Logic
+    const from = location.state?.from || '/profile';
 
     useEffect(() => {
-        if (isAuthenticated) navigate('/profile');
-    }, [isAuthenticated, navigate]);
+        if (isAuthenticated) navigate(from);
+    }, [isAuthenticated, navigate, from]);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         try {
             await login({ email, password });
-            navigate('/profile');
+            // Navigation handled by useEffect upon isAuthenticated change
         } catch (e: any) {
-            // Check for verification flag from API/Context
+            // Check for verification flag
             if (e.requiresVerification) {
                 navigate('/verify-email', { state: { email: e.email } });
             }
@@ -32,7 +36,7 @@ export const LoginPage = () => {
     };
 
     const handleGoogle = useGoogleLogin({
-        onSuccess: (res) => socialLogin(res.access_token).then(() => navigate('/profile')),
+        onSuccess: (res) => socialLogin(res.access_token).then(() => navigate(from)),
         onError: () => console.error('Google Failed')
     });
 
@@ -71,6 +75,7 @@ export const SignupPage = () => {
     const [localError, setLocalError] = useState('');
     const { signup, error, isLoading } = useAuth();
     const navigate = useNavigate();
+    const location = useLocation();
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -83,7 +88,7 @@ export const SignupPage = () => {
 
         try {
             await signup({ name, email, password });
-            navigate('/verify-email', { state: { email } });
+            navigate('/verify-email', { state: { email, from: location.state?.from } });
         } catch (e) { /* Error handled in context */ }
     };
 
@@ -119,12 +124,13 @@ export const VerifyEmailPage = () => {
     const [otp, setOtp] = useState('');
     const [msg, setMsg] = useState('');
     const navigate = useNavigate();
+    const from = state?.from || '/profile';
 
     const handleVerify = async (e: React.FormEvent) => {
         e.preventDefault();
         try {
             await verifyEmail(state?.email, otp);
-            navigate('/profile');
+            navigate(from);
         } catch (e: any) {
             setMsg(e.message || 'Verification failed');
         }
