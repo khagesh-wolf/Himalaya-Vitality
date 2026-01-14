@@ -40,22 +40,29 @@ const requireAdmin = (req, res, next) => {
 const generateOTP = () => Math.floor(100000 + Math.random() * 900000).toString();
 
 // --- EMAIL SETUP ---
-// Production Setup using Environment Variables
+// Using Port 465 (SSL) is recommended for Gmail App Passwords in Serverless environments
 const transporter = nodemailer.createTransport({
-    // If SMTP_HOST is provided (e.g. smtp.resend.com), use it. Otherwise default to gmail.
-    service: process.env.SMTP_HOST ? undefined : 'gmail', 
-    host: process.env.SMTP_HOST,
-    port: process.env.SMTP_PORT || 587,
-    secure: process.env.SMTP_SECURE === 'true', // true for 465, false for other ports
+    host: process.env.SMTP_HOST || 'smtp.gmail.com',
+    port: Number(process.env.SMTP_PORT) || 465,
+    secure: true, // true for 465, false for other ports
     auth: {
         user: process.env.EMAIL_USER, 
         pass: process.env.EMAIL_PASS  
+    },
+    tls: {
+        // Do not fail on invalid certs
+        rejectUnauthorized: false
     }
 });
 
 const sendEmail = async (to, subject, text) => {
     try {
         console.log(`[EMAIL] Attempting to send to ${to}...`);
+        
+        if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
+            throw new Error('Missing EMAIL_USER or EMAIL_PASS environment variables');
+        }
+
         const info = await transporter.sendMail({ 
             from: `"Himalaya Vitality" <${process.env.EMAIL_USER}>`, 
             to, 
@@ -65,13 +72,14 @@ const sendEmail = async (to, subject, text) => {
                     <h2>Himalaya Vitality</h2>
                     <p>${text}</p>
                     <hr />
-                    <small>If you did not request this, please ignore this email.</small>
+                    <small>This is an automated message.</small>
                    </div>`
         });
         console.log(`[EMAIL SENT] MessageId: ${info.messageId}`);
+        return info;
     } catch (e) {
-        console.error('[EMAIL FAIL] Check EMAIL_USER and EMAIL_PASS environment variables.', e);
-        throw new Error('Failed to send email verification.');
+        console.error('[EMAIL FAIL] Error details:', e);
+        throw e; // Re-throw to handle rollback in caller
     }
 };
 
@@ -80,9 +88,56 @@ const sendEmail = async (to, subject, text) => {
 // Health Check
 app.get('/api/health', (req, res) => res.json({ status: 'ok', time: new Date() }));
 
+// --- DIAGNOSTIC ROUTE (Visit /api/debug/email in browser) ---
+app.get('/api/debug/email', async (req, res) => {
+    const targetEmail = req.query.to || process.env.EMAIL_USER;
+    
+    const diagnostics = {
+        hasUser: !!process.env.EMAIL_USER,
+        hasPass: !!process.env.EMAIL_PASS,
+        userLength: process.env.EMAIL_USER ? process.env.EMAIL_USER.length : 0,
+        passLength: process.env.EMAIL_PASS ? process.env.EMAIL_PASS.length : 0,
+        targetEmail
+    };
+
+    try {
+        if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
+            throw new Error('Environment variables EMAIL_USER or EMAIL_PASS are missing.');
+        }
+
+        // Verify connection configuration
+        await new Promise((resolve, reject) => {
+            transporter.verify(function (error, success) {
+                if (error) reject(error);
+                else resolve(success);
+            });
+        });
+
+        // Send Test Mail
+        const info = await transporter.sendMail({
+            from: `"Debug Test" <${process.env.EMAIL_USER}>`,
+            to: targetEmail,
+            subject: 'Himalaya Vitality - Debug Test',
+            text: 'If you are reading this, your email configuration is 100% CORRECT.'
+        });
+        
+        res.json({ success: true, message: "Email Sent Successfully!", messageId: info.messageId, diagnostics });
+    } catch (error) {
+        res.status(500).json({ 
+            success: false, 
+            error: error.message, 
+            code: error.code, 
+            response: error.response,
+            diagnostics 
+        });
+    }
+});
+
 // Auth: Signup
 app.post('/api/auth/signup', async (req, res) => {
     const { name, email, password } = req.body;
+    let newUser = null;
+    
     try {
         const existing = await prisma.user.findUnique({ where: { email } });
         if (existing) return res.status(400).json({ message: 'User already exists' });
@@ -91,14 +146,21 @@ app.post('/api/auth/signup', async (req, res) => {
         const otp = generateOTP();
         const otpExpires = new Date(Date.now() + 15 * 60 * 1000); // 15 mins
 
-        await prisma.user.create({
+        // 1. Create User
+        newUser = await prisma.user.create({
             data: { name, email, password: hashedPassword, otp, otpExpires }
         });
 
-        // Send REAL email
-        await sendEmail(email, 'Verify your email - Himalaya Vitality', `Your verification code is: ${otp}`);
+        // 2. Try Sending Email
+        try {
+            await sendEmail(email, 'Verify your email - Himalaya Vitality', `Your verification code is: ${otp}`);
+        } catch (emailError) {
+            // 3. Rollback: Delete user if email fails so they can try again
+            console.error(`[SIGNUP ROLLBACK] Deleting user ${email} due to email failure.`);
+            await prisma.user.delete({ where: { id: newUser.id } });
+            return res.status(500).json({ error: 'Failed to send verification email. Please check your email address and try again.' });
+        }
         
-        // Do NOT return the OTP in the response for security in production
         res.json({ message: 'Signup successful. Please check your email for the verification code.', requiresVerification: true, email });
     } catch (e) {
         console.error('Signup Error:', e);
@@ -119,7 +181,11 @@ app.post('/api/auth/login', async (req, res) => {
             const otp = generateOTP();
             await prisma.user.update({ where: { id: user.id }, data: { otp, otpExpires: new Date(Date.now() + 15*60000) }});
             
-            await sendEmail(email, 'Verify your email', `Your verification code is: ${otp}`);
+            try {
+                await sendEmail(email, 'Verify your email', `Your verification code is: ${otp}`);
+            } catch (emailError) {
+                return res.status(500).json({ error: 'Failed to send verification code. Please try again later.' });
+            }
             
             return res.status(403).json({ message: 'Verification required. A new code has been sent to your email.', requiresVerification: true, email });
         }
@@ -168,7 +234,8 @@ app.post('/api/auth/forgot-password', async (req, res) => {
         if (user) {
             const otp = generateOTP();
             await prisma.user.update({ where: { id: user.id }, data: { otp, otpExpires: new Date(Date.now() + 15*60000) }});
-            await sendEmail(email, 'Reset Password', `Your password reset code is: ${otp}`);
+            // We don't await this to prevent timing attacks, but catch globally
+            sendEmail(email, 'Reset Password', `Your password reset code is: ${otp}`).catch(err => console.error("Forgot PW Email Fail", err));
         }
         // Always return success to prevent email enumeration
         res.json({ message: 'If an account exists with this email, a reset code has been sent.' });
