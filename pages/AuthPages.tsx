@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate, Link, useLocation } from 'react-router-dom';
 import { Mail, Lock, User, AlertCircle, Key, ArrowLeft, CheckCircle } from 'lucide-react';
@@ -24,7 +25,6 @@ export const LoginPage = () => {
             await login({ email, password });
             navigate('/profile');
         } catch (e: any) {
-            // Check for verification flag from API/Context
             if (e.requiresVerification) {
                 navigate('/verify-email', { state: { email: e.email } });
             }
@@ -83,7 +83,6 @@ export const SignupPage = () => {
 
         try {
             await signup({ name, email, password });
-            // Navigate to verify with email in state
             navigate('/verify-email', { state: { email } });
         } catch (e) { /* Error handled in context */ }
     };
@@ -138,7 +137,7 @@ export const VerifyEmailPage = () => {
                     <h1 className="font-bold text-2xl mb-2">Verify Email</h1>
                     <p className="text-gray-500 mb-6">
                         We've sent a code to <strong>{state?.email}</strong>.<br/>
-                        <span className="text-xs text-gray-400">(Check server console if running locally)</span>
+                        <span className="text-xs text-gray-400">(Check server console logs if running locally)</span>
                     </p>
                     <form onSubmit={handleVerify} className="space-y-4">
                         <input type="text" value={otp} onChange={e => setOtp(e.target.value)} placeholder="123456" className="w-full p-3 border rounded-xl text-center text-lg tracking-widest" maxLength={6} />
@@ -169,7 +168,7 @@ export const ForgotPasswordPage = () => {
         try {
             await sendForgotPassword(email);
             setStep(2);
-            setMsg(`Code sent to ${email} (Check server console)`);
+            setMsg(`Code sent to ${email}`);
         } catch (e: any) { setError(e.message); }
     };
 
@@ -201,11 +200,11 @@ export const ForgotPasswordPage = () => {
                     ) : (
                         <form onSubmit={reset} className="space-y-4">
                             <div className="bg-blue-50 text-blue-700 p-3 rounded text-xs mb-4">
-                                Code sent to {email}. Please check your spam folder or server console.
+                                Code sent to {email}. Please check your spam folder.
                             </div>
                             <input type="text" value={otp} onChange={e => setOtp(e.target.value)} placeholder="Enter OTP Code" className="w-full p-3 border rounded-xl text-center tracking-widest" />
-                            <input type="password" value={newPass} onChange={e => setNewPass(e.target.value)} placeholder="New Password" class="w-full p-3 border rounded-xl" />
-                            <input type="password" value={confirmPass} onChange={e => setConfirmPass(e.target.value)} placeholder="Confirm Password" class="w-full p-3 border rounded-xl" />
+                            <input type="password" value={newPass} onChange={e => setNewPass(e.target.value)} placeholder="New Password" className="w-full p-3 border rounded-xl" />
+                            <input type="password" value={confirmPass} onChange={e => setConfirmPass(e.target.value)} placeholder="Confirm Password" className="w-full p-3 border rounded-xl" />
                             <Button fullWidth>Reset Password</Button>
                         </form>
                     )}

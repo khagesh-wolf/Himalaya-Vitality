@@ -16,17 +16,39 @@ async function apiFetch<T>(endpoint: string, options: RequestInit = {}): Promise
 
     if (USE_MOCK) return mockAdapter(endpoint, options) as Promise<T>;
 
-    const res = await fetch(`${API_URL}${endpoint}`, { ...options, headers });
-    const data = await res.json();
-    
-    if (!res.ok) {
-        // Pass special verification flags for UI handling
-        if (res.status === 403 && data.requiresVerification) {
-            throw { message: data.message, requiresVerification: true, email: data.email };
+    try {
+        const res = await fetch(`${API_URL}${endpoint}`, { ...options, headers });
+        
+        // Handle non-JSON responses (like Vercel 500 HTML errors)
+        const contentType = res.headers.get("content-type");
+        let data;
+        if (contentType && contentType.includes("application/json")) {
+            data = await res.json();
+        } else {
+            const text = await res.text();
+            // If response is not OK and not JSON, throw the text body as error
+            if (!res.ok) {
+                console.error('API Error (Non-JSON):', text);
+                throw new Error(`Server Error: ${res.status} ${res.statusText}`);
+            }
+            // Fallback for successful non-JSON responses (rare for this API)
+            data = text;
         }
-        throw new Error(data.message || data.error || 'API Error');
+
+        if (!res.ok) {
+            // Pass special verification flags for UI handling
+            if (res.status === 403 && data.requiresVerification) {
+                throw { message: data.message, requiresVerification: true, email: data.email };
+            }
+            throw new Error(data.message || data.error || 'API Error');
+        }
+        return data as T;
+    } catch (error: any) {
+        // Re-throw formatted errors
+        if (error.requiresVerification) throw error;
+        console.error("Fetch error:", error);
+        throw new Error(error.message || "Network request failed");
     }
-    return data;
 }
 
 // --- MOCK ADAPTER (Fallback) ---
