@@ -4,6 +4,7 @@ const { PrismaClient } = require('@prisma/client');
 const cors = require('cors');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+// const nodemailer = require('nodemailer'); // Uncomment to use real emails
 
 const prisma = new PrismaClient();
 // Initialize Stripe only if key exists to prevent crash in dev
@@ -37,9 +38,30 @@ const requireAdmin = (req, res, next) => {
 
 // --- Helpers ---
 const generateOTP = () => Math.floor(100000 + Math.random() * 900000).toString();
+
+// --- EMAIL SETUP INSTRUCTIONS ---
+// 1. Install nodemailer: npm install nodemailer
+// 2. Uncomment the nodemailer import at top
+// 3. Add EMAIL_USER and EMAIL_PASS to .env
+// 4. Uncomment the transporter block below
+
+const transporter = nodemailer.createTransport({
+    service: 'gmail', // or your SMTP provider
+    auth: {
+        user: process.env.EMAIL_USER,
+        pass: process.env.EMAIL_PASS
+    }
+});
+
 const sendEmail = async (to, subject, text) => {
-    // In production, replace with Resend/SendGrid/Postmark
-    console.log(`[EMAIL MOCK] To: ${to} | Subject: ${subject} | Body: ${text}`);
+    console.log('-------------------------------------------------------');
+    console.log(`[EMAIL MOCK] To: ${to}`);
+    console.log(`[EMAIL MOCK] Subject: ${subject}`);
+    console.log(`[EMAIL MOCK] Body: ${text}`);
+    console.log('-------------------------------------------------------');
+
+    // To enable real emails:
+    // await transporter.sendMail({ from: process.env.EMAIL_USER, to, subject, text });
 };
 
 // --- AUTH ENDPOINTS ---
