@@ -38,12 +38,10 @@ async function apiFetch<T>(endpoint: string, options: RequestInit = {}): Promise
         if (!res.ok) {
             // Pass special verification flags for UI handling
             if (res.status === 403 && data.requiresVerification) {
-                // Pass debugOtp if available for demo purposes
                 throw { 
                     message: data.message, 
                     requiresVerification: true, 
-                    email: data.email,
-                    debugOtp: data.debugOtp 
+                    email: data.email 
                 };
             }
             throw new Error(data.message || data.error || 'API Error');
@@ -70,11 +68,11 @@ async function mockAdapter(endpoint: string, options: any) {
 // --- AUTH SERVICES ---
 export const loginUser = (data: any) => apiFetch<{ token: string, user: User }>('/auth/login', { method: 'POST', body: JSON.stringify(data) });
 
-export const signupUser = (data: any) => apiFetch<{ token?: string, user?: User, requiresVerification?: boolean, email?: string, debugOtp?: string }>('/auth/signup', { method: 'POST', body: JSON.stringify(data) });
+export const signupUser = (data: any) => apiFetch<{ token?: string, user?: User, requiresVerification?: boolean, email?: string }>('/auth/signup', { method: 'POST', body: JSON.stringify(data) });
 
 export const verifyEmail = (email: string, otp: string) => apiFetch<{ token: string, user: User }>('/auth/verify-email', { method: 'POST', body: JSON.stringify({ email, otp }) });
 
-export const sendForgotPassword = (email: string) => apiFetch<{ message: string, debugOtp?: string }>('/auth/forgot-password', { method: 'POST', body: JSON.stringify({ email }) });
+export const sendForgotPassword = (email: string) => apiFetch<{ message: string }>('/auth/forgot-password', { method: 'POST', body: JSON.stringify({ email }) });
 
 export const resetPassword = (data: any) => apiFetch('/auth/reset-password', { method: 'POST', body: JSON.stringify(data) });
 

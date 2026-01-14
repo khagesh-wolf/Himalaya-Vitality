@@ -4,8 +4,7 @@ const { PrismaClient } = require('@prisma/client');
 const cors = require('cors');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
-// 1. UNCOMMENT FOR REAL EMAIL:
-// const nodemailer = require('nodemailer'); 
+const nodemailer = require('nodemailer'); 
 
 const prisma = new PrismaClient();
 // Initialize Stripe only if key exists
@@ -41,34 +40,39 @@ const requireAdmin = (req, res, next) => {
 const generateOTP = () => Math.floor(100000 + Math.random() * 900000).toString();
 
 // --- EMAIL SETUP ---
-// 2. CONFIGURE TRANSPORTER (Uncomment and fill details):
-/*
+// Production Setup using Environment Variables
 const transporter = nodemailer.createTransport({
-    service: 'gmail', // Or 'Resend', 'SendGrid', etc.
+    // If SMTP_HOST is provided (e.g. smtp.resend.com), use it. Otherwise default to gmail.
+    service: process.env.SMTP_HOST ? undefined : 'gmail', 
+    host: process.env.SMTP_HOST,
+    port: process.env.SMTP_PORT || 587,
+    secure: process.env.SMTP_SECURE === 'true', // true for 465, false for other ports
     auth: {
-        user: process.env.EMAIL_USER, // Add to .env
-        pass: process.env.EMAIL_PASS  // Add to .env
+        user: process.env.EMAIL_USER, 
+        pass: process.env.EMAIL_PASS  
     }
 });
-*/
 
 const sendEmail = async (to, subject, text) => {
-    // 3. UNCOMMENT TO SEND REAL EMAIL:
-    /*
     try {
-        await transporter.sendMail({ from: process.env.EMAIL_USER, to, subject, text });
-        console.log(`[EMAIL SENT] To: ${to}`);
+        console.log(`[EMAIL] Attempting to send to ${to}...`);
+        const info = await transporter.sendMail({ 
+            from: `"Himalaya Vitality" <${process.env.EMAIL_USER}>`, 
+            to, 
+            subject, 
+            text,
+            html: `<div style="font-family: sans-serif; color: #333;">
+                    <h2>Himalaya Vitality</h2>
+                    <p>${text}</p>
+                    <hr />
+                    <small>If you did not request this, please ignore this email.</small>
+                   </div>`
+        });
+        console.log(`[EMAIL SENT] MessageId: ${info.messageId}`);
     } catch (e) {
-        console.error('[EMAIL FAIL]', e);
+        console.error('[EMAIL FAIL] Check EMAIL_USER and EMAIL_PASS environment variables.', e);
+        throw new Error('Failed to send email verification.');
     }
-    */
-    
-    // Default Mock Logging
-    console.log('-------------------------------------------------------');
-    console.log(`[EMAIL MOCK] To: ${to}`);
-    console.log(`[EMAIL MOCK] Subject: ${subject}`);
-    console.log(`[EMAIL MOCK] Body: ${text}`);
-    console.log('-------------------------------------------------------');
 };
 
 // --- ROUTES ---
@@ -91,13 +95,14 @@ app.post('/api/auth/signup', async (req, res) => {
             data: { name, email, password: hashedPassword, otp, otpExpires }
         });
 
-        await sendEmail(email, 'Verify your email', `Your verification code is ${otp}`);
+        // Send REAL email
+        await sendEmail(email, 'Verify your email - Himalaya Vitality', `Your verification code is: ${otp}`);
         
-        // Return debugOtp for demo purposes since email sending might not be configured
-        res.json({ message: 'Signup successful', requiresVerification: true, email, debugOtp: otp });
+        // Do NOT return the OTP in the response for security in production
+        res.json({ message: 'Signup successful. Please check your email for the verification code.', requiresVerification: true, email });
     } catch (e) {
         console.error('Signup Error:', e);
-        res.status(500).json({ error: 'Internal server error during signup' });
+        res.status(500).json({ error: e.message || 'Internal server error during signup' });
     }
 });
 
@@ -113,8 +118,10 @@ app.post('/api/auth/login', async (req, res) => {
         if (!user.isVerified) {
             const otp = generateOTP();
             await prisma.user.update({ where: { id: user.id }, data: { otp, otpExpires: new Date(Date.now() + 15*60000) }});
-            await sendEmail(email, 'Verify your email', `Your code is ${otp}`);
-            return res.status(403).json({ message: 'Verification required', requiresVerification: true, email, debugOtp: otp });
+            
+            await sendEmail(email, 'Verify your email', `Your verification code is: ${otp}`);
+            
+            return res.status(403).json({ message: 'Verification required. A new code has been sent to your email.', requiresVerification: true, email });
         }
 
         const token = jwt.sign({ id: user.id, role: user.role, email: user.email }, JWT_SECRET, { expiresIn: '7d' });
@@ -134,7 +141,8 @@ app.post('/api/auth/verify-email', async (req, res) => {
         const user = await prisma.user.findUnique({ where: { email } });
         if (!user) return res.status(404).json({ message: 'User not found' });
         
-        if (user.otp !== otp || new Date() > user.otpExpires) {
+        // Loose comparison for string/number match
+        if (String(user.otp).trim() !== String(otp).trim() || new Date() > user.otpExpires) {
             return res.status(400).json({ message: 'Invalid or expired code' });
         }
 
@@ -146,7 +154,7 @@ app.post('/api/auth/verify-email', async (req, res) => {
         const token = jwt.sign({ id: updated.id, role: updated.role, email: updated.email }, JWT_SECRET, { expiresIn: '7d' });
         const { password: _, otp: __, ...safeUser } = updated;
         
-        res.json({ message: 'Verified', token, user: safeUser });
+        res.json({ message: 'Email successfully verified', token, user: safeUser });
     } catch (e) {
         res.status(500).json({ error: e.message });
     }
@@ -155,16 +163,15 @@ app.post('/api/auth/verify-email', async (req, res) => {
 // Auth: Forgot Password
 app.post('/api/auth/forgot-password', async (req, res) => {
     const { email } = req.body;
-    let debugOtp = null;
     try {
         const user = await prisma.user.findUnique({ where: { email } });
         if (user) {
             const otp = generateOTP();
-            debugOtp = otp;
             await prisma.user.update({ where: { id: user.id }, data: { otp, otpExpires: new Date(Date.now() + 15*60000) }});
-            await sendEmail(email, 'Reset Password', `Your password reset code is ${otp}`);
+            await sendEmail(email, 'Reset Password', `Your password reset code is: ${otp}`);
         }
-        res.json({ message: 'If an account exists, a code has been sent.', debugOtp });
+        // Always return success to prevent email enumeration
+        res.json({ message: 'If an account exists with this email, a reset code has been sent.' });
     } catch (e) {
         res.status(500).json({ error: e.message });
     }
@@ -175,7 +182,7 @@ app.post('/api/auth/reset-password', async (req, res) => {
     const { email, otp, newPassword } = req.body;
     try {
         const user = await prisma.user.findUnique({ where: { email } });
-        if (!user || user.otp !== otp || new Date() > user.otpExpires) {
+        if (!user || String(user.otp).trim() !== String(otp).trim() || new Date() > user.otpExpires) {
             return res.status(400).json({ message: 'Invalid or expired code' });
         }
 
@@ -184,7 +191,7 @@ app.post('/api/auth/reset-password', async (req, res) => {
             where: { id: user.id },
             data: { password: hashedPassword, otp: null, otpExpires: null, isVerified: true }
         });
-        res.json({ message: 'Password reset successful' });
+        res.json({ message: 'Password reset successful. You can now login.' });
     } catch (e) {
         res.status(500).json({ error: e.message });
     }

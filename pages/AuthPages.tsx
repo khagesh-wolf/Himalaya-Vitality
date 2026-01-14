@@ -26,8 +26,7 @@ export const LoginPage = () => {
         } catch (e: any) {
             // Check for verification flag from API/Context
             if (e.requiresVerification) {
-                // Pass debugOtp if it exists
-                navigate('/verify-email', { state: { email: e.email, debugOtp: e.debugOtp } });
+                navigate('/verify-email', { state: { email: e.email } });
             }
         }
     };
@@ -83,9 +82,8 @@ export const SignupPage = () => {
         }
 
         try {
-            const result = await signup({ name, email, password });
-            // Navigate to verify with email and potentially the debugOtp
-            navigate('/verify-email', { state: { email, debugOtp: result.debugOtp } });
+            await signup({ name, email, password });
+            navigate('/verify-email', { state: { email } });
         } catch (e) { /* Error handled in context */ }
     };
 
@@ -139,19 +137,9 @@ export const VerifyEmailPage = () => {
                     <h1 className="font-bold text-2xl mb-2">Verify Email</h1>
                     <p className="text-gray-500 mb-6">
                         We've sent a code to <strong>{state?.email}</strong>.<br/>
+                        <span className="text-sm text-gray-400">Please check your inbox or spam folder.</span>
                     </p>
                     
-                    {/* Debug OTP Display */}
-                    {state?.debugOtp && (
-                        <div className="mb-6 p-4 bg-yellow-50 border border-yellow-200 rounded-xl text-left flex items-start gap-3 animate-in fade-in">
-                            <Info className="text-yellow-600 shrink-0 mt-0.5" size={18} />
-                            <div>
-                                <p className="text-xs font-bold text-yellow-700 uppercase tracking-wide mb-1">Demo Mode</p>
-                                <p className="text-sm text-yellow-800">Your verification code is: <span className="font-mono font-bold text-lg block mt-1">{state.debugOtp}</span></p>
-                            </div>
-                        </div>
-                    )}
-
                     <form onSubmit={handleVerify} className="space-y-4">
                         <input type="text" value={otp} onChange={e => setOtp(e.target.value)} placeholder="123456" className="w-full p-3 border rounded-xl text-center text-lg tracking-widest" maxLength={6} />
                         {msg && <p className="text-red-500">{msg}</p>}
@@ -172,19 +160,16 @@ export const ForgotPasswordPage = () => {
     const [confirmPass, setConfirmPass] = useState('');
     const [msg, setMsg] = useState('');
     const [error, setError] = useState('');
-    const [debugOtp, setDebugOtp] = useState(''); // Store OTP locally for step 2
     const navigate = useNavigate();
 
     const sendCode = async (e: React.FormEvent) => {
         e.preventDefault();
         setError('');
         setMsg('');
-        setDebugOtp('');
         try {
-            const res = await sendForgotPassword(email);
+            await sendForgotPassword(email);
             setStep(2);
             setMsg(`Code sent to ${email}`);
-            if (res.debugOtp) setDebugOtp(res.debugOtp);
         } catch (e: any) { setError(e.message); }
     };
 
@@ -218,14 +203,6 @@ export const ForgotPasswordPage = () => {
                             <div className="bg-blue-50 text-blue-700 p-3 rounded text-xs mb-4">
                                 Code sent to {email}. Please check your spam folder.
                             </div>
-
-                            {/* Debug OTP Display */}
-                            {debugOtp && (
-                                <div className="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg text-sm text-yellow-800 flex items-center gap-2">
-                                    <Info size={16} />
-                                    <span>Demo Code: <strong>{debugOtp}</strong></span>
-                                </div>
-                            )}
 
                             <input type="text" value={otp} onChange={e => setOtp(e.target.value)} placeholder="Enter OTP Code" className="w-full p-3 border rounded-xl text-center tracking-widest" />
                             <input type="password" value={newPass} onChange={e => setNewPass(e.target.value)} placeholder="New Password" className="w-full p-3 border rounded-xl" />
