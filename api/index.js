@@ -151,6 +151,54 @@ app.post('/api/auth/verify-email', async (req, res) => {
     } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+// Google Authentication Route
+app.post('/api/auth/google', async (req, res) => {
+    const { token } = req.body;
+    try {
+        // 1. Verify token with Google via fetch (avoids adding extra libs)
+        const googleRes = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+            headers: { Authorization: `Bearer ${token}` }
+        });
+        
+        if (!googleRes.ok) throw new Error('Invalid Google Token');
+        
+        const googleUser = await googleRes.json();
+        const { email, name, picture } = googleUser;
+
+        // 2. Upsert User
+        let user = await prisma.user.findUnique({ where: { email } });
+
+        if (!user) {
+            user = await prisma.user.create({
+                data: {
+                    email,
+                    name,
+                    avatar: picture,
+                    provider: 'GOOGLE',
+                    isVerified: true, 
+                    password: null 
+                }
+            });
+        } else {
+            // Update metadata if they exist
+            user = await prisma.user.update({
+                where: { id: user.id },
+                data: { avatar: picture, provider: 'GOOGLE', isVerified: true } 
+            });
+        }
+
+        // 3. Issue Token
+        const jwtToken = jwt.sign({ id: user.id, role: user.role, email: user.email }, JWT_SECRET, { expiresIn: '7d' });
+        const { password: _, otp: __, ...safeUser } = user;
+        
+        res.json({ token: jwtToken, user: safeUser });
+
+    } catch (e) {
+        console.error('Google Auth Error:', e);
+        res.status(401).json({ message: 'Google authentication failed' });
+    }
+});
+
 app.get('/api/auth/me', authenticate, async (req, res) => {
     try {
         const user = await prisma.user.findUnique({ where: { id: req.user.id } });
@@ -168,7 +216,6 @@ app.post('/api/create-payment-intent', async (req, res) => {
     const { items, currency } = req.body;
     
     // In production: Fetch price from DB to prevent client manipulation
-    // For now, trusting client price for simplicity
     let totalAmount = 0;
     if (items && Array.isArray(items)) {
         totalAmount = items.reduce((acc, item) => acc + (item.price * item.quantity), 0);
@@ -189,7 +236,6 @@ app.post('/api/create-payment-intent', async (req, res) => {
         res.send({ clientSecret: paymentIntent.client_secret });
     } catch (e) {
         console.error("Stripe Error:", e);
-        // Fallback for Mock Mode
         res.status(500).json({ error: e.message, mockSecret: "pi_mock_secret_12345" }); 
     }
 });
@@ -216,14 +262,12 @@ app.post('/api/orders', async (req, res) => {
             }
         };
 
-        // Link to User if logged in
         if (userId) {
             orderData.user = { connect: { id: userId } };
         }
 
         const order = await prisma.order.create({ data: orderData });
         
-        // Send Confirmation Email
         sendEmail(
             customer.email, 
             `Order Confirmation ${order.orderNumber}`, 

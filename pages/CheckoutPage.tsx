@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useSearchParams, useNavigate } from 'react-router-dom';
-import { ShieldCheck, Lock, ArrowLeft, Loader2, AlertCircle, CheckCircle, Package, UserCircle } from 'lucide-react';
+import { ShieldCheck, Lock, ArrowLeft, Loader2, AlertCircle, CheckCircle, Package, UserCircle, ShoppingCart, ChevronDown, ChevronUp, CreditCard } from 'lucide-react';
 import { Button, Card, Container } from '../components/UI';
 import { MAIN_PRODUCT } from '../constants';
 import { useCurrency } from '../context/CurrencyContext';
@@ -10,6 +10,7 @@ import { CartItem } from '../types';
 import { useLoading } from '../context/LoadingContext';
 import { getDeliverableCountries, simulateShipping } from '../utils';
 import { createPaymentIntent, createOrder } from '../services/api';
+import { trackPurchase } from '../services/analytics'; // Analytics
 
 // Stripe Imports
 import { loadStripe } from '@stripe/stripe-js';
@@ -37,6 +38,77 @@ const addressSchema = z.object({
 });
 
 type CheckoutFormData = z.infer<typeof addressSchema>;
+
+// --- COMPONENT: MOBILE ORDER SUMMARY ---
+const MobileOrderSummary = ({ 
+    items, 
+    subtotal, 
+    shipping, 
+    tax, 
+    total, 
+    formatPrice 
+}: { 
+    items: CartItem[], 
+    subtotal: number, 
+    shipping: number, 
+    tax: number, 
+    total: number, 
+    formatPrice: (p: number) => string 
+}) => {
+    const [isOpen, setIsOpen] = useState(false);
+
+    return (
+        <div className="lg:hidden border-b border-gray-200 bg-gray-50">
+            <Container>
+                <button 
+                    onClick={() => setIsOpen(!isOpen)}
+                    className="w-full py-4 flex items-center justify-between text-brand-dark"
+                >
+                    <div className="flex items-center text-sm font-bold text-brand-dark">
+                        <ShoppingCart size={16} className="mr-2 text-gray-500" />
+                        <span>{isOpen ? 'Hide' : 'Show'} Order Summary</span>
+                        {isOpen ? <ChevronUp size={16} className="ml-2 text-gray-400" /> : <ChevronDown size={16} className="ml-2 text-gray-400" />}
+                    </div>
+                    <span className="font-heading font-extrabold text-lg text-brand-dark">{formatPrice(total)}</span>
+                </button>
+
+                {isOpen && (
+                    <div className="pb-6 animate-in fade-in slide-in-from-top-2">
+                        <div className="space-y-4 mb-6 border-b border-gray-200 pb-6">
+                            {items.map((item, idx) => (
+                                <div key={idx} className="flex items-start space-x-4">
+                                    <div className="w-16 h-16 bg-white rounded-xl border border-gray-200 overflow-hidden relative shrink-0">
+                                        <img src={item.image} alt={item.productTitle} className="w-full h-full object-cover" />
+                                        <span className="absolute -top-1 -right-1 bg-gray-500 text-white text-[10px] w-5 h-5 flex items-center justify-center rounded-full font-bold shadow-sm">{item.quantity}</span>
+                                    </div>
+                                    <div className="flex-1">
+                                        <h4 className="font-bold text-xs text-brand-dark leading-tight mb-1">{item.productTitle}</h4>
+                                        <p className="text-[10px] text-gray-500 font-medium mb-1">{item.variantName}</p>
+                                    </div>
+                                    <div className="font-bold text-sm text-gray-600">{formatPrice(item.price)}</div>
+                                </div>
+                            ))}
+                        </div>
+                        <div className="space-y-2 text-sm text-gray-600">
+                            <div className="flex justify-between">
+                                <span>Subtotal</span>
+                                <span>{formatPrice(subtotal)}</span>
+                            </div>
+                            <div className="flex justify-between">
+                                <span>Shipping</span>
+                                <span>{shipping === 0 ? 'FREE' : formatPrice(shipping)}</span>
+                            </div>
+                            <div className="flex justify-between">
+                                <span>Tax</span>
+                                <span>{formatPrice(tax)}</span>
+                            </div>
+                        </div>
+                    </div>
+                )}
+            </Container>
+        </div>
+    );
+};
 
 // --- COMPONENT: PAYMENT STEP ---
 const PaymentStep = ({ 
@@ -70,7 +142,7 @@ const PaymentStep = ({
             const { error, paymentIntent } = await stripe.confirmPayment({
                 elements,
                 confirmParams: {
-                    return_url: `${window.location.origin}/order-confirmation`, // Handled by redirect='if_required' usually
+                    return_url: `${window.location.origin}/order-confirmation`, 
                     payment_method_data: {
                         billing_details: {
                             name: `${customerData.firstName} ${customerData.lastName}`,
@@ -99,6 +171,10 @@ const PaymentStep = ({
                     paymentId: paymentIntent.id,
                     userId: user?.id 
                 });
+                
+                // Track Purchase
+                trackPurchase(order.orderId, total, items);
+
                 onSuccess(order.orderId);
                 setIsLoading(false);
             }
@@ -135,9 +211,17 @@ const PaymentStep = ({
                     Pay Securely
                 </Button>
                 
-                <div className="flex justify-center items-center space-x-2 text-gray-400 text-xs font-medium">
-                    <ShieldCheck size={14} />
-                    <span>256-bit SSL Encrypted Payment</span>
+                <div className="flex flex-col items-center gap-3 text-gray-400 text-xs font-medium">
+                    <div className="flex gap-2 opacity-60 grayscale">
+                        {/* Simple CSS representation of cards or SVGs would go here */}
+                        <div className="h-6 w-9 bg-gray-200 rounded flex items-center justify-center font-bold text-[8px]">VISA</div>
+                        <div className="h-6 w-9 bg-gray-200 rounded flex items-center justify-center font-bold text-[8px]">MC</div>
+                        <div className="h-6 w-9 bg-gray-200 rounded flex items-center justify-center font-bold text-[8px]">AMEX</div>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                        <ShieldCheck size={14} />
+                        <span>256-bit SSL Encrypted Payment</span>
+                    </div>
                 </div>
             </form>
         </div>
@@ -166,12 +250,12 @@ const AddressStep = ({
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="space-y-1">
                         <label className="text-xs font-bold text-gray-500 uppercase">Email</label>
-                        <input {...register('email')} type="email" className={`w-full p-3 bg-white border rounded-lg outline-none transition-all ${errors.email ? 'border-red-500' : 'border-gray-200 focus:border-brand-red'}`} placeholder="email@example.com" />
+                        <input {...register('email')} autoComplete="email" type="email" className={`w-full p-3 bg-white border rounded-lg outline-none transition-all ${errors.email ? 'border-red-500' : 'border-gray-200 focus:border-brand-red'}`} placeholder="email@example.com" />
                         {errors.email && <p className="text-red-500 text-xs">{errors.email.message}</p>}
                     </div>
                     <div className="space-y-1">
                         <label className="text-xs font-bold text-gray-500 uppercase">Phone</label>
-                        <input {...register('phone')} type="tel" className="w-full p-3 bg-white border border-gray-200 rounded-lg outline-none focus:border-brand-red" placeholder="(555) 555-5555" />
+                        <input {...register('phone')} autoComplete="tel" type="tel" className="w-full p-3 bg-white border border-gray-200 rounded-lg outline-none focus:border-brand-red" placeholder="(555) 555-5555" />
                     </div>
                 </div>
             </div>
@@ -179,44 +263,57 @@ const AddressStep = ({
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-1">
                     <label className="text-xs font-bold text-gray-500 uppercase">First Name</label>
-                    <input {...register('firstName')} type="text" className={`w-full p-3 bg-gray-50 border rounded-lg outline-none ${errors.firstName ? 'border-red-500' : 'border-gray-200 focus:border-brand-red'}`} />
+                    <input {...register('firstName')} autoComplete="given-name" type="text" className={`w-full p-3 bg-gray-50 border rounded-lg outline-none ${errors.firstName ? 'border-red-500' : 'border-gray-200 focus:border-brand-red'}`} />
                     {errors.firstName && <p className="text-red-500 text-xs">{errors.firstName.message}</p>}
                 </div>
                 <div className="space-y-1">
                     <label className="text-xs font-bold text-gray-500 uppercase">Last Name</label>
-                    <input {...register('lastName')} type="text" className={`w-full p-3 bg-gray-50 border rounded-lg outline-none ${errors.lastName ? 'border-red-500' : 'border-gray-200 focus:border-brand-red'}`} />
+                    <input {...register('lastName')} autoComplete="family-name" type="text" className={`w-full p-3 bg-gray-50 border rounded-lg outline-none ${errors.lastName ? 'border-red-500' : 'border-gray-200 focus:border-brand-red'}`} />
                     {errors.lastName && <p className="text-red-500 text-xs">{errors.lastName.message}</p>}
                 </div>
             </div>
 
             <div className="space-y-1">
                 <label className="text-xs font-bold text-gray-500 uppercase">Address</label>
-                <input {...register('address')} type="text" className={`w-full p-3 bg-gray-50 border rounded-lg outline-none ${errors.address ? 'border-red-500' : 'border-gray-200 focus:border-brand-red'}`} />
+                <input {...register('address')} autoComplete="street-address" type="text" className={`w-full p-3 bg-gray-50 border rounded-lg outline-none ${errors.address ? 'border-red-500' : 'border-gray-200 focus:border-brand-red'}`} />
                 {errors.address && <p className="text-red-500 text-xs">{errors.address.message}</p>}
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="space-y-1">
                     <label className="text-xs font-bold text-gray-500 uppercase">Country</label>
-                    <select {...register('country')} className="w-full p-3 bg-gray-50 border border-gray-200 rounded-lg outline-none focus:border-brand-red">
+                    <select {...register('country')} autoComplete="country" className="w-full p-3 bg-gray-50 border border-gray-200 rounded-lg outline-none focus:border-brand-red">
                         {getDeliverableCountries().map(c => <option key={c.id} value={c.code}>{c.name}</option>)}
                     </select>
                 </div>
                 <div className="space-y-1">
                     <label className="text-xs font-bold text-gray-500 uppercase">City</label>
-                    <input {...register('city')} type="text" className={`w-full p-3 bg-gray-50 border rounded-lg outline-none ${errors.city ? 'border-red-500' : 'border-gray-200 focus:border-brand-red'}`} />
+                    <input {...register('city')} autoComplete="address-level2" type="text" className={`w-full p-3 bg-gray-50 border rounded-lg outline-none ${errors.city ? 'border-red-500' : 'border-gray-200 focus:border-brand-red'}`} />
                     {errors.city && <p className="text-red-500 text-xs">{errors.city.message}</p>}
                 </div>
                 <div className="space-y-1">
                     <label className="text-xs font-bold text-gray-500 uppercase">ZIP</label>
-                    <input {...register('zip')} type="text" className={`w-full p-3 bg-gray-50 border rounded-lg outline-none ${errors.zip ? 'border-red-500' : 'border-gray-200 focus:border-brand-red'}`} />
+                    <input {...register('zip')} autoComplete="postal-code" type="text" className={`w-full p-3 bg-gray-50 border rounded-lg outline-none ${errors.zip ? 'border-red-500' : 'border-gray-200 focus:border-brand-red'}`} />
                     {errors.zip && <p className="text-red-500 text-xs">{errors.zip.message}</p>}
                 </div>
             </div>
 
-            <Button type="submit" fullWidth size="lg" className="mt-4 shadow-xl shadow-brand-red/20 h-14 text-lg">
-                Continue to Payment
-            </Button>
+            <div className="flex items-center gap-4 pt-4">
+                <Button type="submit" fullWidth size="lg" className="shadow-xl shadow-brand-red/20 h-14 text-lg">
+                    Continue to Payment
+                </Button>
+            </div>
+            
+            {/* Express Checkout Visual */}
+            <div className="relative flex py-2 items-center">
+                <div className="flex-grow border-t border-gray-200"></div>
+                <span className="flex-shrink-0 mx-4 text-gray-400 text-xs uppercase font-bold tracking-widest">Express Checkout</span>
+                <div className="flex-grow border-t border-gray-200"></div>
+            </div>
+            <div className="flex gap-2">
+                <div className="flex-1 bg-[#FFC439] h-10 rounded-lg flex items-center justify-center cursor-not-allowed opacity-50"><span className="text-[#003087] font-bold italic font-sans text-sm">PayPal</span></div>
+                <div className="flex-1 bg-black h-10 rounded-lg flex items-center justify-center cursor-not-allowed opacity-50 text-white font-bold text-sm"> Pay</div>
+            </div>
         </form>
     );
 };
@@ -280,11 +377,8 @@ export const CheckoutPage = () => {
             setShippingData({ cost: shipping.cost, tax: shipping.tax });
             
             // 2. Create/Update Payment Intent with FINAL Total
-            // Note: We create a brand new intent for simplicity in this demo flow
             const finalTotal = baseSubtotal + shipping.cost + shipping.tax;
             const { clientSecret, mockSecret } = await createPaymentIntent(checkoutItems, 'USD'); 
-            // Ideally backend calculates total, here we mock it or pass items.
-            // In a real app, passing shipping cost to backend is needed if backend calculates total.
             
             setClientSecret(clientSecret || mockSecret || '');
             setStep(2);
@@ -322,8 +416,18 @@ export const CheckoutPage = () => {
                 </Container>
             </div>
 
+            {/* Mobile Order Summary Toggle */}
+            <MobileOrderSummary 
+                items={checkoutItems}
+                subtotal={baseSubtotal}
+                shipping={shippingData.cost}
+                tax={shippingData.tax}
+                total={step === 1 ? baseSubtotal : finalTotal}
+                formatPrice={formatPrice}
+            />
+
             <Container className="pt-8">
-                <div className="mb-6">
+                <div className="mb-6 hidden lg:block">
                     <Link to="/cart" className="text-sm text-gray-500 flex items-center hover:text-brand-dark w-fit font-bold">
                         <ArrowLeft size={16} className="mr-1" /> Return to Cart
                     </Link>
@@ -390,8 +494,8 @@ export const CheckoutPage = () => {
                         </div>
                     </div>
 
-                    {/* RIGHT: Order Summary */}
-                    <div className="lg:col-span-1">
+                    {/* RIGHT: Order Summary (Desktop Only) */}
+                    <div className="lg:col-span-1 hidden lg:block">
                         <div className="sticky top-28">
                             <Card className="p-6 bg-white border-gray-200 shadow-xl shadow-gray-200/50">
                                 <h3 className="font-heading font-bold text-brand-dark mb-6 text-lg border-b border-gray-100 pb-4">Order Summary</h3>

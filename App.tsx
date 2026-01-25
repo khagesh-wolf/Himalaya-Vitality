@@ -11,6 +11,7 @@ import { SettingsProvider } from './context/SettingsContext';
 import { SEO } from './components/SEO';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { GlobalLoader } from './components/GlobalLoader';
+import { initAnalytics } from './services/analytics';
 
 // Eager load critical pages
 import { HomePage } from './pages/HomePage';
@@ -48,6 +49,10 @@ const ScrollToTop = () => { const { pathname } = useLocation(); useEffect(() => 
 const GOOGLE_CLIENT_ID = (import.meta as any).env?.VITE_GOOGLE_CLIENT_ID || "YOUR_GOOGLE_CLIENT_ID_PLACEHOLDER";
 
 const App: React.FC = () => {
+  useEffect(() => {
+    initAnalytics();
+  }, []);
+
   return (
     <ErrorBoundary>
       <GoogleOAuthProvider clientId={GOOGLE_CLIENT_ID}>

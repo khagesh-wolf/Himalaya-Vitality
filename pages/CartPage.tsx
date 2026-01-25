@@ -4,6 +4,7 @@ import { Trash2, Plus, Minus, ArrowRight, ShieldCheck, ShoppingBag, Tag, X } fro
 import { Container, Button, Card, Reveal } from '../components/UI';
 import { useCart } from '../context/CartContext';
 import { useCurrency } from '../context/CurrencyContext';
+import { trackBeginCheckout } from '../services/analytics'; // Analytics
 
 export const CartPage = () => {
   const { cartItems, removeFromCart, updateQuantity, cartSubtotal, cartTotal, applyDiscount, discount, removeDiscount } = useCart();
@@ -24,6 +25,10 @@ export const CartPage = () => {
     } else {
       setPromoError('Invalid discount code.');
     }
+  };
+
+  const handleCheckout = () => {
+    trackBeginCheckout(cartItems, cartTotal);
   };
 
   if (cartItems.length === 0) {
@@ -176,7 +181,7 @@ export const CartPage = () => {
                     </span>
                 </div>
 
-                <Link to="/checkout">
+                <Link to="/checkout" onClick={handleCheckout}>
                     <Button fullWidth size="lg" className="h-14 group">
                     Secure Checkout <ArrowRight size={18} className="ml-2 group-hover:translate-x-1 transition-transform" />
                     </Button>

@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams, useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
@@ -13,7 +12,8 @@ import { SEO } from '../components/SEO';
 import { Breadcrumbs } from '../components/Breadcrumbs';
 import { fetchProduct, fetchReviews } from '../services/api';
 import { ProductPageSkeleton } from '../components/Skeletons';
-import { MAIN_PRODUCT } from '../constants'; // Fallback
+import { MAIN_PRODUCT } from '../constants'; 
+import { trackViewItem, trackAddToCart } from '../services/analytics'; // Import Analytics
 
 const NewsletterSection = () => {
   const [email, setEmail] = useState('');
@@ -113,6 +113,13 @@ export const ProductPage = () => {
   
   const currentVariant = product.variants.find(v => v.type === selectedBundle) || product.variants[0];
 
+  // Track View Item on Load
+  useEffect(() => {
+    if (product) {
+        trackViewItem(product);
+    }
+  }, [product]);
+
   useEffect(() => {
      const newParams = new URLSearchParams(searchParams);
      newParams.set('bundle', selectedBundle);
@@ -142,15 +149,37 @@ export const ProductPage = () => {
   }, [shippingCountry, selectedBundle, currentVariant.price]);
 
   const handleAddToCart = () => {
+    // 1. Analytics
+    const qty = 1;
+    trackAddToCart({
+        variantId: currentVariant.id,
+        productTitle: product.title,
+        variantName: currentVariant.name,
+        price: currentVariant.price,
+        quantity: qty,
+        image: product.images[0],
+        bundleType: currentVariant.type
+    });
+
+    // 2. Add to Cart
     setIsLoading(true, 'Adding to Cart...');
     setTimeout(() => {
-      addToCart(product, currentVariant, 1);
+      addToCart(product, currentVariant, qty);
       setIsLoading(false);
       window.scrollTo({ top: 0, behavior: 'smooth' });
     }, 600);
   };
 
   const handleBuyNow = () => {
+    trackAddToCart({
+        variantId: currentVariant.id,
+        productTitle: product.title,
+        variantName: currentVariant.name,
+        price: currentVariant.price,
+        quantity: 1,
+        image: product.images[0],
+        bundleType: currentVariant.type
+    });
     navigate(`/checkout?variantId=${currentVariant.id}`);
   };
 
