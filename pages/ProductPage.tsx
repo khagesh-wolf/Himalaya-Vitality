@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams, useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { Star, Check, Info, ShieldCheck, Truck, Clock, ChevronDown, Loader2, Lock, Award, XCircle, Filter, Mail, ArrowRight } from 'lucide-react';
+import { Star, Check, Info, ShieldCheck, Truck, Clock, ChevronDown, Loader2, Lock, Award, XCircle, Filter, Mail, ArrowRight, Zap, Heart, Brain, Activity, Droplets, MapPin, Beaker, ClipboardCheck } from 'lucide-react';
 import { Button, Container, LazyImage, Reveal } from '../components/UI';
 import { BundleType } from '../types';
 import { useCurrency } from '../context/CurrencyContext';
@@ -12,7 +12,7 @@ import { SEO } from '../components/SEO';
 import { Breadcrumbs } from '../components/Breadcrumbs';
 import { fetchProduct, fetchReviews } from '../services/api';
 import { ProductPageSkeleton } from '../components/Skeletons';
-import { MAIN_PRODUCT } from '../constants'; 
+import { MAIN_PRODUCT, PRODUCT_CHARACTERISTICS, THERAPEUTIC_GUIDE } from '../constants'; 
 import { trackViewItem, trackAddToCart } from '../services/analytics'; // Import Analytics
 
 const NewsletterSection = () => {
@@ -196,8 +196,8 @@ export const ProductPage = () => {
   return (
     <div className="bg-[#FAFAFA] pt-32 pb-16">
       <SEO 
-        title="Buy Athlete Grade Shilajit | High Performance Resin" 
-        description="Official store for Himalaya Vitality Athlete Grade Shilajit. Optimized for peak physical output, endurance, and recovery. Gold grade purity."
+        title="Buy Pure Himalayan Shilajit Resin | High Altitude Gold Grade" 
+        description="Official store for Himalaya Vitality Pure Himalayan Shilajit. Sourced from Nepal, rich in 84+ minerals and fulvic acid. Lab tested for purity."
         image={product.images[0]}
         type="product"
       />
@@ -223,7 +223,7 @@ export const ProductPage = () => {
                     High Altitude • Gold Grade
                     </div>
                     <div className="bg-brand-dark px-4 py-2 rounded-full text-xs font-bold text-white shadow-sm flex items-center">
-                    <Award size={14} className="mr-1 text-brand-red" /> Athlete Grade
+                    <Award size={14} className="mr-1 text-brand-red" /> Premium Quality
                     </div>
                 </div>
                 </div>
@@ -243,9 +243,8 @@ export const ProductPage = () => {
                 ))}
                 </div>
             </Reveal>
-            
-            {/* Detailed Trust Info - Desktop */}
-            <div className="hidden lg:grid grid-cols-3 gap-6 pt-8">
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-4">
                {[
                    { Icon: ShieldCheck, title: "Lab Tested", text: "Certified pure and free from heavy metals." },
                    { Icon: Truck, title: "Fast Shipping", text: "Free worldwide shipping on bundles." },
@@ -405,8 +404,179 @@ export const ProductPage = () => {
           </div>
         </div>
 
-        {/* Newsletter Section (Replaces Subscription Plan) */}
-        <NewsletterSection />
+        {/* NEW: Detailed Product Information Sections */}
+        <div className="space-y-24 py-20">
+            {/* Formation & Source */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-12 items-center">
+                <Reveal>
+                    <div className="space-y-6">
+                        <div className="inline-flex items-center gap-2 px-4 py-2 bg-brand-red/10 text-brand-red rounded-full text-xs font-bold uppercase tracking-widest">
+                            <MapPin size={14} /> Sourced from Nepal
+                        </div>
+                        <h2 className="font-heading text-3xl md:text-4xl font-extrabold text-brand-dark">The Formation Process</h2>
+                        <p className="text-gray-600 leading-relaxed text-lg">
+                            Shilajit is a natural substance ranging in color from pale brown to blackish-brown that exudes from rocks in mountain ranges, especially in the Himalayas. It has been formed for centuries from compressed plant materials under high pressure and temperature. Due to the sun's heat on mountains, the Shilajit material seeps out of rock cracks.
+                        </p>
+                        <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm">
+                            <h4 className="font-bold text-brand-dark mb-2">Pristine Locations:</h4>
+                            <p className="text-gray-500 text-sm">Dolpa, Mugu, Jajarkot, Humla, Rukum, Gorkha, and other high-altitude regions of Nepal.</p>
+                        </div>
+                    </div>
+                </Reveal>
+                <Reveal delay={200}>
+                    <div className="aspect-square bg-brand-dark rounded-3xl overflow-hidden relative group">
+                        <LazyImage src="https://picsum.photos/800/800?random=mountain" alt="Himalayan Mountains" className="w-full h-full object-cover opacity-80 group-hover:scale-110 transition-transform duration-1000" />
+                        <div className="absolute inset-0 bg-gradient-to-t from-brand-dark/80 to-transparent flex items-end p-8">
+                            <p className="text-white font-heading text-xl font-bold">"Conqueror of rocks or mountains"</p>
+                        </div>
+                    </div>
+                </Reveal>
+            </div>
+
+            {/* Science & Composition */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-12 items-center">
+                <Reveal className="order-2 md:order-1">
+                    <div className="grid grid-cols-2 gap-4">
+                        <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm text-center">
+                            <div className="text-3xl font-extrabold text-brand-red mb-1">85%</div>
+                            <div className="text-xs font-bold text-gray-400 uppercase">Humic Compounds</div>
+                        </div>
+                        <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm text-center">
+                            <div className="text-3xl font-extrabold text-brand-red mb-1">84+</div>
+                            <div className="text-xs font-bold text-gray-400 uppercase">Ionic Minerals</div>
+                        </div>
+                        <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm text-center">
+                            <div className="text-3xl font-extrabold text-brand-red mb-1">B12</div>
+                            <div className="text-xs font-bold text-gray-400 uppercase">Essential Vitamins</div>
+                        </div>
+                        <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm text-center">
+                            <div className="text-3xl font-extrabold text-brand-red mb-1">Pure</div>
+                            <div className="text-xs font-bold text-gray-400 uppercase">Fulvic Acid</div>
+                        </div>
+                    </div>
+                </Reveal>
+                <Reveal delay={200} className="order-1 md:order-2">
+                    <div className="space-y-6">
+                        <div className="inline-flex items-center gap-2 px-4 py-2 bg-brand-red/10 text-brand-red rounded-full text-xs font-bold uppercase tracking-widest">
+                            <Beaker size={14} /> Science-Backed
+                        </div>
+                        <h2 className="font-heading text-3xl md:text-4xl font-extrabold text-brand-dark">The Science Behind Shilajit</h2>
+                        <p className="text-gray-600 leading-relaxed text-lg">
+                            Shilajit is rich in humic (80-85%) and non-humic (15-20%) compounds, including fulvic acid, dibenzo-a-pyrones, triterpenes, amino acids, and essential vitamins. Essential nutrients like vitamins B1 and B12 contribute to its antioxidant properties and therapeutic efficacy by enhancing cellular energy and combating oxidative stress.
+                        </p>
+                    </div>
+                </Reveal>
+            </div>
+
+            {/* Health Benefits Grid */}
+            <div className="space-y-12">
+                <Reveal className="text-center max-w-3xl mx-auto">
+                    <h2 className="font-heading text-3xl md:text-4xl font-extrabold text-brand-dark mb-4">Holistic Health Benefits</h2>
+                    <p className="text-gray-600 text-lg">Used for thousands of years in traditional medicine for its rejuvenating and healing properties, now supported by modern science.</p>
+                </Reveal>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                    {[
+                        { Icon: Brain, title: "Cognitive Function", text: "Prevents tau protein buildup, supporting brain health and memory." },
+                        { Icon: Activity, title: "Energy & Vitality", text: "Enhances cellular energy production and combats oxidative stress." },
+                        { Icon: Heart, title: "Reproductive Wellness", text: "Boosts testosterone levels and improves sperm quality and quantity." },
+                        { Icon: Zap, title: "Metabolic Support", text: "Helps with digestive disorders and supports hormonal balance." }
+                    ].map((benefit, i) => (
+                        <Reveal key={i} delay={i * 100}>
+                            <div className="bg-white p-8 rounded-3xl border border-gray-100 shadow-sm hover:shadow-xl transition-all group h-full">
+                                <div className="w-14 h-14 bg-gray-50 rounded-2xl flex items-center justify-center mb-6 group-hover:bg-brand-red group-hover:text-white transition-colors">
+                                    <benefit.Icon size={28} />
+                                </div>
+                                <h3 className="font-bold text-brand-dark text-xl mb-3">{benefit.title}</h3>
+                                <p className="text-gray-500 text-sm leading-relaxed">{benefit.text}</p>
+                            </div>
+                        </Reveal>
+                    ))}
+                </div>
+            </div>
+
+            {/* Usage & Dosage Table */}
+            <div className="bg-white rounded-3xl border border-gray-100 shadow-xl overflow-hidden">
+                <div className="p-8 md:p-12 border-b border-gray-100">
+                    <Reveal>
+                        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+                            <div>
+                                <h2 className="font-heading text-3xl font-extrabold text-brand-dark mb-2">User Guidelines</h2>
+                                <p className="text-gray-500">Recommended dosage and therapeutic indications.</p>
+                            </div>
+                            <div className="bg-brand-red/5 border border-brand-red/10 p-4 rounded-2xl">
+                                <p className="text-brand-red font-bold text-sm">General Adult Dosage:</p>
+                                <p className="text-brand-dark font-extrabold text-xl">200-500 mg per day</p>
+                            </div>
+                        </div>
+                    </Reveal>
+                </div>
+                <div className="overflow-x-auto">
+                    <table className="w-full text-left border-collapse">
+                        <thead>
+                            <tr className="bg-gray-50">
+                                <th className="p-6 font-bold text-brand-dark text-sm uppercase tracking-wider border-b border-gray-100">Consumed With</th>
+                                <th className="p-6 font-bold text-brand-dark text-sm uppercase tracking-wider border-b border-gray-100">Dosage</th>
+                                <th className="p-6 font-bold text-brand-dark text-sm uppercase tracking-wider border-b border-gray-100">Therapeutic Indications</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {THERAPEUTIC_GUIDE.map((item, i) => (
+                                <tr key={i} className="hover:bg-gray-50/50 transition-colors">
+                                    <td className="p-6 border-b border-gray-50 font-bold text-brand-dark">{item.with}</td>
+                                    <td className="p-6 border-b border-gray-50 text-gray-600 font-medium">{item.dose}</td>
+                                    <td className="p-6 border-b border-gray-50 text-gray-500 text-sm">{item.indications}</td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
+                <div className="p-8 bg-gray-50/50">
+                    <div className="flex items-start gap-4">
+                        <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center shrink-0 shadow-sm">
+                            <Info size={20} className="text-brand-red" />
+                        </div>
+                        <p className="text-sm text-gray-600 leading-relaxed">
+                            <strong>Pro Tip:</strong> Mix the resin into warm water, milk, or herbal tea and dissolve properly. Take it in the morning or between meals for better absorption.
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            {/* Quality Assurance */}
+            <div className="bg-brand-dark rounded-3xl p-8 md:p-16 text-center relative overflow-hidden">
+                <div className="absolute top-0 left-0 w-full h-full opacity-10 pointer-events-none">
+                    <div className="absolute top-10 left-10 w-40 h-40 bg-white rounded-full blur-3xl"></div>
+                    <div className="absolute bottom-10 right-10 w-60 h-60 bg-brand-red rounded-full blur-3xl"></div>
+                </div>
+                <Reveal className="relative z-10">
+                    <div className="inline-flex items-center gap-2 px-4 py-2 bg-white/10 text-white rounded-full text-xs font-bold uppercase tracking-widest mb-8">
+                        <ClipboardCheck size={14} /> Quality Assurance
+                    </div>
+                    <h2 className="font-heading text-3xl md:text-5xl font-extrabold text-white mb-8">Certified Purity & Safety</h2>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-8 mb-12">
+                        <div className="space-y-2">
+                            <div className="text-white font-bold text-lg">FDA</div>
+                            <div className="text-gray-400 text-xs uppercase">Certified Facility</div>
+                        </div>
+                        <div className="space-y-2">
+                            <div className="text-white font-bold text-lg">ISO 22000</div>
+                            <div className="text-gray-400 text-xs uppercase">Food Safety</div>
+                        </div>
+                        <div className="space-y-2">
+                            <div className="text-white font-bold text-lg">3rd Party</div>
+                            <div className="text-gray-400 text-xs uppercase">Lab Tested</div>
+                        </div>
+                        <div className="space-y-2">
+                            <div className="text-white font-bold text-lg">DDA</div>
+                            <div className="text-gray-400 text-xs uppercase">Compliant</div>
+                        </div>
+                    </div>
+                    <p className="text-gray-400 max-w-2xl mx-auto text-lg">
+                        Our products are rigorously tested by independent laboratories and comply with standards set by the Department of Drug Administration (DDA).
+                    </p>
+                </Reveal>
+            </div>
+        </div>
 
         {/* Customer Reviews Section */}
         <div id="reviews" className="border-t border-gray-200 pt-20">
@@ -441,66 +611,64 @@ export const ProductPage = () => {
                 </button>
                 <button 
                     onClick={() => { setReviewFilter('Athlete'); setVisibleReviews(3); }} 
-                    className={`px-5 py-2 rounded-full text-sm font-bold transition-all flex items-center whitespace-nowrap ${reviewFilter === 'Athlete' ? 'bg-brand-red text-white shadow-lg' : 'bg-white border border-gray-200 text-gray-600 hover:bg-gray-100'}`}
+                    className={`px-5 py-2 rounded-full text-sm font-bold transition-all whitespace-nowrap ${reviewFilter === 'Athlete' ? 'bg-brand-dark text-white shadow-lg' : 'bg-white border border-gray-200 text-gray-600 hover:bg-gray-100'}`}
                 >
-                    <Filter size={14} className="mr-2" /> Athlete Stories
+                    Athlete Feedback
                 </button>
                 </div>
             </Reveal>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 mb-12">
-                {displayedReviews.length > 0 ? (
-                    displayedReviews.map((review, i) => (
-                        <Reveal key={review.id} delay={i * 100}>
-                            <div className="bg-white p-8 rounded-3xl hover:shadow-xl transition-all duration-300 border border-gray-100 group shadow-sm h-full flex flex-col">
-                                <div className="flex justify-between items-start mb-4">
-                                    <div className="flex text-brand-red">
-                                        {[...Array(5)].map((_, i) => (
-                                            <Star key={i} size={14} fill={i < review.rating ? "currentColor" : "none"} className={i < review.rating ? "" : "text-gray-300"} strokeWidth={0} />
-                                        ))}
-                                    </div>
-                                    <span className="text-xs text-gray-400 font-medium">{review.date}</span>
-                                </div>
-                                
-                                <h3 className="font-heading font-bold text-lg text-brand-dark mb-3 leading-tight">{review.title}</h3>
-                                <p className="text-gray-600 text-sm leading-relaxed mb-6 line-clamp-4 flex-grow">"{review.content}"</p>
-                                
-                                <div className="flex items-center justify-between pt-4 border-t border-gray-50 mt-auto">
-                                    <span className="font-bold text-sm text-brand-dark">{review.author}</span>
-                                    {review.verified && (
-                                        <div className="flex items-center text-[10px] font-bold text-green-600 uppercase tracking-wider bg-green-50 px-2 py-0.5 rounded-full">
-                                            <Check size={12} className="mr-1" strokeWidth={3} /> Verified
-                                        </div>
-                                    )}
-                                </div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
+                {displayedReviews.map((review, i) => (
+                    <Reveal key={review.id} delay={i * 100}>
+                        <div className="bg-white p-8 rounded-3xl border border-gray-100 shadow-sm hover:shadow-md transition-all h-full flex flex-col">
+                            <div className="flex text-brand-red mb-4">
+                                {[...Array(5)].map((_, i) => (
+                                    <Star key={i} size={16} fill={i < review.rating ? "currentColor" : "none"} strokeWidth={i < review.rating ? 0 : 2} className={i < review.rating ? "" : "text-gray-200"} />
+                                ))}
                             </div>
-                        </Reveal>
-                    ))
-                ) : (
-                    <div className="col-span-full text-center py-10 bg-white rounded-2xl border border-dashed border-gray-200">
-                        <p className="text-gray-500 font-medium">No reviews found for this filter.</p>
-                    </div>
-                )}
+                            <h4 className="font-bold text-brand-dark mb-2 line-clamp-1">{review.title}</h4>
+                            <p className="text-gray-500 text-sm leading-relaxed mb-6 flex-grow italic">"{review.content}"</p>
+                            <div className="flex items-center justify-between pt-6 border-t border-gray-50">
+                                <div className="flex items-center gap-3">
+                                    <div className="w-10 h-10 bg-brand-red/10 rounded-full flex items-center justify-center text-brand-red font-bold text-xs">
+                                        {review.author.charAt(0)}
+                                    </div>
+                                    <div>
+                                        <div className="text-xs font-bold text-brand-dark">{review.author}</div>
+                                        <div className="text-[10px] text-gray-400 font-medium">{review.date}</div>
+                                    </div>
+                                </div>
+                                {review.verified && (
+                                    <div className="flex items-center gap-1 text-[10px] font-bold text-green-600 bg-green-50 px-2 py-1 rounded-full">
+                                        <Check size={10} strokeWidth={3} /> Verified
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    </Reveal>
+                ))}
             </div>
-            
+
             {hasMoreReviews && (
-              <div className="text-center">
-                  <Button variant="outline-dark">Load More Reviews</Button>
-              </div>
+                <Reveal className="text-center">
+                    <Button variant="outline-dark" onClick={() => setVisibleReviews(prev => prev + 3)}>
+                        Load More Reviews
+                    </Button>
+                </Reveal>
             )}
         </div>
-
       </Container>
 
-      {/* Sticky Mobile CTA Bar */}
-      <div className={`fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-4 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)] z-[60] transition-transform duration-300 lg:hidden ${showStickyBar ? 'translate-y-0' : 'translate-y-full'}`}>
-        <div className="flex items-center justify-between gap-4">
-            <div className="flex flex-col">
-                <span className="text-xs font-bold text-gray-500">{currentVariant.name}</span>
-                <span className="text-lg font-heading font-bold text-brand-dark">{formatPrice(currentVariant.price)}</span>
+      {/* Sticky Bottom Bar (Mobile) */}
+      <div className={`fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-4 z-50 lg:hidden transition-transform duration-300 ${showStickyBar ? 'translate-y-0' : 'translate-y-full'}`}>
+        <div className="flex items-center justify-between gap-4 max-w-md mx-auto">
+            <div className="shrink-0">
+                <div className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Total</div>
+                <div className="text-xl font-heading font-bold text-brand-dark">{formatPrice(currentVariant.price)}</div>
             </div>
-            <Button className="flex-1 shadow-lg shadow-brand-red/20" onClick={handleAddToCart}>
-                Add to Cart
+            <Button fullWidth className="h-12 shadow-lg shadow-brand-red/20" onClick={handleBuyNow}>
+                Buy Now
             </Button>
         </div>
       </div>

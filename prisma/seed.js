@@ -5,14 +5,16 @@ const prisma = new PrismaClient();
 const MAIN_PRODUCT = {
   id: 'himalaya-shilajit-resin',
   title: 'Pure Himalayan Shilajit Resin',
-  description: 'Sourced from 18,000ft in the Himalayas, our Gold Grade Shilajit is purified using traditional Ayurvedic methods to ensure maximum potency and purity.',
+  description: 'Sourced from the pristine Himalayan landscape of Nepal (Dolpa, Mugu, Jajarkot, Humla, Rukum, Gorkha), our Gold Grade Shilajit is a natural substance formed for centuries from compressed plant materials under high pressure and temperature. Rich in 80-85% humic compounds, including Fulvic Acid and over 84+ trace minerals in their ionic forms.',
   rating: 4.9,
   reviewCount: 1248,
   features: [
-    '85+ Trace Minerals & Fulvic Acid',
-    'Lab Tested for Purity & Safety',
-    'Supports Energy & Vitality',
-    'Traditional Ayurvedic Purification'
+    '84+ Trace Minerals in Ionic Form',
+    '80-85% Humic & 15-20% Non-Humic Compounds',
+    'Sourced from Nepal (Dolpa, Mugu, Gorkha)',
+    'FDA Certified & ISO 22000 Certified Facility',
+    'Third-Party Lab Tested for Purity',
+    'Rich in Fulvic Acid, Vitamins B1 & B12'
   ],
   images: [
     'https://picsum.photos/600/600?random=1',
@@ -61,8 +63,8 @@ const REVIEWS = [
     author: 'Sarah Jenkins',
     rating: 5,
     date: '2 days ago',
-    title: 'Life changing',
-    content: 'I was skeptical at first, but after 2 weeks I feel like a different person.',
+    title: 'Life changing energy levels',
+    content: 'I was skeptical at first, but after 2 weeks I feel like a different person. No more afternoon crash. My endurance during spin class has doubled.',
     verified: true,
     tags: ['General', 'Energy'],
     status: 'Approved'
@@ -71,7 +73,7 @@ const REVIEWS = [
     author: 'Michael Chen',
     rating: 5,
     date: '1 week ago',
-    title: 'Pure Quality',
+    title: 'Real deal Shilajit',
     content: 'Passed the solubility test. The taste is earthy as expected. Great packaging.',
     verified: true,
     tags: ['Quality'],
@@ -81,8 +83,8 @@ const REVIEWS = [
     author: 'David K., Crossfit Coach',
     rating: 5,
     date: '1 week ago',
-    title: 'Recovery Beast',
-    content: 'Recovery time is nonexistent now. Peak physical output achieved.',
+    title: 'Recovery time is nonexistent now',
+    content: 'As a competitive athlete, recovery is everything. Since adding Himalaya Vitality to my stack, my DOMS (muscle soreness) has virtually vanished. Peak physical output achieved.',
     verified: true,
     tags: ['Athlete', 'Recovery'],
     status: 'Approved'
@@ -95,7 +97,12 @@ async function main() {
   // 1. Upsert Product
   const product = await prisma.product.upsert({
     where: { id: MAIN_PRODUCT.id },
-    update: {},
+    update: {
+      title: MAIN_PRODUCT.title,
+      description: MAIN_PRODUCT.description,
+      features: MAIN_PRODUCT.features,
+      images: MAIN_PRODUCT.images,
+    },
     create: {
       id: MAIN_PRODUCT.id,
       title: MAIN_PRODUCT.title,

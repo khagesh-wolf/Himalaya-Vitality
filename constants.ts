@@ -10,14 +10,16 @@ import { Product, BundleType, Review, Order, BlogPost } from './types';
 export const MAIN_PRODUCT: Product = {
   id: 'himalaya-shilajit-resin', // Database ID reference
   title: 'Pure Himalayan Shilajit Resin',
-  description: 'Sourced from 18,000ft in the Himalayas, our Gold Grade Shilajit is purified using traditional Ayurvedic methods to ensure maximum potency and purity. Rich in Fulvic Acid and over 85+ trace minerals.',
+  description: 'Sourced from the pristine Himalayan landscape of Nepal (Dolpa, Mugu, Jajarkot, Humla, Rukum, Gorkha), our Gold Grade Shilajit is a natural substance formed for centuries from compressed plant materials under high pressure and temperature. Rich in 80-85% humic compounds, including Fulvic Acid and over 84+ trace minerals in their ionic forms.',
   rating: 4.9,
   reviewCount: 1248,
   features: [
-    '85+ Trace Minerals & Fulvic Acid',
-    'Lab Tested for Purity & Safety',
-    'Supports Energy & Vitality',
-    'Traditional Ayurvedic Purification'
+    '84+ Trace Minerals in Ionic Form',
+    '80-85% Humic & 15-20% Non-Humic Compounds',
+    'Sourced from Nepal (Dolpa, Mugu, Gorkha)',
+    'FDA Certified & ISO 22000 Certified Facility',
+    'Third-Party Lab Tested for Purity',
+    'Rich in Fulvic Acid, Vitamins B1 & B12'
   ],
   images: [
     'https://picsum.photos/600/600?random=1',
@@ -193,18 +195,31 @@ export const BLOG_POSTS: BlogPost[] = [
 export const FAQ_DATA = [
     {
         question: "How do I take Shilajit resin?",
-        answer: "Using the included measuring spoon, take a pea-sized amount (300-500mg) and dissolve it in lukewarm water, tea, or milk. Consume it on an empty stomach in the morning for best results."
+        answer: "Mix 250-500 mg of the resin into warm water, milk, herbal tea, or another warm beverage and dissolve it properly. Take it in the morning or between meals for better absorption."
     },
     {
-        question: "How long does shipping take?",
-        answer: "US orders typically arrive in 2-4 business days. International orders take 6-12 business days depending on customs. We ship all orders within 24 hours."
+        question: "What are the therapeutic indications?",
+        answer: "When taken with water or milk, it helps with urinary disorders, back pain, and anemia. With honey or milk, it's beneficial for general weakness and respiratory problems. With goat's milk or lukewarm water, it helps with urinary tract disorders and kidney stones."
     },
     {
-        question: "Is it safe? Does it contain heavy metals?",
-        answer: "Yes, it is completely safe. Raw Shilajit can contain impurities, which is why ours is purified and 3rd-party tested to strictly ensure heavy metals are well within safe limits established by US and EU standards."
+        question: "Is it safe and certified?",
+        answer: "Yes, our products are rigorously tested by independent laboratories, produced in FDA-certified facilities, and comply with standards set by the Department of Drug Administration (DDA). We also possess ISO 22000 certifications."
     },
     {
-        question: "What does it taste like?",
-        answer: "Pure Shilajit has a strong, earthy, herbal taste and smell. It is not sweet. Most people get used to it quickly, or mix it with honey or tea to mask the flavor."
+        question: "What are the physical characteristics of pure Shilajit?",
+        answer: "Pure Shilajit is dark brown to black, sticky, and resinous. It has an earthy, pungent, burnt-like smell and a bitter, astringent taste with a metallic aftertaste. It remains soft and viscous at room temperature."
     }
+];
+
+export const PRODUCT_CHARACTERISTICS = {
+    visual: "Dark brown to black, sticky, resinous",
+    smell: "Earthy, pungent, burnt-like",
+    taste: "Bitter, astringent, metallic aftertaste",
+    texture: "Soft, sticky, viscous at room temperature"
+};
+
+export const THERAPEUTIC_GUIDE = [
+    { with: "Water or milk", dose: "250-500 mg", indications: "Urinary disorders, back pain, abdominal bloating, constipation, piles, skin diseases, anemia" },
+    { with: "Honey or milk", dose: "500 mg", indications: "Tuberculosis, general weakness, chronic fever, respiratory problems" },
+    { with: "Goat's milk or lukewarm water", dose: "500 mg", indications: "Burning micturition, urinary tract disorders, urolithiasis (kidney stones), jaundice" }
 ];
