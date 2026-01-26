@@ -13,20 +13,20 @@ import { useSettings } from '../context/SettingsContext';
 import { CartDrawer } from './CartDrawer';
 import { SearchModal } from './SearchModal';
 
-const Logo = () => (
+const Logo = ({ light = false }: { light?: boolean }) => (
   <div className="flex items-center gap-2 group">
     <img 
-        src="/logo.png" 
+        src={light ? "https://i.ibb.co/mr2hH8wK/logo-white.png" : "https://i.ibb.co/tMXQXvJn/logo-red.png"} 
         alt="Himalaya Vitality" 
-        className="h-12 w-auto object-contain transition-transform group-hover:scale-105"
+        className="h-10 md:h-12 w-auto object-contain transition-transform group-hover:scale-105"
         onError={(e) => {
-            // Fallback if image fails
+            // Fallback if image fails (safe guard)
             e.currentTarget.style.display = 'none';
             e.currentTarget.nextElementSibling?.classList.remove('hidden');
         }}
     />
     <div className="hidden flex-col justify-center">
-      <span className="font-heading font-bold text-lg leading-none text-brand-dark uppercase tracking-tight">Himalaya</span>
+      <span className={`font-heading font-bold text-lg leading-none uppercase tracking-tight ${light ? 'text-white' : 'text-brand-dark'}`}>Himalaya</span>
       <span className="font-sans text-[9px] font-bold text-brand-red tracking-[0.25em] uppercase leading-none mt-0.5">Vitality</span>
     </div>
   </div>
@@ -79,6 +79,9 @@ export const Navbar = () => {
 
   if (isAdmin) return <GlobalLoader />;
 
+  // Determine if we are on a page where the header starts transparent (Home)
+  const isTransparentHeader = !scrolled && location.pathname === '/';
+
   return (
     <>
       <GlobalLoader />
@@ -119,7 +122,7 @@ export const Navbar = () => {
             {/* 2. Logo */}
             <Link to="/" className="flex-shrink-0 relative z-40">
                 <div className={`transition-opacity duration-300 ${!scrolled && location.pathname === '/' ? 'hidden md:block' : 'block'}`}>
-                     <Logo />
+                     <Logo light={isTransparentHeader} />
                 </div>
             </Link>
 
@@ -311,7 +314,7 @@ export const Footer = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12 mb-16">
           {/* Brand Column */}
           <div className="col-span-1">
-             <div className="mb-6 w-32"><Logo /></div>
+             <div className="mb-6 w-32"><Logo light={true} /></div>
              <p className="text-gray-400 text-sm leading-relaxed mb-6 font-medium">
                 Himalaya Vitality™ delivers the purest Shilajit resin, ethically sourced from the Dolpa region of Nepal at 18,000ft. Unleash your primal potential.
              </p>

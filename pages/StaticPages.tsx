@@ -42,8 +42,8 @@ export const AboutPage = () => {
     return (
       <div className="bg-white">
         <PageHeader 
-            title="The Gold of Dolpa" 
-            subtitle="Sourced from the remote cliffs of the Nepali Himalayas at 18,000ft. Where ancient geology meets traditional wisdom."
+            title="The Gold of Nepal" 
+            subtitle="Sourced from the pristine Himalayan landscape, specifically Dolpa, Mugu, Jajarkot, Humla, Rukum, and Gorkha."
             bgImage="https://images.unsplash.com/photo-1544367563-12123d832e34?q=80&w=1920&auto=format&fit=crop"
         />
 
@@ -52,12 +52,15 @@ export const AboutPage = () => {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-12 lg:gap-16 items-center mb-24 md:mb-32">
             <Reveal>
                 <div>
-                    <h2 className="font-heading text-3xl md:text-4xl font-bold text-brand-dark mb-6">Beyond The Harvest</h2>
+                    <h2 className="font-heading text-3xl md:text-4xl font-bold text-brand-dark mb-6">Conqueror of Mountains</h2>
                     <p className="text-gray-600 mb-6 leading-relaxed text-lg">
-                        In the high-altitude region of Dolpa, Nepal, the indigenous Sherpa communities have known the secret of "Shilajit" (Conqueror of Mountains) for centuries. During the summer months, as the sun warms the frozen cliffs, a golden-black resin seeps from the cracks of the rock.
+                        The term "Shilajit" is derived from Sanskrit, meaning "conqueror of rocks or mountains". 
+                        It is a natural substance ranging in color from pale brown to blackish-brown that exudes from rocks in mountain ranges, especially in the Himalayas.
                     </p>
                     <p className="text-gray-600 leading-relaxed text-lg">
-                        We partner directly with these local harvesting families. Unlike large industrial operations that use dynamite to blast rocks, our harvesters scale the cliffs by hand, collecting only the purest resin that naturally exudes from the mountain. This sustainable method protects the delicate ecosystem of the Himalayas.
+                        It has been formed for centuries from compressed plant materials under high pressure and temperature. Due to the sun's heat on mountains, 
+                        the Shilajit material seeps out of rock cracks. Our premium Shilajit is sourced specifically from the 
+                        <strong> Dolpa, Mugu, Jajarkot, Humla, Rukum, and Gorkha</strong> districts of Nepal.
                     </p>
                 </div>
             </Reveal>
@@ -72,7 +75,7 @@ export const AboutPage = () => {
                         <div className="flex items-center text-white gap-2 font-bold uppercase tracking-widest text-xs mb-2">
                             <MapPin size={16} className="text-brand-red" /> Dolpa District, Nepal
                         </div>
-                        <div className="text-white opacity-80 text-sm">Altitude: 17,500 ft</div>
+                        <div className="text-white opacity-80 text-sm">Altitude: 18,000 ft</div>
                     </div>
                 </div>
             </Reveal>
@@ -85,16 +88,15 @@ export const AboutPage = () => {
                       <span className="text-brand-red font-bold text-xs uppercase tracking-widest mb-2 block">The Process</span>
                       <h2 className="font-heading text-3xl md:text-4xl font-extrabold text-brand-dark mb-4">The Surya Tapi Method</h2>
                       <p className="text-gray-600 text-sm md:text-base">
-                          Most commercial Shilajit is boiled at high heat to speed up production, which destroys delicate bioactive enzymes. 
-                          We use the traditional <strong>Surya Tapi</strong> (Sun Dried) method.
+                          We strictly follow the traditional Ayurvedic purification methods described in ancient texts like the <em>Charaka Samhita</em>.
                       </p>
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-8">
                       {[
-                          { title: "Filtration", text: "The raw resin is dissolved in pure spring water and filtered through 7 layers of cotton cloth to remove rocks and grit." },
+                          { title: "Filtration", text: "The raw resin is dissolved in pure spring water and filtered through cotton cloth to remove rocks and grit." },
                           { title: "Sun Drying", text: "The filtered solution is placed in stainless steel trays and exposed to the Himalayan sun for 60-90 days." },
-                          { title: "Testing", text: "Every batch is tested in Kathmandu and then again in the USA for heavy metals and purity." }
+                          { title: "Testing", text: "Quality assurance certified by IAS, G-CERT2, FDA, and DDA to ensure purity." }
                       ].map((step, i) => (
                           <div key={i} className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm">
                                 <div className="text-4xl font-heading font-extrabold text-brand-red/10 mb-4">0{i+1}</div>
@@ -114,37 +116,46 @@ export const SciencePage = () => (
     <div className="bg-white">
         <PageHeader 
             title="The Science of Shilajit" 
-            subtitle="Understand the bioactive compounds that make Shilajit the ultimate performance enhancer."
+            subtitle="Rich in Humic (80-85%) and Non-humic (15-20%) compounds."
             bgImage="https://images.unsplash.com/photo-1532187863486-abf9dbad1b69?q=80&w=1920&auto=format&fit=crop"
         />
         <Container className="py-20">
             <div className="max-w-4xl mx-auto">
                 <Reveal>
                     <div className="prose prose-lg prose-red text-gray-600">
-                        <h2>Fulvic Acid: The Nutrient Driver</h2>
+                        <h2>Composition</h2>
                         <p>
-                            At the heart of Shilajit's potency is Fulvic Acid. This organic compound acts as a carrier molecule, 
-                            helping to transport nutrients, minerals, and vitamins directly into your cells. It improves the permeability 
-                            of cell membranes, ensuring that your body actually absorbs what you consume.
-                        </p>
-                        <ul>
-                            <li>Enhances nutrient absorption by up to 300%</li>
-                            <li>Powerful antioxidant that neutralizes free radicals</li>
-                            <li>Supports detoxification by binding to heavy metals</li>
-                        </ul>
-                        
-                        <h2>Mitochondrial Energy (ATP)</h2>
-                        <p>
-                            Shilajit works at the cellular level. By delivering ionic minerals to the mitochondria (the powerhouse of the cell), 
-                            it supports the production of Adenosine Triphosphate (ATP). This results in a raw, sustained energy boost 
-                            that doesn't rely on stimulants like caffeine.
+                            Shilajit is a natural substance rich in humic (80-85%) and non-humic (15-20%) compounds. 
+                            It includes dibenzo-a-pyrones, triterpenes, amino acids, and essential vitamins formed through the humification of organic matter over centuries.
+                            It contains more than 84 minerals including copper, silver, zinc, iron, and lead in their ionic forms (Ghosal & Lal, n.d).
                         </p>
 
-                        <h3>Clinical Studies</h3>
+                        <h2>Cellular Energy & Anti-Aging</h2>
                         <p>
-                            A 2015 study published in the <em>Journal of Medicinal Food</em> found that supplementation with Shilajit significantly 
-                            increased testosterone levels in healthy men over a 90-day period.
+                            Essential nutrients like vitamins B1 and B12 contribute to its antioxidant properties and therapeutic efficacy by enhancing 
+                            cellular energy and combating oxidative stress <strong>(Wilson et al., 2011)</strong>.
                         </p>
+                        
+                        <h2>Cognitive Benefits</h2>
+                        <p>
+                            Shilajit also has cognitive benefits due to its ability to prevent tau protein buildup in the brain, 
+                            which is a marker for Alzheimer's disease <strong>(Fontaine et al., 2024)</strong>.
+                        </p>
+
+                        <h2>Therapeutic Indications</h2>
+                        <ul className="grid grid-cols-1 md:grid-cols-2 gap-4 list-none pl-0">
+                            {[
+                                "Urinary disorders", "Digestive disorders", 
+                                "Abdominal bloating", "Constipation & Piles", 
+                                "Anemia", "Tuberculosis", 
+                                "General weakness", "Chronic bronchitis",
+                                "Kidney stones (urolithiasis)", "Jaundice"
+                            ].map(item => (
+                                <li key={item} className="flex items-center gap-2">
+                                    <CheckCircle size={16} className="text-brand-red shrink-0" /> {item}
+                                </li>
+                            ))}
+                        </ul>
                     </div>
                 </Reveal>
             </div>
@@ -238,10 +249,10 @@ export const HowToUsePage = () => (
         <Container className="py-20">
             <div className="max-w-3xl mx-auto space-y-16">
                 {[
-                    { step: "01", title: "Measure", desc: "Using the included golden spoon, take a pea-sized amount (approx 300-500mg).", icon: Circle },
-                    { step: "02", title: "Dissolve", desc: "Dissolve the resin in hot water, herbal tea, or warm milk. It should dissolve completely within minutes.", icon: Droplet },
-                    { step: "03", title: "Consume", desc: "Drink it first thing in the morning on an empty stomach for maximum absorption.", icon: Coffee },
-                    { step: "04", title: "Consistency", desc: "For best results, take it daily for 6-8 weeks, then cycle off for 1 week.", icon: Clock }
+                    { step: "01", title: "Measure", desc: "Using the included golden spoon, take a pea-sized amount (250-500mg).", icon: Circle },
+                    { step: "02", title: "Dissolve", desc: "Dissolve the resin in lukewarm water, milk, or herbal tea. It should dissolve completely within minutes.", icon: Droplet },
+                    { step: "03", title: "Consume", desc: "Take it twice a day: once in the morning and once between meals.", icon: Coffee },
+                    { step: "04", title: "Consistency", desc: "Taking 250 mg of Shilajit twice a day for 90 consecutive days increases total testosterone (Pandit & Biswas, 2015).", icon: Clock }
                 ].map((item, i) => (
                     <div key={i} className="flex gap-8 items-start">
                          <div className="text-5xl font-heading font-extrabold text-brand-red/10 shrink-0">{item.step}</div>

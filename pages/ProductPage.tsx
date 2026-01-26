@@ -1,13 +1,13 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams, useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { Star, Check, Info, ShieldCheck, Truck, Clock, ChevronDown, Loader2, Lock, Award, XCircle, Filter, Mail, ArrowRight } from 'lucide-react';
+import { Star, Check, Info, ShieldCheck, Truck, Clock, Lock, Award, XCircle, Filter, Mail, ArrowRight } from 'lucide-react';
 import { Button, Container, LazyImage, Reveal } from '../components/UI';
 import { BundleType } from '../types';
 import { useCurrency } from '../context/CurrencyContext';
 import { useCart } from '../context/CartContext';
 import { useLoading } from '../context/LoadingContext';
-import { simulateShipping, getDeliverableCountries } from '../utils';
 import { SEO } from '../components/SEO';
 import { Breadcrumbs } from '../components/Breadcrumbs';
 import { fetchProduct, fetchReviews } from '../services/api';
@@ -101,11 +101,7 @@ export const ProductPage = () => {
     : BundleType.TRIPLE;
 
   const [selectedBundle, setSelectedBundle] = useState<BundleType>(initialBundle);
-  const [shippingCountry, setShippingCountry] = useState('US');
-  const [shippingEstimate, setShippingEstimate] = useState<{ cost: number, eta: string } | null>(null);
-  const [isCalculatingShipping, setIsCalculatingShipping] = useState(false);
   const [showStickyBar, setShowStickyBar] = useState(false);
-  const [regions, setRegions] = useState(getDeliverableCountries());
   
   // Review Filtering State
   const [reviewFilter, setReviewFilter] = useState<'All' | 'Athlete'>('All');
@@ -135,18 +131,6 @@ export const ProductPage = () => {
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
-
-  useEffect(() => {
-    const fetchShipping = async () => {
-      setIsCalculatingShipping(true);
-      const itemCount = selectedBundle === BundleType.SINGLE ? 1 : selectedBundle === BundleType.DOUBLE ? 2 : 3;
-      const result = await simulateShipping(shippingCountry, currentVariant.price, itemCount);
-      setShippingEstimate(result);
-      setIsCalculatingShipping(false);
-    };
-
-    fetchShipping();
-  }, [shippingCountry, selectedBundle, currentVariant.price]);
 
   const handleAddToCart = () => {
     // 1. Analytics
@@ -342,41 +326,6 @@ export const ProductPage = () => {
                             </div>
                         );
                         })}
-                    </div>
-
-                    {/* Shipping Calculator */}
-                    <div className="border border-gray-200 rounded-xl p-4 mb-8">
-                        <h3 className="font-bold text-gray-500 flex items-center mb-3 text-xs uppercase tracking-wide">
-                            <Truck size={14} className="mr-2" />
-                            Estimate Shipping
-                        </h3>
-                        <div className="flex flex-col sm:flex-row gap-3">
-                            <div className="relative flex-grow">
-                                <select
-                                    value={shippingCountry}
-                                    onChange={(e) => setShippingCountry(e.target.value)}
-                                    className="w-full appearance-none bg-gray-50 border border-gray-200 rounded-lg py-2.5 px-4 pr-8 text-sm font-medium focus:ring-2 focus:ring-brand-red outline-none text-brand-dark cursor-pointer hover:border-gray-300 transition-colors"
-                                >
-                                    {regions.map((region) => (
-                                        <option key={region.code} value={region.code}>
-                                            {region.name}
-                                        </option>
-                                    ))}
-                                </select>
-                                <ChevronDown size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
-                            </div>
-                            <div className="flex items-center justify-between sm:justify-end min-w-[120px] bg-gray-50 border border-gray-200 rounded-lg px-4 py-2.5">
-                                <span className="font-bold text-brand-dark text-sm">
-                                    {isCalculatingShipping ? (
-                                    <Loader2 size={14} className="animate-spin text-gray-400" />
-                                    ) : shippingEstimate?.cost === 0 ? (
-                                        <span className="text-green-600 flex items-center gap-1"><Check size={14} strokeWidth={3} /> FREE</span>
-                                    ) : (
-                                        formatPrice(shippingEstimate?.cost || 0)
-                                    )}
-                                </span>
-                            </div>
-                        </div>
                     </div>
 
                     {/* Main Action Buttons (Desktop) */}

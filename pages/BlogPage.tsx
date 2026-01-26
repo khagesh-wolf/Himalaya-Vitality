@@ -166,7 +166,7 @@ export const BlogPostPage = () => {
       "name": "Himalaya Vitality",
       "logo": {
         "@type": "ImageObject",
-        "url": "https://himalayavitality.com/logo.png"
+        "url": "https://i.ibb.co/tMXQXvJn/logo-red.png"
       }
     },
     "description": post.excerpt,

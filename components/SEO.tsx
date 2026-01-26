@@ -26,7 +26,7 @@ export const SEO: React.FC<SEOProps> = ({
     "@type": "Organization",
     "name": "Himalaya Vitality",
     "url": siteUrl,
-    "logo": "https://himalayavitality.com/logo.png", // Placeholder
+    "logo": "https://i.ibb.co/tMXQXvJn/logo-red.png",
     "sameAs": [
         "https://instagram.com/himalayavitality",
         "https://facebook.com/himalayavitality"

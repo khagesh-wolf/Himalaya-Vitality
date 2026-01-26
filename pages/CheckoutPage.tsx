@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Link, useSearchParams, useNavigate } from 'react-router-dom';
 import { ShieldCheck, Lock, ArrowLeft, Loader2, AlertCircle, CheckCircle, Package, UserCircle, ShoppingCart, ChevronDown, ChevronUp, CreditCard } from 'lucide-react';
@@ -129,6 +130,7 @@ const PaymentStep = ({
     const { setIsLoading } = useLoading();
     const { user } = useAuth();
     const [message, setMessage] = useState<string | null>(null);
+    const [isReady, setIsReady] = useState(false);
 
     const handlePaymentSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -138,7 +140,16 @@ const PaymentStep = ({
         setIsLoading(true, 'Processing Payment...');
         setMessage(null);
 
+        // 1. Submit the form elements (Validation & Collection)
+        const { error: submitError } = await elements.submit();
+        if (submitError) {
+            setMessage(submitError.message || "Please check your payment details.");
+            setIsLoading(false);
+            return;
+        }
+
         try {
+            // 2. Confirm the Payment
             const { error, paymentIntent } = await stripe.confirmPayment({
                 elements,
                 confirmParams: {
@@ -204,10 +215,10 @@ const PaymentStep = ({
 
             <form onSubmit={handlePaymentSubmit} className="space-y-6">
                 <div className="p-4 border border-gray-200 rounded-xl bg-white shadow-sm">
-                    <PaymentElement />
+                    <PaymentElement onReady={() => setIsReady(true)} />
                 </div>
                 
-                <Button type="submit" fullWidth size="lg" className="h-14 shadow-xl shadow-brand-red/20 text-lg" disabled={!stripe || !elements}>
+                <Button type="submit" fullWidth size="lg" className="h-14 shadow-xl shadow-brand-red/20 text-lg" disabled={!stripe || !elements || !isReady}>
                     Pay Securely
                 </Button>
                 
@@ -406,8 +417,11 @@ export const CheckoutPage = () => {
                 <Container>
                     <div className="flex justify-between items-center">
                         <Link to="/" className="flex items-center gap-2">
-                            <div className="w-8 h-8 bg-brand-red text-white flex items-center justify-center font-heading font-extrabold text-sm rounded-lg">HV</div>
-                            <span className="font-heading font-bold text-lg text-brand-dark uppercase hidden sm:block">Himalaya Vitality</span>
+                            <img 
+                                src="https://i.ibb.co/tMXQXvJn/logo-red.png" 
+                                alt="Himalaya Vitality" 
+                                className="h-10 w-auto object-contain" 
+                            />
                         </Link>
                         <div className="flex items-center text-xs font-bold text-gray-500 bg-gray-50 px-3 py-1.5 rounded-full">
                             <Lock size={12} className="mr-1.5 text-green-600" /> SECURE CHECKOUT

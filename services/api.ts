@@ -3,7 +3,9 @@ import { MAIN_PRODUCT, REVIEWS, BLOG_POSTS, MOCK_ORDERS } from '../constants';
 import { User, Order, Product, Review, BlogPost, CartItem, Discount, Subscriber, InventoryLog } from '../types';
 
 // Env Config
-const USE_MOCK = (import.meta as any).env?.VITE_USE_MOCK === 'true';
+// Default to TRUE so the app works out-of-the-box without a backend server
+const envMock = (import.meta as any).env?.VITE_USE_MOCK;
+const USE_MOCK = envMock !== 'false'; 
 const API_URL = (import.meta as any).env?.VITE_API_URL || '/api';
 
 // --- API FETCH WRAPPER ---
@@ -26,7 +28,7 @@ async function apiFetch<T>(endpoint: string, options: RequestInit = {}): Promise
             data = await res.json();
         } else {
             const text = await res.text();
-            if (!res.ok) throw new Error(`Server Error: ${res.statusText}`);
+            if (!res.ok) throw new Error(`Server Error: ${res.statusText || 'Unknown Error'}`);
             data = text;
         }
 
@@ -47,13 +49,120 @@ async function apiFetch<T>(endpoint: string, options: RequestInit = {}): Promise
 
 // --- MOCK ADAPTER ---
 async function mockAdapter(endpoint: string, options: any) {
-    await new Promise(r => setTimeout(r, 500));
-    if (endpoint === '/auth/login') return { token: 'mock', user: { id: '1', name: 'Demo User', role: 'CUSTOMER' } };
+    console.log(`[Mock API] ${options?.method || 'GET'} ${endpoint}`);
+    await new Promise(r => setTimeout(r, 600)); // Simulate network delay
+
+    // Auth
+    if (endpoint === '/auth/login') {
+        const body = options.body ? JSON.parse(options.body) : {};
+        // Simulate "requires verification" for specific test email if needed, or just success
+        return { 
+            token: 'mock_jwt_token_123', 
+            user: { 
+                id: 'u1', 
+                name: 'Demo Admin', 
+                email: body.email || 'admin@himalaya.com', 
+                role: 'ADMIN',
+                avatar: 'https://i.pravatar.cc/150?u=a042581f4e29026024d',
+                firstName: 'Demo',
+                lastName: 'Admin'
+            } 
+        };
+    }
+    if (endpoint === '/auth/signup') {
+        return { 
+            token: 'mock_jwt_token_456', 
+            user: { id: 'u2', name: 'New User', role: 'CUSTOMER', email: 'new@user.com' } 
+        };
+    }
+    if (endpoint === '/auth/me') {
+        return { 
+            id: 'u1', 
+            name: 'Demo Admin', 
+            email: 'admin@himalaya.com', 
+            role: 'ADMIN', 
+            avatar: 'https://i.pravatar.cc/150?u=a042581f4e29026024d',
+            firstName: 'Demo',
+            lastName: 'Admin',
+            address: '123 Mountain View',
+            city: 'Denver',
+            country: 'US',
+            zip: '80202'
+        };
+    }
+    if (endpoint === '/auth/google') {
+        return { 
+            token: 'mock_google_token', 
+            user: { id: 'u3', name: 'Google User', role: 'CUSTOMER', email: 'google@user.com', avatar: 'https://lh3.googleusercontent.com/a/default-user' } 
+        };
+    }
+    if (endpoint === '/auth/profile' && options?.method === 'PUT') {
+        return { success: true };
+    }
+    if (endpoint === '/auth/verify-email') {
+        return { 
+            token: 'mock_verified_token', 
+            user: { id: 'u2', name: 'Verified User', role: 'CUSTOMER', email: 'user@test.com' } 
+        };
+    }
+    if (endpoint === '/auth/forgot-password') return { message: 'Reset code sent' };
+    if (endpoint === '/auth/reset-password') return { success: true };
+    
+    // Products
     if (endpoint.startsWith('/products')) return MAIN_PRODUCT;
-    if (endpoint === '/create-payment-intent') return { clientSecret: 'pi_mock_secret_123' };
-    if (endpoint === '/orders') return { success: true, orderId: 'HV-MOCK-123' };
-    if (endpoint === '/reviews' && options.method === 'POST') return { success: true };
+    
+    // Payment & Orders
+    if (endpoint === '/create-payment-intent') return { clientSecret: 'pi_mock_secret_123_test_key' };
+    if (endpoint === '/orders' && options?.method === 'POST') {
+        const body = JSON.parse(options.body);
+        return { success: true, orderId: `HV-${Date.now()}` };
+    }
+    
+    // User Order History (Enriched Mock Data)
+    if (endpoint === '/orders/my-orders') {
+        return MOCK_ORDERS.map(o => ({
+            ...o,
+            itemsDetails: [
+                {
+                    title: MAIN_PRODUCT.title,
+                    quantity: o.items || 1,
+                    price: o.total,
+                    productId: MAIN_PRODUCT.id,
+                    image: MAIN_PRODUCT.images[0]
+                }
+            ]
+        }));
+    }
+
+    // Reviews
+    if (endpoint === '/reviews' && options?.method === 'POST') return { success: true };
     if (endpoint === '/reviews') return REVIEWS;
+
+    // Blog
+    if (endpoint === '/blog') return BLOG_POSTS;
+
+    // Admin Dashboard Data
+    if (endpoint === '/admin/stats') return { totalRevenue: 45231.00, totalOrders: 342, avgOrderValue: 132.25 };
+    if (endpoint === '/admin/orders') return MOCK_ORDERS;
+    if (endpoint.startsWith('/admin/orders/')) return { success: true }; // Update status
+    if (endpoint.startsWith('/admin/products/')) return { success: true }; // Update product
+    if (endpoint === '/admin/discounts') return [
+        { id: 'd1', code: 'WELCOME10', type: 'PERCENTAGE', value: 10, active: true },
+        { id: 'd2', code: 'VIP25', type: 'PERCENTAGE', value: 25, active: true }
+    ];
+    if (endpoint.startsWith('/admin/discounts/')) return { success: true };
+    if (endpoint === '/admin/reviews') return REVIEWS;
+    if (endpoint.startsWith('/admin/reviews/')) return { success: true };
+    if (endpoint === '/admin/subscribers') return [
+        { id: 's1', email: 'john@example.com', date: '2023-10-01', source: 'Popup' },
+        { id: 's2', email: 'jane@test.com', date: '2023-10-05', source: 'Footer' }
+    ];
+    if (endpoint === '/admin/inventory-logs') return [
+        { id: 'l1', sku: 'Starter Pack', action: 'Restock', quantity: 50, user: 'System', date: '2023-10-01 10:00' },
+        { id: 'l2', sku: 'Commitment Pack', action: 'Sale', quantity: -1, user: 'Checkout', date: '2023-10-02 14:23' }
+    ];
+
+    // Default Fallback
     return {};
 }
 

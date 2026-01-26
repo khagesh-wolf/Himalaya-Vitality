@@ -10,20 +10,22 @@ import { Product, BundleType, Review, Order, BlogPost } from './types';
 export const MAIN_PRODUCT: Product = {
   id: 'himalaya-shilajit-resin', // Database ID reference
   title: 'Pure Himalayan Shilajit Resin',
-  description: 'Sourced from 18,000ft in the Himalayas, our Gold Grade Shilajit is purified using traditional Ayurvedic methods (Surya Tapi) for 60-90 days to ensure maximum potency and purity. Rich in Fulvic Acid (>80%) and over 85+ trace minerals.',
+  description: 'A natural substance ranging in color from pale brown to blackish-brown that exudes from rocks in the Himalayas. Formed for centuries from compressed plant materials under high pressure and temperature. Our premium resin is sourced from the pristine landscapes of Nepal (Dolpa, Mugu, Jajarkot, Humla, Rukum, Gorkha). It is soft, sticky, and viscous with an earthy, pungent smell and a bitter, astringent taste.',
   rating: 4.9,
   reviewCount: 1248,
   features: [
-    '>80% Fulvic Acid Content',
-    '85+ Trace Minerals (Ionic Form)',
+    '>80% Fulvic Acid & Humic (80-85%)',
+    'Rich in Dibenzo-a-pyrones & Trace Minerals',
     'Sun Dried for 60-90 Days (Surya Tapi)',
-    'Lab Tested for Purity & Safety',
-    'Supports Energy, Recovery & Cognitive Function'
+    'Lab Tested (IAS, FDA, DDA Certified)',
+    'Supports Testosterone & Cognitive Function'
   ],
   images: [
-    'https://picsum.photos/600/600?random=1',
-    'https://picsum.photos/600/600?random=2',
-    'https://picsum.photos/600/600?random=3'
+    'https://i.ibb.co/zTB7Fx9m/Whats-App-Image-2026-01-26-at-7-08-18-PM.jpg',
+    'https://i.ibb.co/9H8yWSgP/Whats-App-Image-2026-01-26-at-7-08-21-PM.jpg',
+    'https://i.ibb.co/bMWsMg0T/Whats-App-Image-2026-01-26-at-7-08-20-PM.jpg',
+    'https://i.ibb.co/VYcz2Tky/Whats-App-Image-2026-01-26-at-7-08-20-PM-1.jpg',
+    'https://i.ibb.co/KzWf8byr/Whats-App-Image-2026-01-26-at-7-08-20-PM-3.jpg'
   ],
   // These variants act as the "Template". 
   // The actual Price and Stock will be overwritten by the Database/Admin Panel.
@@ -151,11 +153,11 @@ export const BLOG_POSTS: BlogPost[] = [
     content: `
       <p>Shilajit has been used for centuries in Ayurveda, but modern science is finally catching up. Here are the top 5 benefits backed by research.</p>
       <h3>1. Boosts Testosterone & Fertility</h3>
-      <p>Clinical studies have shown that daily supplementation of purified Shilajit can significantly increase testosterone levels in healthy men.</p>
+      <p>Clinical studies have shown that daily supplementation of purified Shilajit can significantly increase testosterone levels in healthy men (Pandit & Biswas, 2015).</p>
       <h3>2. Enhances Mitochondrial Function</h3>
       <p>The high Fulvic Acid content helps transport nutrients directly into the mitochondria, the power plants of your cells, increasing ATP production.</p>
       <h3>3. Supports Brain Health</h3>
-      <p>Some studies suggest that the antioxidant properties of Shilajit may inhibit the accumulation of tau protein, which helps protect against cognitive decline.</p>
+      <p>Studies suggest that the antioxidant properties of Shilajit may inhibit the accumulation of tau protein, which helps protect against cognitive decline (Fontaine et al., 2024).</p>
     `,
     author: 'Dr. A. Sharma',
     date: 'Oct 12, 2023',
@@ -195,7 +197,11 @@ export const BLOG_POSTS: BlogPost[] = [
 export const FAQ_DATA = [
     {
         question: "How do I take Shilajit resin?",
-        answer: "Using the included measuring spoon, take a pea-sized amount (300-500mg) and dissolve it in lukewarm water, tea, or milk. Consume it on an empty stomach in the morning for best results."
+        answer: "General adult dosage is 250-500 mg per day. Using the included measuring spoon, dissolve the resin in lukewarm water, milk, or herbal tea. For best results, take it twice a day (morning and between meals) for 90 consecutive days."
+    },
+    {
+        question: "What does it taste and smell like?",
+        answer: "Authentic Shilajit has a strong, earthy, pungent, burnt-like smell. The taste is bitter and astringent with a metallic aftertaste. The texture is soft, sticky, and viscous at room temperature."
     },
     {
         question: "How long does shipping take?",
@@ -204,9 +210,5 @@ export const FAQ_DATA = [
     {
         question: "Is it safe? Does it contain heavy metals?",
         answer: "Yes, it is completely safe. Raw Shilajit can contain impurities, which is why ours is purified via the Surya Tapi method and 3rd-party tested to strictly ensure heavy metals are well within safe limits established by US and EU standards."
-    },
-    {
-        question: "What does it taste like?",
-        answer: "Pure Shilajit has a strong, earthy, herbal taste and smell. It is not sweet. Most people get used to it quickly, or mix it with honey or tea to mask the flavor."
     }
 ];

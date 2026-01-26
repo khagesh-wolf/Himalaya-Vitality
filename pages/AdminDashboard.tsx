@@ -409,9 +409,6 @@ const SettingsView = () => {
     );
 };
 
-// --- Reuse other modules as previously defined ---
-// (DiscountsView, ReviewsView, SubscribersView, InventoryLogView remain identical, just including for completeness of file if needed, but for brevity here assuming they exist or need to be re-outputted completely if standard practice.)
-
 const DiscountsView = () => {
     const queryClient = useQueryClient();
     const { data: discounts = [] } = useQuery({ queryKey: ['admin-discounts'], queryFn: fetchDiscounts });
@@ -678,8 +675,11 @@ export const AdminDashboard = () => {
       <div className={`fixed inset-y-0 left-0 z-40 w-64 bg-white border-r border-gray-200 flex flex-col transition-transform duration-300 transform ${isMobileSidebarOpen ? 'translate-x-0' : '-translate-x-full'} md:relative md:translate-x-0`}>
         <div className="p-8 border-b border-gray-100 flex justify-between items-center">
            <div className="flex items-center gap-2">
-            <div className="w-8 h-8 bg-brand-red text-white flex items-center justify-center font-heading font-extrabold text-sm rounded-br-lg rounded-tl-lg">HV</div>
-            <span className="font-heading font-bold text-lg text-brand-dark uppercase">Himalaya</span>
+            <img 
+                src="https://i.ibb.co/tMXQXvJn/logo-red.png" 
+                alt="Himalaya" 
+                className="h-8 w-auto object-contain" 
+            />
            </div>
            <button onClick={() => setIsMobileSidebarOpen(false)} className="md:hidden text-gray-400 hover:text-brand-dark">
                <X size={20} />

@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Lock } from 'lucide-react';
@@ -31,7 +32,13 @@ export const AdminLoginPage = () => {
       <SEO title="Admin Login" />
       <Container className="max-w-md w-full">
         <div className="text-center mb-8">
-            <div className="w-16 h-16 bg-brand-red text-white mx-auto flex items-center justify-center rounded-2xl font-heading font-extrabold text-2xl mb-4 shadow-xl shadow-brand-red/20">HV</div>
+            <div className="mx-auto flex items-center justify-center mb-4">
+                <img 
+                    src="https://i.ibb.co/tMXQXvJn/logo-red.png" 
+                    alt="Himalaya Vitality" 
+                    className="h-16 w-auto object-contain" 
+                />
+            </div>
             <h1 className="font-heading font-bold text-2xl text-brand-dark">Admin Access</h1>
             <p className="text-gray-500 text-sm mt-2">Enter your secure credentials to continue.</p>
         </div>
