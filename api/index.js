@@ -29,6 +29,14 @@ const authenticate = (req, res, next) => {
     });
 };
 
+const isAdmin = (req, res, next) => {
+    if (req.user && req.user.role === 'ADMIN') {
+        next();
+    } else {
+        res.status(403).json({ message: 'Admin access required' });
+    }
+};
+
 // --- Helpers ---
 const generateOTP = () => Math.floor(100000 + Math.random() * 900000).toString();
 
@@ -318,6 +326,121 @@ app.get('/api/products/:id', async (req, res) => {
         });
         if (!product) return res.status(404).json({ message: 'Product not found' });
         res.json(product);
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// --- REVIEWS ---
+app.get('/api/reviews', async (req, res) => {
+    try {
+        const reviews = await prisma.review.findMany({
+            where: { status: 'Approved' },
+            orderBy: { createdAt: 'desc' }
+        });
+        res.json(reviews);
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// --- ADMIN ROUTES ---
+
+app.get('/api/admin/stats', authenticate, isAdmin, async (req, res) => {
+    try {
+        const totalOrders = await prisma.order.count();
+        const orders = await prisma.order.findMany();
+        const totalRevenue = orders.reduce((acc, o) => acc + o.total, 0);
+        const avgOrderValue = totalOrders > 0 ? totalRevenue / totalOrders : 0;
+        
+        res.json({
+            totalOrders,
+            totalRevenue,
+            avgOrderValue
+        });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+app.get('/api/admin/orders', authenticate, isAdmin, async (req, res) => {
+    try {
+        const orders = await prisma.order.findMany({
+            include: { items: true },
+            orderBy: { createdAt: 'desc' }
+        });
+        res.json(orders);
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+app.put('/api/admin/orders/:id', authenticate, isAdmin, async (req, res) => {
+    try {
+        const order = await prisma.order.update({
+            where: { id: req.params.id },
+            data: { status: req.body.status }
+        });
+        res.json(order);
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+app.get('/api/admin/reviews', authenticate, isAdmin, async (req, res) => {
+    try {
+        const reviews = await prisma.review.findMany({
+            orderBy: { createdAt: 'desc' }
+        });
+        res.json(reviews);
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+app.put('/api/admin/reviews/:id', authenticate, isAdmin, async (req, res) => {
+    try {
+        const review = await prisma.review.update({
+            where: { id: req.params.id },
+            data: { status: req.body.status }
+        });
+        res.json(review);
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+app.delete('/api/admin/reviews/:id', authenticate, isAdmin, async (req, res) => {
+    try {
+        await prisma.review.delete({ where: { id: req.params.id } });
+        res.json({ success: true });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+app.get('/api/admin/discounts', authenticate, isAdmin, async (req, res) => {
+    try {
+        const discounts = await prisma.discount.findMany();
+        res.json(discounts);
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+app.post('/api/admin/discounts', authenticate, isAdmin, async (req, res) => {
+    try {
+        const discount = await prisma.discount.create({ data: req.body });
+        res.json(discount);
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+app.delete('/api/admin/discounts/:id', authenticate, isAdmin, async (req, res) => {
+    try {
+        await prisma.discount.delete({ where: { id: req.params.id } });
+        res.json({ success: true });
     } catch (e) {
         res.status(500).json({ error: e.message });
     }
