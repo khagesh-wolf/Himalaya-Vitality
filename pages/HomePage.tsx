@@ -1,9 +1,11 @@
 
 import React from 'react';
 import { Link } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
 import { Check, Star, ArrowRight, ShieldCheck, Zap, Activity, Award, Droplet, Mountain, CheckCircle2, XCircle, Instagram, Heart, Truck, Globe, Lock } from 'lucide-react';
 import { Button, Container, LazyImage, Reveal } from '../components/UI';
-import { REVIEWS, MAIN_PRODUCT } from '../constants';
+import { MAIN_PRODUCT } from '../constants';
+import { fetchReviews } from '../services/api';
 import { SEO } from '../components/SEO';
 
 // --- Components ---
@@ -65,6 +67,13 @@ const InstagramPost = ({ src, likes }: { src: string, likes: string }) => (
 );
 
 export const HomePage = () => {
+  // Fetch reviews from API
+  const { data: reviews = [] } = useQuery({
+    queryKey: ['reviews'],
+    queryFn: fetchReviews,
+    initialData: []
+  });
+
   return (
     <div className="bg-white">
       <SEO 
@@ -73,7 +82,6 @@ export const HomePage = () => {
       />
 
       {/* --- HERO SECTION --- */}
-      {/* Changed h-[95vh] to min-h-screen to ensure content never overflows on small mobile screens */}
       <section className="relative min-h-screen w-full flex items-center justify-center overflow-hidden bg-black pb-20 pt-32 md:pt-40">
         
         {/* Background Image with Zoom Effect */}
@@ -191,7 +199,7 @@ export const HomePage = () => {
                 <BenefitCard 
                 icon={ShieldCheck} 
                 title="Immune Support" 
-                description="Rich in Fulvic Acid and antioxidants to strengthen your body's natural defenses." 
+                description="Rich in Fulvic Acid (>80%) and antioxidants to strengthen your body's natural defenses." 
                 />
             </Reveal>
             <Reveal delay={450}>
@@ -242,7 +250,7 @@ export const HomePage = () => {
                 <p className="text-gray-400 mb-8 leading-relaxed text-lg">
                     The market is flooded with low-quality, solvent-extracted powders. 
                     Himalaya Vitality is strictly Gold Grade resin, purified using traditional 
-                    spring water methods to preserve the delicate bioactive compounds.
+                    Surya Tapi (sun-drying) methods for 60-90 days to preserve the delicate bioactive compounds.
                 </p>
                 
                 <div className="flex flex-col gap-6">
@@ -252,7 +260,7 @@ export const HomePage = () => {
                         </div>
                         <div>
                             <h4 className="font-bold text-lg md:text-xl mb-1 text-white group-hover:text-brand-red transition-colors">High Altitude Sourcing</h4>
-                            <p className="text-sm text-gray-400">Harvested exclusively above 16,000ft in Ladakh.</p>
+                            <p className="text-sm text-gray-400">Harvested exclusively above 18,000ft in the Himalayas.</p>
                         </div>
                     </div>
                     <div className="flex items-center gap-5 p-4 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 transition-colors group">
@@ -289,7 +297,8 @@ export const HomePage = () => {
                     <div className="space-y-1 md:space-y-2 text-brand-dark">
                         <ComparisonRow feature="Form" us="Live Resin" them="Dried Powder" />
                         <ComparisonRow feature="Sourcing" us="18,000ft+" them="Low Altitude" />
-                        <ComparisonRow feature="Fulvic Acid" us="> 60%" them="< 20%" />
+                        <ComparisonRow feature="Fulvic Acid" us="> 80%" them="< 40%" />
+                        <ComparisonRow feature="Drying" us="60-90 Days Sun" them="Heat Processed" />
                         <ComparisonRow feature="Lab Tested" us={true} them={false} />
                         <ComparisonRow feature="Additives" us="None" them="Fillers" />
                     </div>
@@ -362,24 +371,30 @@ export const HomePage = () => {
             </Reveal>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
-                {REVIEWS.slice(0, 3).map((review, i) => (
-                    <Reveal key={review.id} delay={i * 150} className="h-full">
-                        <div className="bg-white p-8 rounded-3xl border border-gray-200 shadow-sm hover:shadow-xl transition-all duration-300 relative group h-full flex flex-col">
-                            <div className="absolute top-8 right-8 text-gray-100 group-hover:text-brand-red/10 transition-colors">
-                                <svg width="40" height="40" viewBox="0 0 24 24" fill="currentColor"><path d="M14.017 21L14.017 18C14.017 16.8954 14.9124 16 16.017 16H19.017C19.5693 16 20.017 15.5523 20.017 15V9C20.017 8.44772 19.5693 8 19.017 8H15.017C14.4647 8 14.017 8.44772 14.017 9V11C14.017 11.5523 13.5693 12 13.017 12H12.017V5H22.017V15C22.017 18.3137 19.3307 21 16.017 21H14.017ZM5.0166 21L5.0166 18C5.0166 16.8954 5.91203 16 7.0166 16H10.0166C10.5689 16 11.0166 15.5523 11.0166 15V9C11.0166 8.44772 10.5689 8 10.0166 8H6.0166C5.46432 8 5.0166 8.44772 5.0166 9V11C5.0166 11.5523 4.56889 12 4.0166 12H3.0166V5H13.0166V15C13.0166 18.3137 10.3303 21 7.0166 21H5.0166Z" /></svg>
+                {reviews.length === 0 ? (
+                    <div className="col-span-full text-center py-10">
+                        <p className="text-gray-500">Loading reviews...</p>
+                    </div>
+                ) : (
+                    reviews.slice(0, 3).map((review, i) => (
+                        <Reveal key={review.id} delay={i * 150} className="h-full">
+                            <div className="bg-white p-8 rounded-3xl border border-gray-200 shadow-sm hover:shadow-xl transition-all duration-300 relative group h-full flex flex-col">
+                                <div className="absolute top-8 right-8 text-gray-100 group-hover:text-brand-red/10 transition-colors">
+                                    <svg width="40" height="40" viewBox="0 0 24 24" fill="currentColor"><path d="M14.017 21L14.017 18C14.017 16.8954 14.9124 16 16.017 16H19.017C19.5693 16 20.017 15.5523 20.017 15V9C20.017 8.44772 19.5693 8 19.017 8H15.017C14.4647 8 14.017 8.44772 14.017 9V11C14.017 11.5523 13.5693 12 13.017 12H12.017V5H22.017V15C22.017 18.3137 19.3307 21 16.017 21H14.017ZM5.0166 21L5.0166 18C5.0166 16.8954 5.91203 16 7.0166 16H10.0166C10.5689 16 11.0166 15.5523 11.0166 15V9C11.0166 8.44772 10.5689 8 10.0166 8H6.0166C5.46432 8 5.0166 8.44772 5.0166 9V11C5.0166 11.5523 4.56889 12 4.0166 12H3.0166V5H13.0166V15C13.0166 18.3137 10.3303 21 7.0166 21H5.0166Z" /></svg>
+                                </div>
+                                <div className="flex text-brand-gold-500 mb-6">
+                                    {[...Array(5)].map((_, i) => <Star key={i} size={16} fill="currentColor" strokeWidth={0} />)}
+                                </div>
+                                <h4 className="font-bold text-lg text-brand-dark mb-3 leading-tight">"{review.title}"</h4>
+                                <p className="text-sm text-gray-600 leading-relaxed mb-6 line-clamp-4 relative z-10 flex-grow">{review.content}</p>
+                                <div className="flex items-center justify-between pt-6 border-t border-gray-100 mt-auto">
+                                    <span className="font-bold text-sm text-brand-dark">{review.author}</span>
+                                    {review.verified && <span className="text-[10px] uppercase font-bold text-green-600 flex items-center tracking-wider bg-green-50 px-2 py-1 rounded-full"><CheckCircle2 size={12} className="mr-1"/> Verified</span>}
+                                </div>
                             </div>
-                            <div className="flex text-brand-gold-500 mb-6">
-                                {[...Array(5)].map((_, i) => <Star key={i} size={16} fill="currentColor" strokeWidth={0} />)}
-                            </div>
-                            <h4 className="font-bold text-lg text-brand-dark mb-3 leading-tight">"{review.title}"</h4>
-                            <p className="text-sm text-gray-600 leading-relaxed mb-6 line-clamp-4 relative z-10 flex-grow">{review.content}</p>
-                            <div className="flex items-center justify-between pt-6 border-t border-gray-100 mt-auto">
-                                <span className="font-bold text-sm text-brand-dark">{review.author}</span>
-                                {review.verified && <span className="text-[10px] uppercase font-bold text-green-600 flex items-center tracking-wider bg-green-50 px-2 py-1 rounded-full"><CheckCircle2 size={12} className="mr-1"/> Verified</span>}
-                            </div>
-                        </div>
-                    </Reveal>
-                ))}
+                        </Reveal>
+                    ))
+                )}
             </div>
             
             <div className="mt-8 text-center md:hidden">

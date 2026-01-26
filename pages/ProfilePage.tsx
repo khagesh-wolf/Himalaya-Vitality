@@ -3,17 +3,17 @@ import React, { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { Package, User as UserIcon, LogOut, MapPin, Save, CreditCard, ChevronRight } from 'lucide-react';
+import { Package, User as UserIcon, LogOut, MapPin, Save, CreditCard, ChevronRight, Star, X } from 'lucide-react';
 import { Container, Button, Card, Reveal, LazyImage } from '../components/UI';
 import { useAuth } from '../context/AuthContext';
 import { useCurrency } from '../context/CurrencyContext';
-import { fetchUserOrders, updateUserProfile } from '../services/api';
+import { fetchUserOrders, updateUserProfile, createReview } from '../services/api';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { SEO } from '../components/SEO';
 import { getDeliverableCountries } from '../utils';
 import { useNavigate } from 'react-router-dom';
 
-// Validation Schema
+// Validation Schema for Profile
 const profileSchema = z.object({
   firstName: z.string().min(2, 'First name is required'),
   lastName: z.string().min(2, 'Last name is required'),
@@ -33,6 +33,13 @@ export const ProfilePage = () => {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState<'orders' | 'settings'>('orders');
+  
+  // Review Modal State
+  const [isReviewModalOpen, setIsReviewModalOpen] = useState(false);
+  const [reviewItem, setReviewItem] = useState<any>(null);
+  const [rating, setRating] = useState(5);
+  const [reviewTitle, setReviewTitle] = useState('');
+  const [reviewContent, setReviewContent] = useState('');
 
   // Redirect if not logged in
   if (!isAuthenticated) {
@@ -50,10 +57,23 @@ export const ProfilePage = () => {
   const updateMutation = useMutation({
       mutationFn: updateUserProfile,
       onSuccess: () => {
-          queryClient.invalidateQueries({ queryKey: ['user'] }); // assuming AuthContext uses this key or similar
+          queryClient.invalidateQueries({ queryKey: ['user'] });
           alert("Profile updated successfully!");
       },
       onError: () => alert("Failed to update profile.")
+  });
+
+  const reviewMutation = useMutation({
+      mutationFn: createReview,
+      onSuccess: () => {
+          alert("Review submitted for approval!");
+          setIsReviewModalOpen(false);
+          // Reset form
+          setRating(5);
+          setReviewTitle('');
+          setReviewContent('');
+      },
+      onError: () => alert("Failed to submit review.")
   });
 
   // --- Form Setup ---
@@ -75,6 +95,22 @@ export const ProfilePage = () => {
       updateMutation.mutate({ 
           ...data, 
           name: `${data.firstName} ${data.lastName}` // Sync display name
+      });
+  };
+
+  const handleOpenReview = (item: any) => {
+      setReviewItem(item);
+      setIsReviewModalOpen(true);
+  };
+
+  const handleSubmitReview = (e: React.FormEvent) => {
+      e.preventDefault();
+      if (!reviewItem) return;
+      reviewMutation.mutate({
+          productId: reviewItem.productId || 'himalaya-shilajit-resin',
+          rating,
+          title: reviewTitle,
+          content: reviewContent
       });
   };
 
@@ -178,10 +214,15 @@ export const ProfilePage = () => {
                                                         <h4 className="font-bold text-brand-dark mb-1">{item.title}</h4>
                                                         <p className="text-sm text-gray-500">Qty: {item.quantity}</p>
                                                     </div>
-                                                    <div className="text-right">
+                                                    <div className="text-right flex flex-col gap-2">
                                                         <Button size="sm" variant="outline-dark" onClick={() => navigate(`/product/${item.productId || 'himalaya-shilajit-resin'}`)}>
                                                             Buy Again
                                                         </Button>
+                                                        {order.status === 'Delivered' && (
+                                                            <Button size="sm" onClick={() => handleOpenReview(item)}>
+                                                                Write Review
+                                                            </Button>
+                                                        )}
                                                     </div>
                                                 </div>
                                             ))}
@@ -268,6 +309,72 @@ export const ProfilePage = () => {
                 </Reveal>
             </div>
         </div>
+
+        {/* Review Modal */}
+        {isReviewModalOpen && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+                <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setIsReviewModalOpen(false)}></div>
+                <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg p-8 relative z-10 animate-in fade-in zoom-in-95">
+                    <button onClick={() => setIsReviewModalOpen(false)} className="absolute top-4 right-4 p-2 hover:bg-gray-100 rounded-full">
+                        <X size={20} className="text-gray-500" />
+                    </button>
+                    
+                    <h3 className="font-heading font-bold text-xl text-brand-dark mb-1">Write a Review</h3>
+                    <p className="text-gray-500 text-sm mb-6">How was your experience with <strong>{reviewItem?.title}</strong>?</p>
+                    
+                    <form onSubmit={handleSubmitReview} className="space-y-4">
+                        <div>
+                            <label className="block text-xs font-bold uppercase text-gray-500 mb-2">Rating</label>
+                            <div className="flex gap-2">
+                                {[1, 2, 3, 4, 5].map((star) => (
+                                    <button 
+                                        key={star} 
+                                        type="button"
+                                        onClick={() => setRating(star)}
+                                        className="focus:outline-none transition-transform hover:scale-110"
+                                    >
+                                        <Star 
+                                            size={32} 
+                                            fill={star <= rating ? "#EAB308" : "none"} 
+                                            className={star <= rating ? "text-yellow-500" : "text-gray-300"} 
+                                            strokeWidth={star <= rating ? 0 : 2}
+                                        />
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+                        
+                        <div>
+                            <label className="block text-xs font-bold uppercase text-gray-500 mb-1">Title</label>
+                            <input 
+                                type="text" 
+                                value={reviewTitle}
+                                onChange={(e) => setReviewTitle(e.target.value)}
+                                className="w-full p-3 border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-brand-red"
+                                placeholder="Summarize your experience"
+                                required
+                            />
+                        </div>
+                        
+                        <div>
+                            <label className="block text-xs font-bold uppercase text-gray-500 mb-1">Review</label>
+                            <textarea 
+                                value={reviewContent}
+                                onChange={(e) => setReviewContent(e.target.value)}
+                                rows={4}
+                                className="w-full p-3 border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-brand-red"
+                                placeholder="What did you like or dislike?"
+                                required
+                            />
+                        </div>
+                        
+                        <Button type="submit" fullWidth disabled={reviewMutation.isPending}>
+                            {reviewMutation.isPending ? 'Submitting...' : 'Submit Review'}
+                        </Button>
+                    </form>
+                </div>
+            </div>
+        )}
       </Container>
     </div>
   );

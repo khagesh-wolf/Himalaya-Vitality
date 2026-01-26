@@ -1,24 +1,33 @@
 
 import React, { useState } from 'react';
-import { Star, Check, ArrowLeft, Filter } from 'lucide-react';
+import { Star, Check, ArrowLeft, Filter, Loader2 } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
 import { Container, Button, Card, Reveal } from '../components/UI';
-import { REVIEWS, MAIN_PRODUCT } from '../constants';
+import { MAIN_PRODUCT } from '../constants';
+import { fetchReviews } from '../services/api';
 import { SEO } from '../components/SEO';
 
 export const ReviewsPage = () => {
   const product = MAIN_PRODUCT;
   const [filter, setFilter] = useState<'All' | 'Athlete'>('All');
   
+  // Use API for reviews
+  const { data: reviews = [], isLoading } = useQuery({
+    queryKey: ['reviews'],
+    queryFn: fetchReviews,
+    initialData: []
+  });
+  
   // Calculate stats
-  const totalReviews = 1248;
+  const totalReviews = reviews.length || 1248;
   const rating = 4.9;
   const stars = [5, 4, 3, 2, 1];
   const distribution = [85, 10, 3, 1, 1]; // percentages
 
   const displayedReviews = filter === 'All' 
-    ? REVIEWS 
-    : REVIEWS.filter(r => r.tags?.includes('Athlete') || r.tags?.includes('Endurance'));
+    ? reviews 
+    : reviews.filter(r => r.tags?.includes('Athlete') || r.tags?.includes('Endurance'));
 
   return (
     <div className="bg-gray-50 py-20 min-h-screen">
@@ -94,55 +103,59 @@ export const ReviewsPage = () => {
                     </div>
                 </Reveal>
 
-                <div className="space-y-6">
-                    {displayedReviews.length === 0 ? (
-                        <div className="text-center py-12 bg-white rounded-3xl">
-                            <p className="text-gray-500">No specific reviews found for this filter.</p>
-                            <button onClick={() => setFilter('All')} className="text-brand-red font-bold text-sm mt-2">View All</button>
-                        </div>
-                    ) : (
-                        displayedReviews.map((review, idx) => (
-                            <Reveal key={`${review.id}-${idx}`} delay={idx * 100}>
-                                <Card className="p-8 border-none shadow-sm hover:shadow-md transition-shadow">
-                                    <div className="flex justify-between items-start mb-4">
-                                        <div>
-                                            <div className="flex text-brand-red mb-2">
-                                                {[...Array(5)].map((_, i) => (
-                                                    <Star key={i} size={16} fill={i < review.rating ? "currentColor" : "none"} className={i < review.rating ? "" : "text-gray-300"} strokeWidth={0} />
-                                                ))}
+                {isLoading ? (
+                    <div className="flex justify-center py-20"><Loader2 className="animate-spin text-brand-red" size={40} /></div>
+                ) : (
+                    <div className="space-y-6">
+                        {displayedReviews.length === 0 ? (
+                            <div className="text-center py-12 bg-white rounded-3xl">
+                                <p className="text-gray-500">No specific reviews found for this filter.</p>
+                                <button onClick={() => setFilter('All')} className="text-brand-red font-bold text-sm mt-2">View All</button>
+                            </div>
+                        ) : (
+                            displayedReviews.map((review, idx) => (
+                                <Reveal key={`${review.id}-${idx}`} delay={idx * 100}>
+                                    <Card className="p-8 border-none shadow-sm hover:shadow-md transition-shadow">
+                                        <div className="flex justify-between items-start mb-4">
+                                            <div>
+                                                <div className="flex text-brand-red mb-2">
+                                                    {[...Array(5)].map((_, i) => (
+                                                        <Star key={i} size={16} fill={i < review.rating ? "currentColor" : "none"} className={i < review.rating ? "" : "text-gray-300"} strokeWidth={0} />
+                                                    ))}
+                                                </div>
+                                                <div className="flex items-center gap-3">
+                                                    <h3 className="font-heading font-bold text-lg text-brand-dark">{review.title}</h3>
+                                                    {review.tags?.includes('Athlete') && (
+                                                        <span className="bg-brand-dark text-white text-[10px] font-bold px-2 py-0.5 rounded uppercase tracking-wider">Athlete</span>
+                                                    )}
+                                                </div>
                                             </div>
-                                            <div className="flex items-center gap-3">
-                                                <h3 className="font-heading font-bold text-lg text-brand-dark">{review.title}</h3>
-                                                {review.tags?.includes('Athlete') && (
-                                                    <span className="bg-brand-dark text-white text-[10px] font-bold px-2 py-0.5 rounded uppercase tracking-wider">Athlete</span>
-                                                )}
+                                            <span className="text-xs text-gray-400 font-medium">{review.date}</span>
+                                        </div>
+                                        
+                                        <p className="text-gray-600 text-sm leading-relaxed mb-6">"{review.content}"</p>
+                                        
+                                        <div className="flex items-center border-t border-gray-50 pt-4">
+                                            <div className="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center font-bold text-xs text-gray-500 mr-3">
+                                                {review.author?.charAt(0) || 'U'}
+                                            </div>
+                                            <div>
+                                                <div className="flex items-center gap-2">
+                                                    <span className="font-bold text-sm text-brand-dark">{review.author}</span>
+                                                    {review.verified && (
+                                                        <span className="text-[10px] font-bold text-green-600 uppercase tracking-wider bg-green-50 px-2 py-0.5 rounded-full flex items-center">
+                                                            <Check size={10} className="mr-1" strokeWidth={3} /> Verified Buyer
+                                                        </span>
+                                                    )}
+                                                </div>
                                             </div>
                                         </div>
-                                        <span className="text-xs text-gray-400 font-medium">{review.date}</span>
-                                    </div>
-                                    
-                                    <p className="text-gray-600 text-sm leading-relaxed mb-6">"{review.content}"</p>
-                                    
-                                    <div className="flex items-center border-t border-gray-50 pt-4">
-                                        <div className="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center font-bold text-xs text-gray-500 mr-3">
-                                            {review.author.charAt(0)}
-                                        </div>
-                                        <div>
-                                            <div className="flex items-center gap-2">
-                                                <span className="font-bold text-sm text-brand-dark">{review.author}</span>
-                                                {review.verified && (
-                                                    <span className="text-[10px] font-bold text-green-600 uppercase tracking-wider bg-green-50 px-2 py-0.5 rounded-full flex items-center">
-                                                        <Check size={10} className="mr-1" strokeWidth={3} /> Verified Buyer
-                                                    </span>
-                                                )}
-                                            </div>
-                                        </div>
-                                    </div>
-                                </Card>
-                            </Reveal>
-                        ))
-                    )}
-                </div>
+                                    </Card>
+                                </Reveal>
+                            ))
+                        )}
+                    </div>
+                )}
             </div>
         </div>
       </Container>

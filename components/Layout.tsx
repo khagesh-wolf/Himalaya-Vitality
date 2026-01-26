@@ -15,10 +15,17 @@ import { SearchModal } from './SearchModal';
 
 const Logo = () => (
   <div className="flex items-center gap-2 group">
-    <div className="w-9 h-9 bg-brand-red text-white flex items-center justify-center font-heading font-extrabold text-lg tracking-tighter rounded-lg group-hover:rotate-3 transition-transform shadow-lg shadow-brand-red/20">
-      HV
-    </div>
-    <div className="flex flex-col justify-center">
+    <img 
+        src="/logo.png" 
+        alt="Himalaya Vitality" 
+        className="h-12 w-auto object-contain transition-transform group-hover:scale-105"
+        onError={(e) => {
+            // Fallback if image fails
+            e.currentTarget.style.display = 'none';
+            e.currentTarget.nextElementSibling?.classList.remove('hidden');
+        }}
+    />
+    <div className="hidden flex-col justify-center">
       <span className="font-heading font-bold text-lg leading-none text-brand-dark uppercase tracking-tight">Himalaya</span>
       <span className="font-sans text-[9px] font-bold text-brand-red tracking-[0.25em] uppercase leading-none mt-0.5">Vitality</span>
     </div>
@@ -304,7 +311,7 @@ export const Footer = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12 mb-16">
           {/* Brand Column */}
           <div className="col-span-1">
-             <div className="mb-6"><Logo /></div>
+             <div className="mb-6 w-32"><Logo /></div>
              <p className="text-gray-400 text-sm leading-relaxed mb-6 font-medium">
                 Himalaya Vitality™ delivers the purest Shilajit resin, ethically sourced from the Dolpa region of Nepal at 18,000ft. Unleash your primal potential.
              </p>

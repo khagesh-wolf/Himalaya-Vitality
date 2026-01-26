@@ -1,3 +1,4 @@
+
 import { MAIN_PRODUCT, REVIEWS, BLOG_POSTS, MOCK_ORDERS } from '../constants';
 import { User, Order, Product, Review, BlogPost, CartItem, Discount, Subscriber, InventoryLog } from '../types';
 
@@ -51,6 +52,8 @@ async function mockAdapter(endpoint: string, options: any) {
     if (endpoint.startsWith('/products')) return MAIN_PRODUCT;
     if (endpoint === '/create-payment-intent') return { clientSecret: 'pi_mock_secret_123' };
     if (endpoint === '/orders') return { success: true, orderId: 'HV-MOCK-123' };
+    if (endpoint === '/reviews' && options.method === 'POST') return { success: true };
+    if (endpoint === '/reviews') return REVIEWS;
     return {};
 }
 
@@ -67,6 +70,7 @@ export const updateUserProfile = (data: Partial<User>) => apiFetch<User>('/auth/
 // --- DATA SERVICES ---
 export const fetchProduct = (id: string) => apiFetch<Product>(`/products/${id}`);
 export const fetchReviews = () => apiFetch<Review[]>('/reviews');
+export const createReview = (data: Partial<Review>) => apiFetch<{ success: true }>('/reviews', { method: 'POST', body: JSON.stringify(data) });
 export const fetchBlogPosts = () => apiFetch<BlogPost[]>('/blog');
 export const fetchUserOrders = () => apiFetch<Order[]>('/orders/my-orders');
 
