@@ -93,6 +93,41 @@ const sendEmail = async (to, subject, text, html) => {
 // Health & Debug
 app.get('/api/health', (req, res) => res.json({ status: 'ok', time: new Date() }));
 
+// --- PAYMENT ROUTES ---
+app.post('/api/create-payment-intent', async (req, res) => {
+    const { items, currency, total } = req.body;
+    
+    if (!stripe) {
+        return res.status(500).json({ error: "Stripe not configured on server" });
+    }
+
+    try {
+        let amount;
+        if (total) {
+            // Use the total calculated by the frontend (includes shipping/tax)
+            amount = Math.round(total * 100);
+        } else {
+            // Fallback: Calculate from items (excludes shipping usually)
+            const calculatedTotal = items.reduce((acc, item) => acc + (item.price * item.quantity), 0);
+            amount = Math.round(calculatedTotal * 100);
+        }
+
+        const paymentIntent = await stripe.paymentIntents.create({
+            amount: amount > 50 ? amount : 50, // Minimum charge 50 cents
+            currency: currency || 'usd',
+            automatic_payment_methods: {
+                enabled: true,
+            },
+        });
+
+        res.json({ clientSecret: paymentIntent.client_secret });
+
+    } catch (e) {
+        console.error("Stripe Error:", e);
+        res.status(500).json({ error: e.message });
+    }
+});
+
 // --- AUTH ROUTES ---
 app.post('/api/auth/signup', async (req, res) => {
     const { name, email, password } = req.body;

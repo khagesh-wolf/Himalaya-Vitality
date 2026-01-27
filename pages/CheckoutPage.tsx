@@ -389,7 +389,7 @@ export const CheckoutPage = () => {
             
             // 2. Create/Update Payment Intent with FINAL Total
             const finalTotal = baseSubtotal + shipping.cost + shipping.tax;
-            const { clientSecret, mockSecret } = await createPaymentIntent(checkoutItems, 'USD'); 
+            const { clientSecret, mockSecret } = await createPaymentIntent(checkoutItems, 'USD', finalTotal); 
             
             setClientSecret(clientSecret || mockSecret || '');
             setStep(2);

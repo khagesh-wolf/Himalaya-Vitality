@@ -76,10 +76,10 @@ export const createReview = (data: Partial<Review>) => Promise.resolve({ success
 export const fetchBlogPosts = () => Promise.resolve(BLOG_POSTS);
 export const fetchUserOrders = () => apiFetch<Order[]>('/orders/my-orders');
 
-export const createPaymentIntent = (items: CartItem[], currency: string) => 
+export const createPaymentIntent = (items: CartItem[], currency: string, total?: number) => 
     apiFetch<{ clientSecret: string; mockSecret?: string }>('/create-payment-intent', { 
         method: 'POST', 
-        body: JSON.stringify({ items, currency }) 
+        body: JSON.stringify({ items, currency, total }) 
     });
 
 export const createOrder = (data: any) => 
