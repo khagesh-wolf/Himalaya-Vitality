@@ -623,18 +623,27 @@ app.get('/api/admin/orders', requireAdmin, async (req, res) => {
             include: { items: true }
         });
         
-        const formatted = orders.map(o => ({
-            id: o.orderNumber,
-            dbId: o.id, // Internal ID for updates
-            customer: o.customerName,
-            email: o.customerEmail,
-            date: new Date(o.createdAt).toLocaleDateString(),
-            total: o.total,
-            status: o.status,
-            items: o.items.length,
-            trackingNumber: o.trackingNumber,
-            carrier: o.carrier
-        }));
+        const formatted = orders.map(o => {
+            // Generate items summary
+            const itemsSummary = o.items.map(i => {
+                const variant = DEFAULT_PRODUCT_DATA.variants.find(v => v.id === i.variantId);
+                return `${i.quantity}x ${variant ? variant.name : i.variantId}`;
+            }).join(', ');
+
+            return {
+                id: o.orderNumber,
+                dbId: o.id, // Internal ID for updates
+                customer: o.customerName,
+                email: o.customerEmail,
+                date: new Date(o.createdAt).toLocaleDateString(),
+                total: o.total,
+                status: o.status,
+                items: o.items.length,
+                itemsSummary: itemsSummary,
+                trackingNumber: o.trackingNumber,
+                carrier: o.carrier
+            };
+        });
         res.json(formatted);
     } catch (e) {
         console.error(e);

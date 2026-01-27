@@ -231,6 +231,7 @@ const OrdersView = () => {
                         <tr className="bg-gray-50 text-gray-500 text-xs uppercase tracking-wider">
                             <th className="p-4 font-bold">Order ID</th>
                             <th className="p-4 font-bold">Customer</th>
+                            <th className="p-4 font-bold">Items</th>
                             <th className="p-4 font-bold">Total</th>
                             <th className="p-4 font-bold">Status</th>
                             <th className="p-4 font-bold">Fulfillment</th>
@@ -243,6 +244,9 @@ const OrdersView = () => {
                                 <td className="p-4">
                                     <div className="font-bold text-brand-dark">{order.customer}</div>
                                     <div className="text-xs text-gray-400">{order.email}</div>
+                                </td>
+                                <td className="p-4 text-xs font-medium text-gray-600 max-w-[200px] truncate" title={order.itemsSummary}>
+                                    {order.itemsSummary || `${order.items} Items`}
                                 </td>
                                 <td className="p-4 font-bold">{formatPrice(order.total)}</td>
                                 <td className="p-4">
