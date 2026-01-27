@@ -103,6 +103,8 @@ model Order {
   total         Float
   status        String      // Paid, Pending, Fulfilled, Delivered
   paymentId     String?
+  trackingNumber String?
+  carrier       String?
   
   items         OrderItem[]
   createdAt     DateTime    @default(now())

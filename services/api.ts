@@ -4,7 +4,7 @@ import { User, Order, Product, Review, BlogPost, CartItem, Discount, Subscriber,
 
 // Env Config
 const envMock = (import.meta as any).env?.VITE_USE_MOCK;
-const USE_MOCK = envMock !== 'false'; 
+const USE_MOCK = envMock === 'true'; // Default to false if not explicitly true
 const API_URL = (import.meta as any).env?.VITE_API_URL || '/api';
 
 // --- API FETCH WRAPPER ---
@@ -13,7 +13,7 @@ async function apiFetch<T>(endpoint: string, options: RequestInit = {}): Promise
     const headers = {
         'Content-Type': 'application/json',
         ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
-        ...options.headers,
+        ...(options.headers || {}),
     };
 
     if (USE_MOCK) return mockAdapter(endpoint, options) as Promise<T>;
@@ -74,7 +74,7 @@ export const fetchReviews = () => Promise.resolve(REVIEWS);
 export const fetchProduct = (id: string) => Promise.resolve(MAIN_PRODUCT);
 export const createReview = (data: Partial<Review>) => Promise.resolve({ success: true });
 export const fetchBlogPosts = () => Promise.resolve(BLOG_POSTS);
-export const fetchUserOrders = () => Promise.resolve(MOCK_ORDERS);
+export const fetchUserOrders = () => apiFetch<Order[]>('/orders/my-orders');
 
 export const createPaymentIntent = (items: CartItem[], currency: string) => 
     apiFetch<{ clientSecret: string; mockSecret?: string }>('/create-payment-intent', { 
@@ -89,9 +89,21 @@ export const createOrder = (data: any) =>
     });
 
 // --- ADMIN SERVICES ---
-export const fetchAdminStats = () => Promise.resolve({ totalRevenue: 45231.00, totalOrders: 342, avgOrderValue: 132.25 });
-export const fetchAdminOrders = () => Promise.resolve(MOCK_ORDERS);
-export const updateOrderStatus = (id: string, status: string) => Promise.resolve({ success: true });
+export const fetchAdminStats = () => apiFetch<any>('/admin/stats');
+export const fetchAdminOrders = () => apiFetch<Order[]>('/admin/orders');
+
+export const updateOrderStatus = (id: string, status: string) => 
+    apiFetch<{ success: boolean }>(`/admin/orders/${id}/status`, { 
+        method: 'PUT', 
+        body: JSON.stringify({ status }) 
+    });
+
+export const updateOrderTracking = (id: string, data: { trackingNumber: string, carrier: string, notify: boolean }) => 
+    apiFetch<{ success: boolean }>(`/admin/orders/${id}/tracking`, { 
+        method: 'PUT', 
+        body: JSON.stringify(data) 
+    });
+
 export const updateProduct = (id: string, data: any) => Promise.resolve({ success: true });
 export const fetchDiscounts = () => Promise.resolve([]);
 export const createDiscount = (data: any) => Promise.resolve({ success: true });

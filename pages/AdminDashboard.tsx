@@ -5,29 +5,25 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area, PieChart, Pie, Cell
 } from 'recharts';
 import { 
-  LayoutDashboard, ShoppingCart, Package, MessageSquare, Settings, 
-  Search, Tag, Check, X, Trash2, 
-  Edit, Save, Bell, Plus, Mail, Truck, Megaphone, DollarSign, Percent, ArrowUpRight, ArrowDownRight, AlertTriangle, Download, History, Menu, FileText, Code
+  LayoutDashboard, ShoppingCart, Package, Tag, Check, X, Trash2, 
+  Save, Mail, Truck, DollarSign, Percent, ArrowUpRight, ArrowDownRight, Download, History, Menu, Send, Box
 } from 'lucide-react';
 import { Card, Button, Badge } from '../components/UI';
 import { MAIN_PRODUCT } from '../constants';
-import { Discount, Review, Order, ProductVariant, Subscriber, RegionConfig, Product } from '../types';
+import { Order, ProductVariant, Product } from '../types';
 import { useAuth } from '../context/AuthContext';
-import { useSettings } from '../context/SettingsContext';
 import { useNavigate } from 'react-router-dom';
 import { SEO } from '../components/SEO';
-import { getDeliverableCountries, saveDeliverableCountries } from '../utils';
 import { 
-    fetchAdminOrders, updateOrderStatus, updateProduct, 
+    fetchAdminOrders, updateOrderStatus, updateOrderTracking, updateProduct, 
     fetchDiscounts, createDiscount, deleteDiscount, 
-    fetchAdminReviews, updateReviewStatus, deleteReview, 
     fetchSubscribers, fetchInventoryLogs, fetchAdminStats,
     fetchProduct
 } from '../services/api';
 import { DashboardSkeleton } from '../components/Skeletons';
 import { useCurrency } from '../context/CurrencyContext';
 
-type AdminView = 'DASHBOARD' | 'ORDERS' | 'REVIEWS' | 'DISCOUNTS' | 'PRODUCTS' | 'SETTINGS' | 'SHIPPING' | 'SUBSCRIBERS' | 'INVENTORY_LOGS';
+type AdminView = 'DASHBOARD' | 'ORDERS' | 'DISCOUNTS' | 'PRODUCTS' | 'SUBSCRIBERS' | 'INVENTORY_LOGS';
 
 // Extended types for local admin state
 interface AdminVariant extends ProductVariant {
@@ -46,21 +42,10 @@ const SidebarItem = ({ icon: Icon, label, active, onClick }: { icon: any, label:
 );
 
 // --- 1. Dashboard Home (Analytics) ---
-const DashboardHome = ({ setCurrentView }: { setCurrentView: (view: AdminView) => void }) => {
+const DashboardHome = () => {
     const { formatPrice } = useCurrency();
     const { data: stats, isLoading } = useQuery({ queryKey: ['admin-stats'], queryFn: fetchAdminStats });
     
-    // Analytic Charts Data
-    const salesData = [
-        { name: 'Mon', revenue: 1200 },
-        { name: 'Tue', revenue: 900 },
-        { name: 'Wed', revenue: 1600 },
-        { name: 'Thu', revenue: 2100 },
-        { name: 'Fri', revenue: 3200 },
-        { name: 'Sat', revenue: 4500 },
-        { name: 'Sun', revenue: 3800 },
-    ];
-
     const orderStatusData = [
         { name: 'Paid', value: 65, color: '#10B981' },
         { name: 'Pending', value: 15, color: '#F59E0B' },
@@ -88,98 +73,57 @@ const DashboardHome = ({ setCurrentView }: { setCurrentView: (view: AdminView) =
 
     return (
         <div className="space-y-8">
-            {/* Top Stats */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <StatCard title="Total Revenue" value={formatPrice(stats?.totalRevenue || 0)} sub="Gross sales" icon={DollarSign} trend={12.5} />
                 <StatCard title="Total Orders" value={stats?.totalOrders || 0} sub="Orders processed" icon={ShoppingCart} trend={-2.4} />
                 <StatCard title="Avg. Order Value" value={formatPrice(stats?.avgOrderValue || 0)} sub="Per transaction" icon={Percent} trend={5.2} />
             </div>
-
-            {/* Charts Section */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                {/* Revenue Chart */}
-                <Card className="lg:col-span-2 p-6 shadow-sm border border-gray-100">
-                    <div className="flex justify-between items-center mb-6">
-                        <h3 className="font-heading font-bold text-lg text-brand-dark">Revenue Trend</h3>
-                        <Badge color="bg-gray-100 text-gray-600">Last 7 Days</Badge>
-                    </div>
-                    <div className="h-80 w-full">
-                        <ResponsiveContainer width="100%" height="100%">
-                            <AreaChart data={salesData}>
-                                <defs>
-                                    <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
-                                        <stop offset="5%" stopColor="#D0202F" stopOpacity={0.1}/>
-                                        <stop offset="95%" stopColor="#D0202F" stopOpacity={0}/>
-                                    </linearGradient>
-                                </defs>
-                                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f3f4f6" />
-                                <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fontSize: 12, fill: '#9ca3af'}} dy={10} />
-                                <YAxis axisLine={false} tickLine={false} tick={{fontSize: 12, fill: '#9ca3af'}} tickFormatter={(val) => `$${val}`} />
-                                <Tooltip 
-                                    contentStyle={{borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)', fontWeight: 'bold'}} 
-                                    formatter={(value) => [`$${value}`, 'Revenue']}
-                                />
-                                <Area type="monotone" dataKey="revenue" stroke="#D0202F" strokeWidth={3} fillOpacity={1} fill="url(#colorRevenue)" />
-                            </AreaChart>
-                        </ResponsiveContainer>
-                    </div>
-                </Card>
-
-                {/* Status Pie Chart */}
-                <Card className="p-6 shadow-sm border border-gray-100">
-                    <h3 className="font-heading font-bold text-lg text-brand-dark mb-6">Order Status</h3>
-                    <div className="h-64 w-full relative">
-                        <ResponsiveContainer width="100%" height="100%">
-                            <PieChart>
-                                <Pie
-                                    data={orderStatusData}
-                                    innerRadius={60}
-                                    outerRadius={80}
-                                    paddingAngle={5}
-                                    dataKey="value"
-                                >
-                                    {orderStatusData.map((entry, index) => (
-                                        <Cell key={`cell-${index}`} fill={entry.color} />
-                                    ))}
-                                </Pie>
-                                <Tooltip />
-                            </PieChart>
-                        </ResponsiveContainer>
-                        {/* Center Text */}
-                        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                            <div className="text-center">
-                                <span className="block text-2xl font-bold text-brand-dark">{stats?.totalOrders || 0}</span>
-                                <span className="text-xs text-gray-400">Total</span>
-                            </div>
-                        </div>
-                    </div>
-                    <div className="flex justify-center gap-4 mt-4">
-                        {orderStatusData.map((item) => (
-                            <div key={item.name} className="flex items-center text-xs text-gray-500">
-                                <div className="w-2 h-2 rounded-full mr-2" style={{ backgroundColor: item.color }}></div>
-                                {item.name}
-                            </div>
-                        ))}
-                    </div>
-                </Card>
-            </div>
         </div>
     );
 };
 
-// --- 2. Orders View ---
+// --- 2. Orders View (Functional) ---
 const OrdersView = () => {
     const { formatPrice } = useCurrency();
     const queryClient = useQueryClient();
     const { data: orders = [] } = useQuery({ queryKey: ['admin-orders'], queryFn: fetchAdminOrders });
     const [filter, setFilter] = useState('All');
+    
+    // Tracking Modal State
+    const [editingOrder, setEditingOrder] = useState<string | null>(null);
+    const [trackingNumber, setTrackingNumber] = useState('');
+    const [carrier, setCarrier] = useState('Australia Post');
+    const [notifyCustomer, setNotifyCustomer] = useState(true);
 
-    const updateMutation = useMutation({
+    const updateStatusMutation = useMutation({
         mutationFn: ({ id, status }: { id: string, status: string }) => updateOrderStatus(id, status),
         onSuccess: () => queryClient.invalidateQueries({ queryKey: ['admin-orders'] })
     });
 
-    const filtered = filter === 'All' ? orders : orders.filter(o => o.status === filter);
+    const updateTrackingMutation = useMutation({
+        mutationFn: ({ id, data }: { id: string, data: any }) => updateOrderTracking(id, data),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['admin-orders'] });
+            setEditingOrder(null);
+            alert("Order updated & customer notified!");
+        }
+    });
+
+    const handleFulfill = (order: any) => {
+        setEditingOrder(order.id);
+        setTrackingNumber(order.trackingNumber || '');
+        setCarrier(order.carrier || 'Australia Post');
+    };
+
+    const submitTracking = () => {
+        if (!editingOrder) return;
+        updateTrackingMutation.mutate({
+            id: editingOrder,
+            data: { trackingNumber, carrier, notify: notifyCustomer }
+        });
+    };
+
+    const filtered = filter === 'All' ? orders : orders.filter((o: any) => o.status === filter);
 
     return (
         <Card className="p-0 overflow-hidden shadow-sm border border-gray-200">
@@ -197,47 +141,110 @@ const OrdersView = () => {
                         <tr className="bg-gray-50 text-gray-500 text-xs uppercase tracking-wider">
                             <th className="p-4 font-bold">Order ID</th>
                             <th className="p-4 font-bold">Customer</th>
-                            <th className="p-4 font-bold">Date</th>
                             <th className="p-4 font-bold">Total</th>
                             <th className="p-4 font-bold">Status</th>
-                            <th className="p-4 font-bold">Actions</th>
+                            <th className="p-4 font-bold">Fulfillment</th>
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-100 text-sm">
-                        {filtered.map(order => (
+                        {filtered.map((order: any) => (
                             <tr key={order.id} className="hover:bg-gray-50 transition-colors">
                                 <td className="p-4 font-bold text-brand-dark">{order.id}</td>
                                 <td className="p-4">
                                     <div className="font-bold text-brand-dark">{order.customer}</div>
                                     <div className="text-xs text-gray-400">{order.email}</div>
                                 </td>
-                                <td className="p-4 text-gray-500">{order.date}</td>
                                 <td className="p-4 font-bold">{formatPrice(order.total)}</td>
-                                <td className="p-4">
-                                    <span className={`px-3 py-1 rounded-full text-xs font-bold ${
-                                        order.status === 'Paid' ? 'bg-green-100 text-green-700' : 
-                                        order.status === 'Fulfilled' ? 'bg-blue-100 text-blue-700' :
-                                        'bg-yellow-100 text-yellow-700'
-                                    }`}>
-                                        {order.status}
-                                    </span>
-                                </td>
                                 <td className="p-4">
                                     <select 
                                         value={order.status}
-                                        onChange={(e) => updateMutation.mutate({ id: order.id, status: e.target.value })}
-                                        className="bg-white border border-gray-200 rounded px-2 py-1 text-xs outline-none focus:border-brand-red"
+                                        onChange={(e) => updateStatusMutation.mutate({ id: order.id, status: e.target.value })}
+                                        className={`px-2 py-1 rounded text-xs font-bold outline-none border border-transparent hover:border-gray-300 ${
+                                            order.status === 'Paid' ? 'bg-green-100 text-green-700' : 
+                                            order.status === 'Fulfilled' ? 'bg-blue-100 text-blue-700' :
+                                            'bg-yellow-100 text-yellow-700'
+                                        }`}
                                     >
                                         <option value="Pending">Pending</option>
                                         <option value="Paid">Paid</option>
                                         <option value="Fulfilled">Fulfilled</option>
                                     </select>
                                 </td>
+                                <td className="p-4">
+                                    {order.trackingNumber ? (
+                                        <div className="text-xs">
+                                            <div className="font-bold text-brand-dark">{order.carrier}</div>
+                                            <a href="#" className="text-brand-red hover:underline">{order.trackingNumber}</a>
+                                            <button onClick={() => handleFulfill(order)} className="ml-2 text-gray-400 hover:text-brand-dark underline">Edit</button>
+                                        </div>
+                                    ) : (
+                                        <Button size="sm" onClick={() => handleFulfill(order)} className="h-8 text-xs bg-brand-dark hover:bg-black">
+                                            Add Tracking
+                                        </Button>
+                                    )}
+                                </td>
                             </tr>
                         ))}
                     </tbody>
                 </table>
             </div>
+
+            {/* Tracking Modal */}
+            {editingOrder && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+                    <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setEditingOrder(null)} />
+                    <div className="bg-white rounded-xl shadow-2xl p-6 w-full max-w-md relative z-10 animate-in fade-in zoom-in-95">
+                        <div className="flex justify-between items-center mb-4">
+                            <h3 className="font-heading font-bold text-lg text-brand-dark flex items-center">
+                                <Truck className="mr-2" size={20}/> Update Shipment
+                            </h3>
+                            <button onClick={() => setEditingOrder(null)}><X size={20} className="text-gray-400" /></button>
+                        </div>
+                        
+                        <div className="space-y-4">
+                            <div>
+                                <label className="text-xs font-bold text-gray-500 uppercase mb-1 block">Carrier</label>
+                                <select 
+                                    value={carrier} 
+                                    onChange={(e) => setCarrier(e.target.value)}
+                                    className="w-full p-2 border border-gray-200 rounded-lg outline-none focus:border-brand-red"
+                                >
+                                    <option value="Australia Post">Australia Post</option>
+                                    <option value="DHL Express">DHL Express</option>
+                                    <option value="FedEx">FedEx</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label className="text-xs font-bold text-gray-500 uppercase mb-1 block">Tracking Number</label>
+                                <input 
+                                    type="text" 
+                                    value={trackingNumber} 
+                                    onChange={(e) => setTrackingNumber(e.target.value)}
+                                    placeholder="e.g. 33XHK7..." 
+                                    className="w-full p-2 border border-gray-200 rounded-lg outline-none focus:border-brand-red"
+                                />
+                            </div>
+                            
+                            <div className="flex items-center gap-2 bg-blue-50 p-3 rounded-lg">
+                                <input 
+                                    type="checkbox" 
+                                    id="notify" 
+                                    checked={notifyCustomer} 
+                                    onChange={(e) => setNotifyCustomer(e.target.checked)}
+                                    className="rounded text-brand-red focus:ring-brand-red"
+                                />
+                                <label htmlFor="notify" className="text-sm text-blue-900 font-medium cursor-pointer">
+                                    Send email notification to customer
+                                </label>
+                            </div>
+
+                            <Button fullWidth onClick={submitTracking} disabled={updateTrackingMutation.isPending}>
+                                {updateTrackingMutation.isPending ? 'Sending...' : 'Update & Notify'}
+                            </Button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </Card>
     );
 };
@@ -275,39 +282,11 @@ const ProductsView = () => {
 
     const saveChanges = () => {
         setIsSaving(true);
-        // Only send variant data to backend, ignoring title/desc updates
         mutation.mutate({ variants: editProduct.variants });
     };
 
     return (
         <div className="space-y-8">
-            {/* Hardcoded Info Notice */}
-            <div className="bg-blue-50 border border-blue-200 rounded-2xl p-6 flex items-start gap-4">
-                <div className="p-2 bg-white rounded-full text-blue-600 shadow-sm"><Code size={20} /></div>
-                <div>
-                    <h3 className="font-bold text-blue-900 mb-1">Product Details Managed in Code</h3>
-                    <p className="text-sm text-blue-700">
-                        To update the Title, Description, or Images, please edit <code className="bg-white px-2 py-0.5 rounded border border-blue-100 font-mono text-xs">constants.ts</code> in the source code.
-                        <br/>Only <strong>Price</strong> and <strong>Inventory</strong> are editable here.
-                    </p>
-                </div>
-            </div>
-
-            {/* Read-Only Product Info */}
-            <Card className="p-8 shadow-sm opacity-75">
-                <div className="flex gap-6">
-                    <div className="w-24 h-24 bg-gray-100 rounded-xl overflow-hidden border border-gray-200">
-                        <img src={editProduct.images[0]} alt="Product" className="w-full h-full object-cover grayscale" />
-                    </div>
-                    <div>
-                        <div className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-1">Product Title (Static)</div>
-                        <h3 className="font-heading font-bold text-xl text-brand-dark mb-2">{editProduct.title}</h3>
-                        <p className="text-sm text-gray-500 line-clamp-2">{editProduct.description}</p>
-                    </div>
-                </div>
-            </Card>
-
-            {/* Editable Variants */}
             <Card className="p-0 overflow-hidden shadow-sm">
                 <div className="p-6 border-b border-gray-100 flex justify-between items-center">
                     <h3 className="font-heading font-bold text-lg text-brand-dark">Pricing & Inventory</h3>
@@ -363,48 +342,6 @@ const ProductsView = () => {
                     {isSaving ? 'Saving...' : <><Save size={20} className="mr-2"/> Update Prices</>}
                 </Button>
             </div>
-        </div>
-    );
-};
-
-// --- 4. Settings Module (Static Config View) ---
-const SettingsView = () => {
-    return (
-        <div className="space-y-8">
-            <Card className="p-8 border border-gray-200 shadow-sm">
-                <div className="flex items-center gap-4 mb-6">
-                    <div className="p-3 bg-gray-100 rounded-full text-brand-dark"><FileText size={24}/></div>
-                    <div>
-                        <h3 className="font-heading font-bold text-lg text-brand-dark">Static Configuration</h3>
-                        <p className="text-gray-500 text-sm">These settings are defined in <code className="bg-gray-100 px-1 rounded">constants.ts</code> and cannot be changed via Admin.</p>
-                    </div>
-                </div>
-
-                <div className="space-y-6">
-                    <div>
-                        <label className="text-xs font-bold text-gray-400 uppercase block mb-2">Product Title</label>
-                        <div className="p-4 bg-gray-50 rounded-lg text-brand-dark font-medium border border-gray-100">
-                            {MAIN_PRODUCT.title}
-                        </div>
-                    </div>
-                    <div>
-                        <label className="text-xs font-bold text-gray-400 uppercase block mb-2">Description</label>
-                        <div className="p-4 bg-gray-50 rounded-lg text-brand-dark text-sm leading-relaxed border border-gray-100">
-                            {MAIN_PRODUCT.description}
-                        </div>
-                    </div>
-                    <div>
-                        <label className="text-xs font-bold text-gray-400 uppercase block mb-2">Product Images</label>
-                        <div className="grid grid-cols-4 gap-4">
-                            {MAIN_PRODUCT.images.map((img, i) => (
-                                <div key={i} className="aspect-square rounded-lg overflow-hidden border border-gray-200 bg-gray-50">
-                                    <img src={img} alt="" className="w-full h-full object-cover" />
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-                </div>
-            </Card>
         </div>
     );
 };
@@ -511,68 +448,6 @@ const DiscountsView = () => {
     );
 };
 
-const ReviewsView = () => {
-    const queryClient = useQueryClient();
-    const { data: reviews = [] } = useQuery({ queryKey: ['admin-reviews'], queryFn: fetchAdminReviews });
-
-    const updateMutation = useMutation({
-        mutationFn: ({ id, status }: { id: string, status: string }) => updateReviewStatus(id, status),
-        onSuccess: () => queryClient.invalidateQueries({ queryKey: ['admin-reviews'] })
-    });
-
-    const deleteMutation = useMutation({
-        mutationFn: deleteReview,
-        onSuccess: () => queryClient.invalidateQueries({ queryKey: ['admin-reviews'] })
-    });
-
-    const handleAction = (id: string, action: 'approve' | 'delete') => {
-        if (action === 'delete') {
-            if(window.confirm('Delete this review?')) deleteMutation.mutate(id);
-        } else {
-            updateMutation.mutate({ id, status: 'Approved' });
-        }
-    };
-
-    return (
-        <Card className="p-0 overflow-hidden">
-            <div className="p-6 border-b border-gray-100 flex justify-between items-center">
-                <h3 className="font-heading font-bold text-lg text-brand-dark">Review Moderation</h3>
-                <div className="text-sm text-gray-500">{reviews.length} Total</div>
-            </div>
-            <div className="divide-y divide-gray-100">
-                {reviews.map(review => (
-                    <div key={review.id} className="p-6 flex flex-col md:flex-row gap-6 hover:bg-gray-50 transition-colors">
-                        <div className="flex-1">
-                            <div className="flex items-center gap-2 mb-2">
-                                <span className="font-bold text-brand-dark">{review.author}</span>
-                                {review.verified && <Badge color="bg-blue-500">Verified Buyer</Badge>}
-                                {review.status === 'Pending' && <Badge color="bg-yellow-500">Pending</Badge>}
-                            </div>
-                            <div className="flex text-brand-red mb-2 text-xs">
-                                {[...Array(5)].map((_, i) => (
-                                    <span key={i}>{i < review.rating ? '★' : '☆'}</span>
-                                ))}
-                            </div>
-                            <h4 className="font-bold text-sm mb-1">{review.title}</h4>
-                            <p className="text-sm text-gray-600">{review.content}</p>
-                        </div>
-                        <div className="flex items-center gap-2">
-                            {review.status !== 'Approved' && (
-                                <button onClick={() => handleAction(review.id, 'approve')} className="p-2 bg-green-50 text-green-600 rounded-lg hover:bg-green-100" title="Approve">
-                                    <Check size={18} />
-                                </button>
-                            )}
-                            <button onClick={() => handleAction(review.id, 'delete')} className="p-2 bg-red-50 text-red-600 rounded-lg hover:bg-red-100" title="Delete">
-                                <Trash2 size={18} />
-                            </button>
-                        </div>
-                    </div>
-                ))}
-            </div>
-        </Card>
-    );
-};
-
 const SubscribersView = () => {
     const { data: subscribers = [] } = useQuery({ queryKey: ['admin-subscribers'], queryFn: fetchSubscribers });
 
@@ -653,19 +528,26 @@ const InventoryLogView = () => {
 export const AdminDashboard = () => {
   const [currentView, setCurrentView] = useState<AdminView>('DASHBOARD');
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
-  const { isAuthenticated, logout } = useAuth();
+  const { isAuthenticated, logout, isAdmin, user } = useAuth();
   const navigate = useNavigate();
 
+  // Strict Security Check: Must be Authenticated AND Admin
   useEffect(() => {
-    if (!isAuthenticated) navigate('/admin/login');
-  }, [isAuthenticated, navigate]);
+    if (!isAuthenticated) {
+        navigate('/admin/login');
+    } else if (user?.role !== 'ADMIN') {
+        // Logged in user trying to access admin? Redirect them.
+        navigate('/'); 
+    }
+  }, [isAuthenticated, user, navigate]);
 
   const handleViewChange = (view: AdminView) => {
       setCurrentView(view);
       setIsMobileSidebarOpen(false);
   };
 
-  if (!isAuthenticated) return null;
+  // Prevent flash of content for non-admins
+  if (!isAuthenticated || user?.role !== 'ADMIN') return null;
 
   return (
     <div className="min-h-screen bg-gray-50 flex font-sans">
@@ -691,9 +573,7 @@ export const AdminDashboard = () => {
           <SidebarItem icon={Package} label="Products" active={currentView === 'PRODUCTS'} onClick={() => handleViewChange('PRODUCTS')} />
           <SidebarItem icon={Tag} label="Discounts" active={currentView === 'DISCOUNTS'} onClick={() => handleViewChange('DISCOUNTS')} />
           <SidebarItem icon={Mail} label="Subscribers" active={currentView === 'SUBSCRIBERS'} onClick={() => handleViewChange('SUBSCRIBERS')} />
-          <SidebarItem icon={MessageSquare} label="Reviews" active={currentView === 'REVIEWS'} onClick={() => handleViewChange('REVIEWS')} />
           <SidebarItem icon={History} label="Inventory Logs" active={currentView === 'INVENTORY_LOGS'} onClick={() => handleViewChange('INVENTORY_LOGS')} />
-          <SidebarItem icon={Settings} label="Configuration" active={currentView === 'SETTINGS'} onClick={() => handleViewChange('SETTINGS')} />
         </div>
         <div className="p-4 border-t border-gray-100">
              <Button fullWidth variant="ghost" onClick={logout} className="text-gray-500 hover:text-red-500 justify-start">
@@ -721,14 +601,12 @@ export const AdminDashboard = () => {
                 </h1>
             </div>
 
-            {currentView === 'DASHBOARD' && <DashboardHome setCurrentView={handleViewChange} />}
+            {currentView === 'DASHBOARD' && <DashboardHome />}
             {currentView === 'ORDERS' && <OrdersView />}
             {currentView === 'PRODUCTS' && <ProductsView />}
             {currentView === 'DISCOUNTS' && <DiscountsView />}
-            {currentView === 'REVIEWS' && <ReviewsView />}
             {currentView === 'SUBSCRIBERS' && <SubscribersView />}
             {currentView === 'INVENTORY_LOGS' && <InventoryLogView />}
-            {currentView === 'SETTINGS' && <SettingsView />}
         </div>
       </div>
     </div>
