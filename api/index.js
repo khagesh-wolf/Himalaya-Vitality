@@ -1,7 +1,11 @@
 
 const path = require('path');
-// Explicitly load .env from the project root (one level up)
-require('dotenv').config({ path: path.join(__dirname, '../.env') });
+// Explicitly load .env from the project root (one level up) if possible, but don't crash
+try {
+    require('dotenv').config({ path: path.join(__dirname, '../.env') });
+} catch (e) {
+    console.warn("Could not load local .env file", e);
+}
 
 const express = require('express');
 const { PrismaClient } = require('@prisma/client');

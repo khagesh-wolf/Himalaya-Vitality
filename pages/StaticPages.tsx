@@ -224,7 +224,7 @@ export const SciencePage = () => (
                             "Chelates heavy metals and aids in detoxification.",
                             "Supports gut health and immune function."
                         ].map((item, i) => (
-                            <li key={i} className="flex items-start gap-3">
+                            <li key={`sci-list-${i}`} className="flex items-start gap-3">
                                 <CheckCircle className="text-brand-red shrink-0 mt-1" size={20} />
                                 <span className="text-gray-700 font-medium">{item}</span>
                             </li>
@@ -244,7 +244,7 @@ export const SciencePage = () => (
                             </div>
                             <div className="flex justify-between items-center p-4 bg-gray-50 rounded-xl">
                                 <span className="font-bold text-gray-600">Fulvic Acid</span>
-                                <span className="font-bold text-brand-dark"> 60%</span>
+                                <span className="font-bold text-brand-dark">> 60%</span>
                             </div>
                             <div className="flex justify-between items-center p-4 bg-gray-50 rounded-xl">
                                 <span className="font-bold text-gray-600">Dibenzo-alpha-pyrones</span>
@@ -268,7 +268,7 @@ export const SciencePage = () => (
                     {SCIENCE_BENEFITS.map((item, i) => {
                         const Icon = item.icon;
                         return (
-                            <Reveal key={i} delay={i*150}>
+                            <Reveal key={`benefit-${i}`} delay={i*150}>
                                 <Card className="p-8 h-full hover:-translate-y-2 transition-transform duration-300 border-t-4 border-t-brand-red">
                                     <div className="mb-6 text-brand-red bg-red-50 w-14 h-14 rounded-full flex items-center justify-center">
                                         {Icon && <Icon size={28} />}
