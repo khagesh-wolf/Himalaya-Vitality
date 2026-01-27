@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate, Link, useLocation } from 'react-router-dom';
 import { Mail, Lock, User, AlertCircle, Key, ArrowLeft, CheckCircle, Info } from 'lucide-react';
@@ -20,7 +21,8 @@ const GoogleIcon = () => (
 export const LoginPage = () => {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
-    const { login, socialLogin, error, isLoading, isAuthenticated } = useAuth();
+    const { login, socialLogin, error: authError, isLoading, isAuthenticated } = useAuth();
+    const [localError, setLocalError] = useState('');
     const navigate = useNavigate();
     const location = useLocation();
 
@@ -33,6 +35,7 @@ export const LoginPage = () => {
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+        setLocalError('');
         try {
             await login({ email, password });
             // Navigation handled by useEffect upon isAuthenticated change
@@ -45,8 +48,8 @@ export const LoginPage = () => {
     };
 
     const handleGoogle = useGoogleLogin({
-        onSuccess: (res) => socialLogin(res.access_token).then(() => navigate(from)),
-        onError: () => console.error('Google Failed')
+        onSuccess: (res) => socialLogin(res.access_token).then(() => navigate(from)).catch(e => setLocalError("Google Login Failed: " + e.message)),
+        onError: () => setLocalError('Google Authentication Failed in Browser')
     });
 
     return (
@@ -98,9 +101,9 @@ export const LoginPage = () => {
                             <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
                         </div>
                         
-                        {error && (
+                        {(authError || localError) && (
                             <div className="flex items-center text-red-500 text-sm bg-red-50 p-3 rounded-lg border border-red-100 animate-in fade-in slide-in-from-top-1">
-                                <AlertCircle size={16} className="mr-2 shrink-0"/> {error}
+                                <AlertCircle size={16} className="mr-2 shrink-0"/> {authError || localError}
                             </div>
                         )}
                         
@@ -125,13 +128,13 @@ export const SignupPage = () => {
     const [password, setPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
     const [localError, setLocalError] = useState('');
-    const { signup, error, isLoading, socialLogin } = useAuth();
+    const { signup, error: authError, isLoading, socialLogin } = useAuth();
     const navigate = useNavigate();
     const location = useLocation();
 
     const handleGoogle = useGoogleLogin({
-        onSuccess: (res) => socialLogin(res.access_token).then(() => navigate('/profile')),
-        onError: () => console.error('Google Failed')
+        onSuccess: (res) => socialLogin(res.access_token).then(() => navigate('/profile')).catch(e => setLocalError("Google Signup Failed: " + e.message)),
+        onError: () => setLocalError('Google Authentication Failed')
     });
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -146,7 +149,9 @@ export const SignupPage = () => {
         try {
             await signup({ name, email, password });
             navigate('/verify-email', { state: { email, from: location.state?.from } });
-        } catch (e) { /* Error handled in context */ }
+        } catch (e: any) {
+            // Error is handled in context but we ensure it clears old errors on new submit attempt
+        }
     };
 
     return (
@@ -220,9 +225,9 @@ export const SignupPage = () => {
                             <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
                         </div>
                         
-                        {(error || localError) && (
+                        {(authError || localError) && (
                             <div className="flex items-center text-red-500 text-sm bg-red-50 p-3 rounded-lg border border-red-100 animate-in fade-in slide-in-from-top-1">
-                                <AlertCircle size={16} className="mr-2 shrink-0"/> {localError || error}
+                                <AlertCircle size={16} className="mr-2 shrink-0"/> {localError || authError}
                             </div>
                         )}
                         

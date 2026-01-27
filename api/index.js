@@ -1,5 +1,8 @@
 
-require('dotenv').config();
+const path = require('path');
+// Explicitly load .env from the project root (one level up)
+require('dotenv').config({ path: path.join(__dirname, '../.env') });
+
 const express = require('express');
 const { PrismaClient } = require('@prisma/client');
 const cors = require('cors');
@@ -57,16 +60,12 @@ const transporter = nodemailer.createTransport({
 
 const sendEmail = async (to, subject, text, html) => {
     try {
-        console.log(`[EMAIL] Sending to ${to}...`);
+        console.log(`[EMAIL] Attempting send to ${to}...`);
+        
         if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
-            // Only throw in production, log warning in dev if missing
-            if (process.env.NODE_ENV === 'production') {
-                throw new Error('Missing EMAIL_USER or EMAIL_PASS environment variables');
-            } else {
-                console.warn('Mocking email send due to missing credentials');
-                return { messageId: 'mock-id' };
-            }
+            throw new Error('EMAIL_USER or EMAIL_PASS environment variables are missing. Check your .env file.');
         }
+
         const info = await transporter.sendMail({ 
             from: `"Himalaya Vitality" <${process.env.EMAIL_USER}>`, 
             to, 
@@ -79,12 +78,12 @@ const sendEmail = async (to, subject, text, html) => {
                     <small style="color: #888;">This is an automated message.</small>
                    </div>`
         });
-        console.log('[EMAIL] Sent:', info.messageId);
+        console.log('[EMAIL] Sent successfully:', info.messageId);
         return info;
     } catch (e) {
-        console.error('[EMAIL FAIL]', e);
-        // Don't crash request if email fails
-        return null;
+        console.error('[EMAIL FAIL]', e.message);
+        // We throw here so the API route knows it failed and can alert the frontend
+        throw e;
     }
 };
 
@@ -104,15 +103,18 @@ app.post('/api/auth/signup', async (req, res) => {
         const otp = generateOTP();
         const otpExpires = new Date(Date.now() + 15 * 60 * 1000); 
 
+        // Send Email FIRST. If it fails, don't create user (or handle rollback)
+        // This ensures user knows if OTP failed.
+        await sendEmail(email, 'Verify your email', `Your verification code is: ${otp}`);
+
         const newUser = await prisma.user.create({
             data: { name, email, password: hashedPassword, otp, otpExpires }
         });
-
-        sendEmail(email, 'Verify your email', `Your verification code is: ${otp}`);
         
         res.json({ message: 'Signup successful', requiresVerification: true, email });
     } catch (e) {
-        res.status(500).json({ error: e.message });
+        console.error("Signup Error:", e);
+        res.status(500).json({ error: e.message || 'Failed to send verification email' });
     }
 });
 
@@ -149,6 +151,46 @@ app.post('/api/auth/verify-email', async (req, res) => {
         const { password: _, ...safeUser } = updated;
         res.json({ token, user: safeUser });
     } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.post('/api/auth/google', async (req, res) => {
+    const { token } = req.body;
+    try {
+        // Validate token with Google UserInfo Endpoint
+        const googleRes = await fetch(`https://www.googleapis.com/oauth2/v3/userinfo?access_token=${token}`);
+        
+        if(!googleRes.ok) {
+            const errText = await googleRes.text();
+            console.error('Google Validation Failed:', errText);
+            throw new Error('Invalid Google Token');
+        }
+        
+        const googleUser = await googleRes.json();
+        
+        // Check if user exists
+        let user = await prisma.user.findUnique({ where: { email: googleUser.email } });
+        
+        if (!user) {
+            // Create user
+            user = await prisma.user.create({
+                data: {
+                    email: googleUser.email,
+                    name: googleUser.name,
+                    provider: 'GOOGLE',
+                    isVerified: true,
+                    avatar: googleUser.picture
+                }
+            });
+        }
+
+        const jwtToken = jwt.sign({ id: user.id, role: user.role, email: user.email }, JWT_SECRET, { expiresIn: '7d' });
+        const { password: _, otp: __, ...safeUser } = user;
+        res.json({ token: jwtToken, user: safeUser });
+
+    } catch (e) {
+        console.error('Google Auth Error:', e);
+        res.status(401).json({ message: 'Google Auth Failed: ' + e.message });
+    }
 });
 
 app.get('/api/auth/me', authenticate, async (req, res) => {
@@ -236,21 +278,26 @@ app.put('/api/admin/orders/:id/tracking', requireAdmin, async (req, res) => {
         });
 
         if (notify) {
-            await sendEmail(
-                order.customerEmail,
-                `Your Order ${order.orderNumber} has shipped!`,
-                `Good news! Your order is on the way.\n\nCarrier: ${carrier}\nTracking Number: ${trackingNumber}\n\nTrack here: https://www.google.com/search?q=${carrier}+tracking+${trackingNumber}`,
-                `<div style="font-family: sans-serif; color: #333; padding: 20px;">
-                    <h2 style="color: #D0202F;">Order Shipped</h2>
-                    <p>Good news, <strong>${order.customerName}</strong>!</p>
-                    <p>Your order <strong>${order.orderNumber}</strong> has been dispatched.</p>
-                    <div style="background: #f9f9f9; padding: 15px; border-radius: 8px; margin: 20px 0;">
-                        <p style="margin: 5px 0;"><strong>Carrier:</strong> ${carrier}</p>
-                        <p style="margin: 5px 0;"><strong>Tracking Number:</strong> ${trackingNumber}</p>
-                    </div>
-                    <p>Your vitality boost is getting closer.</p>
-                </div>`
-            );
+            // Attempt to send email, but don't fail the request if tracking email fails
+            try {
+                await sendEmail(
+                    order.customerEmail,
+                    `Your Order ${order.orderNumber} has shipped!`,
+                    `Good news! Your order is on the way.\n\nCarrier: ${carrier}\nTracking Number: ${trackingNumber}\n\nTrack here: https://www.google.com/search?q=${carrier}+tracking+${trackingNumber}`,
+                    `<div style="font-family: sans-serif; color: #333; padding: 20px;">
+                        <h2 style="color: #D0202F;">Order Shipped</h2>
+                        <p>Good news, <strong>${order.customerName}</strong>!</p>
+                        <p>Your order <strong>${order.orderNumber}</strong> has been dispatched.</p>
+                        <div style="background: #f9f9f9; padding: 15px; border-radius: 8px; margin: 20px 0;">
+                            <p style="margin: 5px 0;"><strong>Carrier:</strong> ${carrier}</p>
+                            <p style="margin: 5px 0;"><strong>Tracking Number:</strong> ${trackingNumber}</p>
+                        </div>
+                        <p>Your vitality boost is getting closer.</p>
+                    </div>`
+                );
+            } catch (emailErr) {
+                console.warn("Failed to send tracking email:", emailErr);
+            }
         }
 
         res.json({ success: true });
@@ -289,11 +336,15 @@ app.post('/api/orders', async (req, res) => {
 
         const order = await prisma.order.create({ data: orderData });
         
-        sendEmail(
-            customer.email, 
-            `Order Confirmation ${order.orderNumber}`, 
-            `Thank you for your purchase, ${customer.firstName}! Your order ${order.orderNumber} has been received.`
-        );
+        try {
+            await sendEmail(
+                customer.email, 
+                `Order Confirmation ${order.orderNumber}`, 
+                `Thank you for your purchase, ${customer.firstName}! Your order ${order.orderNumber} has been received.`
+            );
+        } catch(e) {
+            console.warn("Order email failed:", e);
+        }
 
         res.json({ success: true, orderId: order.orderNumber });
     } catch(e) {

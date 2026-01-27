@@ -51,6 +51,34 @@ const ContentBlock = ({ children, title }: { children?: React.ReactNode, title: 
     </section>
 );
 
+// Define static data outside component to avoid re-creation
+const SCIENCE_BENEFITS = [
+    { title: "ATP Production", icon: Zap, text: "Shilajit enhances mitochondrial function, directly increasing Adenosine Triphosphate (ATP) production—the body's primary energy currency." },
+    { title: "Testosterone Support", icon: Activity, text: "Clinical studies show a significant increase in total testosterone, free testosterone, and DHEAS in healthy men after 90 days." },
+    { title: "Cognitive Health", icon: Brain, text: "Fulvic acid prevents the aggregation of tau protein, potentially protecting against cognitive decline and improving memory." }
+];
+
+const PROCESS_STEPS = [
+    { 
+        title: "Collection", 
+        icon: Mountain,
+        desc: "Harvested by hand from high-altitude cliffs in the pristine Dolpa region.",
+        color: "bg-stone-100 text-stone-600"
+    },
+    { 
+        title: "Purification", 
+        icon: Droplet,
+        desc: "Dissolved in pure spring water and filtered through cotton layers to remove impurities.",
+        color: "bg-blue-50 text-blue-600"
+    },
+    { 
+        title: "Sun Drying", 
+        icon: Sun,
+        desc: "Exposed to sunlight for 60-90 days. This slow process concentrates the minerals without damaging them.",
+        color: "bg-amber-50 text-amber-600"
+    }
+];
+
 // --- About Page (Story) ---
 export const AboutPage = () => {
     return (
@@ -113,36 +141,20 @@ export const AboutPage = () => {
               </Reveal>
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-                  {[
-                      { 
-                          title: "Collection", 
-                          icon: Mountain,
-                          desc: "Harvested by hand from high-altitude cliffs in the pristine Dolpa region.",
-                          color: "bg-stone-100 text-stone-600"
-                      },
-                      { 
-                          title: "Purification", 
-                          icon: Droplet,
-                          desc: "Dissolved in pure spring water and filtered through cotton layers to remove impurities.",
-                          color: "bg-blue-50 text-blue-600"
-                      },
-                      { 
-                          title: "Sun Drying", 
-                          icon: Sun,
-                          desc: "Exposed to sunlight for 60-90 days. This slow process concentrates the minerals without damaging them.",
-                          color: "bg-amber-50 text-amber-600"
-                      }
-                  ].map((step, i) => (
-                      <Reveal key={i} delay={i*150}>
-                          <div className="bg-white p-8 rounded-3xl border border-gray-100 shadow-sm hover:shadow-xl transition-all duration-300 group h-full">
-                                <div className={`w-14 h-14 rounded-2xl flex items-center justify-center mb-6 ${step.color} group-hover:scale-110 transition-transform`}>
-                                    <step.icon size={28} />
-                                </div>
-                                <h3 className="font-heading font-bold text-xl text-brand-dark mb-3">{step.title}</h3>
-                                <p className="text-gray-500 leading-relaxed">{step.desc}</p>
-                          </div>
-                      </Reveal>
-                  ))}
+                  {PROCESS_STEPS.map((step, i) => {
+                      const StepIcon = step.icon;
+                      return (
+                          <Reveal key={i} delay={i*150}>
+                              <div className="bg-white p-8 rounded-3xl border border-gray-100 shadow-sm hover:shadow-xl transition-all duration-300 group h-full">
+                                    <div className={`w-14 h-14 rounded-2xl flex items-center justify-center mb-6 ${step.color} group-hover:scale-110 transition-transform`}>
+                                        {StepIcon && <StepIcon size={28} />}
+                                    </div>
+                                    <h3 className="font-heading font-bold text-xl text-brand-dark mb-3">{step.title}</h3>
+                                    <p className="text-gray-500 leading-relaxed">{step.desc}</p>
+                              </div>
+                          </Reveal>
+                      );
+                  })}
               </div>
           </div>
 
@@ -232,7 +244,7 @@ export const SciencePage = () => (
                             </div>
                             <div className="flex justify-between items-center p-4 bg-gray-50 rounded-xl">
                                 <span className="font-bold text-gray-600">Fulvic Acid</span>
-                                <span className="font-bold text-brand-dark"> 60%</span>
+                                <span className="font-bold text-brand-dark">> 60%</span>
                             </div>
                             <div className="flex justify-between items-center p-4 bg-gray-50 rounded-xl">
                                 <span className="font-bold text-gray-600">Dibenzo-alpha-pyrones</span>
@@ -253,21 +265,20 @@ export const SciencePage = () => (
                     <h2 className="font-heading text-3xl font-extrabold text-brand-dark mb-12 text-center">Mechanism of Action</h2>
                 </Reveal>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-                    {[
-                        { title: "ATP Production", icon: Zap, text: "Shilajit enhances mitochondrial function, directly increasing Adenosine Triphosphate (ATP) production—the body's primary energy currency." },
-                        { title: "Testosterone Support", icon: Activity, text: "Clinical studies show a significant increase in total testosterone, free testosterone, and DHEAS in healthy men after 90 days." },
-                        { title: "Cognitive Health", icon: Brain, text: "Fulvic acid prevents the aggregation of tau protein, potentially protecting against cognitive decline and improving memory." }
-                    ].map((item, i) => (
-                        <Reveal key={i} delay={i*150}>
-                            <Card className="p-8 h-full hover:-translate-y-2 transition-transform duration-300 border-t-4 border-t-brand-red">
-                                <div className="mb-6 text-brand-red bg-red-50 w-14 h-14 rounded-full flex items-center justify-center">
-                                    <item.icon size={28} />
-                                </div>
-                                <h3 className="font-bold text-xl text-brand-dark mb-3">{item.title}</h3>
-                                <p className="text-gray-500 leading-relaxed">{item.text}</p>
-                            </Card>
-                        </Reveal>
-                    ))}
+                    {SCIENCE_BENEFITS.map((item, i) => {
+                        const Icon = item.icon;
+                        return (
+                            <Reveal key={i} delay={i*150}>
+                                <Card className="p-8 h-full hover:-translate-y-2 transition-transform duration-300 border-t-4 border-t-brand-red">
+                                    <div className="mb-6 text-brand-red bg-red-50 w-14 h-14 rounded-full flex items-center justify-center">
+                                        {Icon && <Icon size={28} />}
+                                    </div>
+                                    <h3 className="font-bold text-xl text-brand-dark mb-3">{item.title}</h3>
+                                    <p className="text-gray-500 leading-relaxed">{item.text}</p>
+                                </Card>
+                            </Reveal>
+                        );
+                    })}
                 </div>
             </div>
 
