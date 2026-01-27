@@ -435,8 +435,8 @@ export const CheckoutPage = () => {
 
     const handleSuccess = (orderId: string) => {
         clearCart();
-        alert(`Order ${orderId} placed successfully! Check your email.`);
-        navigate('/profile');
+        // Redirect to Order Confirmation instead of Profile to prevent auth redirection issues
+        navigate(`/order-confirmation?orderId=${orderId}`);
     };
 
     if (!stripePromise && step === 2) {
