@@ -203,6 +203,31 @@ app.get('/api/auth/me', authenticate, async (req, res) => {
     } catch(e) { res.status(500).json({ error: 'Failed to fetch profile' }); }
 });
 
+// Update Profile Route (FIXED: Missing Endpoint)
+app.put('/api/auth/profile', authenticate, async (req, res) => {
+    const { firstName, lastName, address, city, country, zip, phone } = req.body;
+    try {
+        const updatedUser = await prisma.user.update({
+            where: { id: req.user.id },
+            data: { 
+                firstName, 
+                lastName, 
+                name: `${firstName} ${lastName}`,
+                address, 
+                city, 
+                country, 
+                zip, 
+                phone 
+            }
+        });
+        const { password: _, otp: __, ...safeUser } = updatedUser;
+        res.json(safeUser);
+    } catch (e) {
+        console.error("Profile Update Error:", e);
+        res.status(500).json({ error: 'Failed to update profile' });
+    }
+});
+
 // --- ADMIN ROUTES ---
 
 // Get Stats
@@ -353,9 +378,10 @@ app.post('/api/orders', async (req, res) => {
     }
 });
 
-// Get User Orders
+// Get User Orders (Fixed: Added Logging)
 app.get('/api/orders/my-orders', authenticate, async (req, res) => {
     try {
+        console.log(`[ORDERS] Fetching orders for User ID: ${req.user.id}`);
         const orders = await prisma.order.findMany({
             where: { userId: req.user.id },
             include: { items: true },
@@ -379,7 +405,8 @@ app.get('/api/orders/my-orders', authenticate, async (req, res) => {
         }));
         res.json(formatted);
     } catch(e) {
-        res.status(500).json({ error: 'Failed to fetch orders' });
+        console.error("[ORDERS] Fetch Error:", e);
+        res.status(500).json({ error: 'Failed to fetch orders: ' + e.message });
     }
 });
 
