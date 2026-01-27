@@ -677,11 +677,15 @@ app.put('/api/admin/orders/:id/tracking', requireAdmin, async (req, res) => {
         });
 
         if (notify) {
+            let trackingUrl = `https://auspost.com.au/mypost/track/details/${trackingNumber}`;
+            if (carrier === 'DHL Express') trackingUrl = `https://www.dhl.com/global-en/home/tracking/tracking-express.html?submit=1&tracking-id=${trackingNumber}`;
+            if (carrier === 'FedEx') trackingUrl = `https://www.fedex.com/fedextrack/?trknbr=${trackingNumber}`;
+
             try {
                 await sendEmail(
                     order.customerEmail,
                     `Your Order ${order.orderNumber} has shipped!`,
-                    `Good news! Your order is on the way.\n\nCarrier: ${carrier}\nTracking Number: ${trackingNumber}\n\nTrack here: https://www.google.com/search?q=${carrier}+tracking+${trackingNumber}`
+                    `Good news! Your order is on the way.\n\nCarrier: ${carrier}\nTracking Number: ${trackingNumber}\n\nTrack here: ${trackingUrl}`
                 );
             } catch (emailErr) {
                 console.warn("Failed to send tracking email:", emailErr);

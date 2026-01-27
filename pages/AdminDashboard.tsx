@@ -213,6 +213,12 @@ const OrdersView = () => {
         });
     };
 
+    const getTrackingUrl = (carrierName: string, number: string) => {
+        if (carrierName === 'DHL Express') return `https://www.dhl.com/global-en/home/tracking/tracking-express.html?submit=1&tracking-id=${number}`;
+        if (carrierName === 'FedEx') return `https://www.fedex.com/fedextrack/?trknbr=${number}`;
+        return `https://auspost.com.au/mypost/track/details/${number}`;
+    };
+
     const filtered = filter === 'All' ? orders : orders.filter((o: any) => o.status === filter);
 
     return (
@@ -268,7 +274,14 @@ const OrdersView = () => {
                                     {order.trackingNumber ? (
                                         <div className="text-xs">
                                             <div className="font-bold text-brand-dark">{order.carrier}</div>
-                                            <a href="#" className="text-brand-red hover:underline">{order.trackingNumber}</a>
+                                            <a 
+                                                href={getTrackingUrl(order.carrier, order.trackingNumber)} 
+                                                target="_blank" 
+                                                rel="noopener noreferrer" 
+                                                className="text-brand-red hover:underline"
+                                            >
+                                                {order.trackingNumber}
+                                            </a>
                                             <button onClick={() => handleFulfill(order)} className="ml-2 text-gray-400 hover:text-brand-dark underline">Edit</button>
                                         </div>
                                     ) : (
