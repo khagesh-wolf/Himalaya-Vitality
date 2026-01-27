@@ -132,6 +132,15 @@ const PaymentStep = ({
     const { user } = useAuth();
     const [message, setMessage] = useState<string | null>(null);
     const [isReady, setIsReady] = useState(false);
+    const [loadError, setLoadError] = useState(false);
+
+    useEffect(() => {
+        // Fallback timeout if PaymentElement fails to load without triggering an error
+        const timer = setTimeout(() => {
+            if (!isReady) setLoadError(true);
+        }, 8000);
+        return () => clearTimeout(timer);
+    }, [isReady]);
 
     const handlePaymentSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -154,7 +163,7 @@ const PaymentStep = ({
             const { error, paymentIntent } = await stripe.confirmPayment({
                 elements,
                 confirmParams: {
-                    return_url: `${window.location.origin}/order-confirmation`, 
+                    return_url: `${window.location.origin}/#/order-confirmation`, 
                     payment_method_data: {
                         billing_details: {
                             name: `${customerData.firstName} ${customerData.lastName}`,
@@ -214,8 +223,23 @@ const PaymentStep = ({
                 </div>
             )}
 
+            {loadError && !isReady && (
+                <div className="bg-red-50 text-red-600 p-4 rounded-lg flex items-start gap-2 text-sm border border-red-100 mb-6">
+                    <AlertCircle size={16} className="mt-0.5 shrink-0" />
+                    <div>
+                        <strong>Payment System Error</strong>
+                        <p className="mt-1">Unable to load secure payment interface. This may be due to a configuration mismatch between the server keys.</p>
+                    </div>
+                </div>
+            )}
+
             <form onSubmit={handlePaymentSubmit} className="space-y-6">
-                <div className="p-4 border border-gray-200 rounded-xl bg-white shadow-sm">
+                <div className="p-4 border border-gray-200 rounded-xl bg-white shadow-sm min-h-[150px] relative">
+                    {!isReady && !loadError && (
+                        <div className="absolute inset-0 flex items-center justify-center bg-white z-10 rounded-xl">
+                            <Loader2 className="animate-spin text-gray-300" size={32} />
+                        </div>
+                    )}
                     <PaymentElement onReady={() => setIsReady(true)} />
                 </div>
                 
@@ -225,10 +249,10 @@ const PaymentStep = ({
                 
                 <div className="flex flex-col items-center gap-3 text-gray-400 text-xs font-medium">
                     <div className="flex gap-2 opacity-60 grayscale">
-                        {/* Simple CSS representation of cards or SVGs would go here */}
-                        <div className="h-6 w-9 bg-gray-200 rounded flex items-center justify-center font-bold text-[8px]">VISA</div>
-                        <div className="h-6 w-9 bg-gray-200 rounded flex items-center justify-center font-bold text-[8px]">MC</div>
-                        <div className="h-6 w-9 bg-gray-200 rounded flex items-center justify-center font-bold text-[8px]">AMEX</div>
+                        {/* Simple CSS representation of cards */}
+                        <div className="h-6 w-9 bg-gray-200 rounded flex items-center justify-center font-bold text-[8px] border border-gray-300">VISA</div>
+                        <div className="h-6 w-9 bg-gray-200 rounded flex items-center justify-center font-bold text-[8px] border border-gray-300">MC</div>
+                        <div className="h-6 w-9 bg-gray-200 rounded flex items-center justify-center font-bold text-[8px] border border-gray-300">AMEX</div>
                     </div>
                     <div className="flex items-center gap-1.5">
                         <ShieldCheck size={14} />
@@ -316,17 +340,6 @@ const AddressStep = ({
                 <Button type="submit" fullWidth size="lg" className="shadow-xl shadow-brand-red/20 h-14 text-lg">
                     Continue to Payment
                 </Button>
-            </div>
-            
-            {/* Express Checkout Visual */}
-            <div className="relative flex py-2 items-center">
-                <div className="flex-grow border-t border-gray-200"></div>
-                <span className="flex-shrink-0 mx-4 text-gray-400 text-xs uppercase font-bold tracking-widest">Express Checkout</span>
-                <div className="flex-grow border-t border-gray-200"></div>
-            </div>
-            <div className="flex gap-2">
-                <div className="flex-1 bg-[#FFC439] h-10 rounded-lg flex items-center justify-center cursor-not-allowed opacity-50"><span className="text-[#003087] font-bold italic font-sans text-sm">PayPal</span></div>
-                <div className="flex-1 bg-black h-10 rounded-lg flex items-center justify-center cursor-not-allowed opacity-50 text-white font-bold text-sm"> Pay</div>
             </div>
         </form>
     );
