@@ -1,10 +1,11 @@
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { CartItem, ProductVariant, Product, BundleType } from '../types';
+import { validateDiscount } from '../services/api';
 
 interface DiscountDetails {
   code: string;
-  amount: number; // Percentage off (e.g., 10 for 10%)
+  amount: number; // Percentage off or Fixed Amount
   type: 'PERCENTAGE' | 'FIXED';
 }
 
@@ -14,7 +15,7 @@ interface CartContextType {
   removeFromCart: (variantId: string) => void;
   updateQuantity: (variantId: string, quantity: number) => void;
   clearCart: () => void;
-  applyDiscount: (code: string) => boolean;
+  applyDiscount: (code: string) => Promise<boolean>;
   removeDiscount: () => void;
   cartSubtotal: number;
   cartTotal: number;
@@ -86,18 +87,18 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setDiscount(null);
   };
 
-  const applyDiscount = (code: string): boolean => {
-    // Mock Discount Logic - In production this would validate against backend
-    const normalizedCode = code.toUpperCase().trim();
-    if (normalizedCode === 'WELCOME10') {
-      setDiscount({ code: 'WELCOME10', amount: 10, type: 'PERCENTAGE' });
-      return true;
+  const applyDiscount = async (code: string): Promise<boolean> => {
+    try {
+        const validDiscount = await validateDiscount(code);
+        if (validDiscount) {
+            setDiscount(validDiscount);
+            return true;
+        }
+        return false;
+    } catch (e) {
+        console.error("Discount invalid", e);
+        return false;
     }
-    if (normalizedCode === 'SAVE20') {
-      setDiscount({ code: 'SAVE20', amount: 20, type: 'PERCENTAGE' });
-      return true;
-    }
-    return false;
   };
 
   const removeDiscount = () => {
@@ -111,6 +112,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (discount.type === 'PERCENTAGE') {
       return cartSubtotal * ((100 - discount.amount) / 100);
     }
+    // Fixed amount
     return Math.max(0, cartSubtotal - discount.amount);
   };
 

@@ -4,12 +4,16 @@ import { User, Order, Product, Review, BlogPost, CartItem, Discount, Subscriber,
 
 // Env Config
 const envMock = (import.meta as any).env?.VITE_USE_MOCK;
-const USE_MOCK = envMock === 'true'; // Default to false if not explicitly true
+const USE_MOCK = envMock === 'true'; 
 const API_URL = (import.meta as any).env?.VITE_API_URL || '/api';
 
 // --- API FETCH WRAPPER ---
 async function apiFetch<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
     const token = localStorage.getItem('hv_token');
+    
+    // Construct query parameters if provided
+    let url = `${API_URL}${endpoint}`;
+    
     const headers = {
         'Content-Type': 'application/json',
         ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
@@ -19,7 +23,7 @@ async function apiFetch<T>(endpoint: string, options: RequestInit = {}): Promise
     if (USE_MOCK) return mockAdapter(endpoint, options) as Promise<T>;
 
     try {
-        const res = await fetch(`${API_URL}${endpoint}`, { ...options, headers });
+        const res = await fetch(url, { ...options, headers });
         const contentType = res.headers.get("content-type");
         
         let data;
@@ -71,7 +75,9 @@ export const updateUserProfile = (data: Partial<User>) => apiFetch<User>('/auth/
 // FORCE RETURN REVIEWS CONSTANT
 export const fetchReviews = () => Promise.resolve(REVIEWS);
 
-export const fetchProduct = (id: string) => Promise.resolve(MAIN_PRODUCT);
+// Fetch product from DB now
+export const fetchProduct = (id: string) => apiFetch<Product>(`/products/${id}`);
+
 export const createReview = (data: Partial<Review>) => Promise.resolve({ success: true });
 export const fetchBlogPosts = () => Promise.resolve(BLOG_POSTS);
 export const fetchUserOrders = () => apiFetch<Order[]>('/orders/my-orders');
@@ -89,7 +95,15 @@ export const createOrder = (data: any) =>
     });
 
 // --- ADMIN SERVICES ---
-export const fetchAdminStats = () => apiFetch<any>('/admin/stats');
+// Updated to accept date filters
+export const fetchAdminStats = (startDate?: Date, endDate?: Date) => {
+    let query = '';
+    if (startDate && endDate) {
+        query = `?startDate=${startDate.toISOString()}&endDate=${endDate.toISOString()}`;
+    }
+    return apiFetch<any>(`/admin/stats${query}`);
+};
+
 export const fetchAdminOrders = () => apiFetch<Order[]>('/admin/orders');
 
 export const updateOrderStatus = (id: string, status: string) => 
@@ -104,10 +118,13 @@ export const updateOrderTracking = (id: string, data: { trackingNumber: string, 
         body: JSON.stringify(data) 
     });
 
-export const updateProduct = (id: string, data: any) => Promise.resolve({ success: true });
-export const fetchDiscounts = () => Promise.resolve([]);
-export const createDiscount = (data: any) => Promise.resolve({ success: true });
-export const deleteDiscount = (id: string) => Promise.resolve({ success: true });
+export const updateProduct = (id: string, data: any) => apiFetch<{ success: boolean }>(`/products/${id}`, { method: 'PUT', body: JSON.stringify(data) });
+
+export const fetchDiscounts = () => apiFetch<Discount[]>('/discounts');
+export const createDiscount = (data: any) => apiFetch<Discount>('/discounts', { method: 'POST', body: JSON.stringify(data) });
+export const deleteDiscount = (id: string) => apiFetch<{ success: boolean }>(`/discounts/${id}`, { method: 'DELETE' });
+export const validateDiscount = (code: string) => apiFetch<{ code: string, amount: number, type: 'PERCENTAGE'|'FIXED' }>('/discounts/validate', { method: 'POST', body: JSON.stringify({ code }) });
+
 export const fetchAdminReviews = () => Promise.resolve(REVIEWS);
 export const updateReviewStatus = (id: string, status: string) => Promise.resolve({ success: true });
 export const deleteReview = (id: string) => Promise.resolve({ success: true });

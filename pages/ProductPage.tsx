@@ -4,7 +4,7 @@ import { useNavigate, useSearchParams, useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { Star, Check, ShieldCheck, Truck, Clock, Lock, Award, Filter, ArrowRight } from 'lucide-react';
 import { Button, Container, LazyImage, Reveal } from '../components/UI';
-import { BundleType } from '../types';
+import { BundleType, Product } from '../types';
 import { useCurrency } from '../context/CurrencyContext';
 import { useCart } from '../context/CartContext';
 import { useLoading } from '../context/LoadingContext';
@@ -12,7 +12,7 @@ import { SEO } from '../components/SEO';
 import { Breadcrumbs } from '../components/Breadcrumbs';
 import { fetchProduct, fetchReviews } from '../services/api';
 import { ProductPageSkeleton } from '../components/Skeletons';
-import { MAIN_PRODUCT, REVIEWS } from '../constants'; 
+import { REVIEWS } from '../constants'; 
 import { trackViewItem, trackAddToCart } from '../services/analytics'; 
 
 export const ProductPage = () => {
@@ -25,10 +25,13 @@ export const ProductPage = () => {
   const { addToCart } = useCart();
   const { setIsLoading } = useLoading();
 
-  // Use MAIN_PRODUCT directly mostly, ensuring images are correct
-  const product = MAIN_PRODUCT;
+  // Fetch product from API (DB) to ensure prices are up to date
+  const { data: product, isLoading } = useQuery<Product>({
+      queryKey: ['product', productId || 'himalaya-shilajit-resin'],
+      queryFn: () => fetchProduct(productId || 'himalaya-shilajit-resin')
+  });
 
-  // Use hardcoded reviews
+  // Use hardcoded reviews for now as they are static
   const reviews = REVIEWS;
 
   const initialBundle = (bundleParam && Object.values(BundleType).includes(bundleParam as BundleType))
@@ -42,11 +45,12 @@ export const ProductPage = () => {
   const [reviewFilter, setReviewFilter] = useState<'All' | 'Athlete'>('All');
   const [visibleReviews, setVisibleReviews] = useState(3);
   
-  const currentVariant = product.variants.find(v => v.type === selectedBundle) || product.variants[0];
+  // Safe access to variants
+  const currentVariant = product?.variants.find(v => v.type === selectedBundle) || product?.variants[0];
 
   useEffect(() => {
-    trackViewItem(product);
-  }, []);
+    if (product) trackViewItem(product);
+  }, [product]);
 
   useEffect(() => {
      const newParams = new URLSearchParams(searchParams);
@@ -64,6 +68,7 @@ export const ProductPage = () => {
   }, []);
 
   const handleAddToCart = () => {
+    if (!product || !currentVariant) return;
     const qty = 1;
     trackAddToCart({
         variantId: currentVariant.id,
@@ -84,6 +89,7 @@ export const ProductPage = () => {
   };
 
   const handleBuyNow = () => {
+    if (!product || !currentVariant) return;
     trackAddToCart({
         variantId: currentVariant.id,
         productTitle: product.title,
@@ -103,6 +109,8 @@ export const ProductPage = () => {
   
   const displayedReviews = filteredReviews.slice(0, visibleReviews);
   const hasMoreReviews = visibleReviews < filteredReviews.length;
+
+  if (isLoading || !product || !currentVariant) return <ProductPageSkeleton />;
 
   return (
     <div className="bg-[#FAFAFA] pt-32 pb-16">
@@ -214,7 +222,7 @@ export const ProductPage = () => {
                         return (
                             <div 
                             key={variant.id}
-                            onClick={() => setSelectedBundle(variant.type)}
+                            onClick={() => setSelectedBundle(variant.type as BundleType)}
                             className={`relative flex items-center justify-between p-4 rounded-xl border-2 cursor-pointer transition-all duration-200 ${
                                 isSelected
                                 ? 'border-brand-red bg-white shadow-md' 

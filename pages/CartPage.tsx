@@ -1,6 +1,7 @@
+
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Trash2, Plus, Minus, ArrowRight, ShieldCheck, ShoppingBag, Tag, X } from 'lucide-react';
+import { Trash2, Plus, Minus, ArrowRight, ShieldCheck, ShoppingBag, Tag, X, Loader2 } from 'lucide-react';
 import { Container, Button, Card, Reveal } from '../components/UI';
 import { useCart } from '../context/CartContext';
 import { useCurrency } from '../context/CurrencyContext';
@@ -12,18 +13,22 @@ export const CartPage = () => {
   const [promoCode, setPromoCode] = useState('');
   const [promoError, setPromoError] = useState('');
   const [promoSuccess, setPromoSuccess] = useState('');
+  const [isValidating, setIsValidating] = useState(false);
 
-  const handleApplyPromo = () => {
+  const handleApplyPromo = async () => {
     setPromoError('');
     setPromoSuccess('');
     if (!promoCode) return;
     
-    const success = applyDiscount(promoCode);
+    setIsValidating(true);
+    const success = await applyDiscount(promoCode);
+    setIsValidating(false);
+
     if (success) {
       setPromoSuccess(`Code ${promoCode.toUpperCase()} applied!`);
       setPromoCode('');
     } else {
-      setPromoError('Invalid discount code.');
+      setPromoError('Invalid or expired discount code.');
     }
   };
 
@@ -137,10 +142,13 @@ export const CartPage = () => {
                             className={`w-full p-3 pl-10 border rounded-lg text-sm outline-none focus:ring-2 focus:ring-brand-red ${promoError ? 'border-red-300 bg-red-50' : 'border-gray-200 bg-gray-50'}`}
                             value={promoCode}
                             onChange={(e) => setPromoCode(e.target.value)}
+                            onKeyDown={(e) => e.key === 'Enter' && handleApplyPromo()}
                             />
                             <Tag size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
                         </div>
-                        <Button size="sm" onClick={handleApplyPromo} className="px-4">Apply</Button>
+                        <Button size="sm" onClick={handleApplyPromo} className="px-4" disabled={isValidating}>
+                            {isValidating ? <Loader2 size={16} className="animate-spin" /> : 'Apply'}
+                        </Button>
                     </div>
                     ) : (
                     <div className="flex justify-between items-center bg-green-50 border border-green-200 p-3 rounded-lg">
@@ -164,7 +172,7 @@ export const CartPage = () => {
                     </div>
                     {discount && (
                     <div className="flex justify-between text-green-600">
-                        <span>Discount ({discount.amount}% off)</span>
+                        <span>Discount ({discount.type === 'PERCENTAGE' ? `${discount.amount}%` : `$${discount.amount}`} off)</span>
                         <span>-{formatPrice(cartSubtotal - cartTotal)}</span>
                     </div>
                     )}

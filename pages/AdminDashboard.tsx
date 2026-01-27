@@ -6,7 +6,7 @@ import {
 } from 'recharts';
 import { 
   LayoutDashboard, ShoppingCart, Package, Tag, Check, X, Trash2, 
-  Save, Mail, Truck, DollarSign, Percent, ArrowUpRight, ArrowDownRight, Download, History, Menu, Send, Box
+  Save, Mail, Truck, DollarSign, Percent, ArrowUpRight, ArrowDownRight, Download, History, Menu, Send, Box, Calendar
 } from 'lucide-react';
 import { Card, Button, Badge } from '../components/UI';
 import { MAIN_PRODUCT } from '../constants';
@@ -44,24 +44,33 @@ const SidebarItem = ({ icon: Icon, label, active, onClick }: { icon: any, label:
 // --- 1. Dashboard Home (Analytics) ---
 const DashboardHome = () => {
     const { formatPrice } = useCurrency();
-    const { data: stats, isLoading } = useQuery({ queryKey: ['admin-stats'], queryFn: fetchAdminStats });
+    const [dateRange, setDateRange] = useState('30'); // '7', '30', '90', '365'
     
-    const orderStatusData = [
-        { name: 'Paid', value: 65, color: '#10B981' },
-        { name: 'Pending', value: 15, color: '#F59E0B' },
-        { name: 'Fulfilled', value: 20, color: '#3B82F6' },
-    ];
+    // Calculate dates based on range
+    const getDates = () => {
+        const end = new Date();
+        const start = new Date();
+        start.setDate(end.getDate() - parseInt(dateRange));
+        return { start, end };
+    };
 
+    const { start, end } = getDates();
+    
+    const { data: stats, isLoading } = useQuery({ 
+        queryKey: ['admin-stats', dateRange], 
+        queryFn: () => fetchAdminStats(start, end) 
+    });
+    
     if (isLoading) return <DashboardSkeleton />;
 
     const StatCard = ({ title, value, sub, icon: Icon, trend }: any) => (
         <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm">
             <div className="flex justify-between items-start mb-4">
                 <div className="p-3 bg-gray-50 rounded-xl text-brand-dark"><Icon size={24}/></div>
-                {trend && (
-                    <span className={`flex items-center text-xs font-bold px-2 py-1 rounded-full ${trend > 0 ? 'bg-green-50 text-green-600' : 'bg-red-50 text-red-600'}`}>
-                        {trend > 0 ? <ArrowUpRight size={14} className="mr-1"/> : <ArrowDownRight size={14} className="mr-1"/>}
-                        {Math.abs(trend)}%
+                {trend !== undefined && (
+                    <span className={`flex items-center text-xs font-bold px-2 py-1 rounded-full ${trend >= 0 ? 'bg-green-50 text-green-600' : 'bg-red-50 text-red-600'}`}>
+                        {trend >= 0 ? <ArrowUpRight size={14} className="mr-1"/> : <ArrowDownRight size={14} className="mr-1"/>}
+                        {Math.abs(trend).toFixed(1)}%
                     </span>
                 )}
             </div>
@@ -73,11 +82,91 @@ const DashboardHome = () => {
 
     return (
         <div className="space-y-8">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <StatCard title="Total Revenue" value={formatPrice(stats?.totalRevenue || 0)} sub="Gross sales" icon={DollarSign} trend={12.5} />
-                <StatCard title="Total Orders" value={stats?.totalOrders || 0} sub="Orders processed" icon={ShoppingCart} trend={-2.4} />
-                <StatCard title="Avg. Order Value" value={formatPrice(stats?.avgOrderValue || 0)} sub="Per transaction" icon={Percent} trend={5.2} />
+            <div className="flex justify-end">
+                <div className="flex items-center bg-white border border-gray-200 rounded-lg p-1">
+                    <Calendar size={16} className="ml-2 mr-2 text-gray-400" />
+                    {['7', '30', '90'].map(d => (
+                        <button 
+                            key={d} 
+                            onClick={() => setDateRange(d)}
+                            className={`px-3 py-1 text-xs font-bold rounded-md transition-all ${dateRange === d ? 'bg-brand-dark text-white shadow-sm' : 'text-gray-500 hover:text-brand-dark'}`}
+                        >
+                            Last {d} Days
+                        </button>
+                    ))}
+                </div>
             </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <StatCard 
+                    title="Revenue" 
+                    value={formatPrice(stats?.totalRevenue || 0)} 
+                    sub="Gross sales" 
+                    icon={DollarSign} 
+                    trend={stats?.trends?.revenue} 
+                />
+                <StatCard 
+                    title="Orders" 
+                    value={stats?.totalOrders || 0} 
+                    sub="Total placed" 
+                    icon={ShoppingCart} 
+                    trend={stats?.trends?.orders} 
+                />
+                <StatCard 
+                    title="AOV" 
+                    value={formatPrice(stats?.avgOrderValue || 0)} 
+                    sub="Avg. Order Value" 
+                    icon={Percent} 
+                    trend={stats?.trends?.aov} 
+                />
+            </div>
+
+            {/* Revenue Chart */}
+            <Card className="p-6">
+                <h3 className="font-heading font-bold text-lg text-brand-dark mb-6">Revenue Overview</h3>
+                <div className="h-80 w-full">
+                    <ResponsiveContainer width="100%" height="100%">
+                        <AreaChart data={stats?.chart || []}>
+                            <defs>
+                                <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
+                                    <stop offset="5%" stopColor="#D0202F" stopOpacity={0.1}/>
+                                    <stop offset="95%" stopColor="#D0202F" stopOpacity={0}/>
+                                </linearGradient>
+                            </defs>
+                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E5E7EB" />
+                            <XAxis 
+                                dataKey="date" 
+                                axisLine={false} 
+                                tickLine={false} 
+                                tick={{fontSize: 12, fill: '#9CA3AF'}} 
+                                tickFormatter={(str) => {
+                                    const date = new Date(str);
+                                    return `${date.getMonth()+1}/${date.getDate()}`;
+                                }}
+                            />
+                            <YAxis 
+                                axisLine={false} 
+                                tickLine={false} 
+                                tick={{fontSize: 12, fill: '#9CA3AF'}} 
+                                tickFormatter={(val) => `$${val}`}
+                            />
+                            <Tooltip 
+                                contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)' }}
+                                itemStyle={{ color: '#D0202F', fontWeight: 'bold' }}
+                                formatter={(value: number) => [formatPrice(value), 'Revenue']}
+                            />
+                            <Area 
+                                type="monotone" 
+                                dataKey="revenue" 
+                                stroke="#D0202F" 
+                                strokeWidth={3} 
+                                fillOpacity={1} 
+                                fill="url(#colorRevenue)" 
+                            />
+                        </AreaChart>
+                    </ResponsiveContainer>
+                </div>
+            </Card>
         </div>
     );
 };
@@ -277,6 +366,10 @@ const ProductsView = () => {
             queryClient.invalidateQueries({ queryKey: ['admin-product'] });
             setIsSaving(false);
             alert("Pricing and Inventory updated successfully!");
+        },
+        onError: (err) => {
+            setIsSaving(false);
+            alert("Failed to update product.");
         }
     });
 

@@ -67,7 +67,6 @@ const sendEmail = async (to, subject, text, html) => {
         console.log(`[EMAIL] Attempting send to ${to}...`);
         
         if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
-            // Only throw if in a critical path that catches it, otherwise log
             console.warn('EMAIL_USER or EMAIL_PASS missing in .env');
             return;
         }
@@ -97,6 +96,92 @@ const sendEmail = async (to, subject, text, html) => {
 // Health & Debug
 app.get('/api/health', (req, res) => res.json({ status: 'ok', time: new Date() }));
 
+// --- PRODUCTS ---
+app.get('/api/products/:id', async (req, res) => {
+    try {
+        const product = await prisma.product.findUnique({
+            where: { id: req.params.id },
+            include: { variants: true }
+        });
+        if (!product) return res.status(404).json({ error: "Product not found" });
+        
+        // Sort variants by price to ensure consistent order
+        product.variants.sort((a, b) => a.price - b.price);
+        
+        res.json(product);
+    } catch (e) {
+        console.error("Fetch Product Error:", e);
+        res.status(500).json({ error: e.message });
+    }
+});
+
+app.put('/api/products/:id', requireAdmin, async (req, res) => {
+    const { variants } = req.body;
+    try {
+        // Transaction to ensure all updates happen or none
+        await prisma.$transaction(
+            variants.map(v => 
+                prisma.productVariant.update({
+                    where: { id: v.id },
+                    data: {
+                        price: parseFloat(v.price),
+                        compareAtPrice: parseFloat(v.compareAtPrice),
+                        stock: parseInt(v.stock)
+                    }
+                })
+            )
+        );
+        res.json({ success: true });
+    } catch (e) {
+        console.error("Update Product Error:", e);
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// --- DISCOUNTS ---
+app.get('/api/discounts', requireAdmin, async (req, res) => {
+    try {
+        const discounts = await prisma.discount.findMany({ orderBy: { createdAt: 'desc' } });
+        res.json(discounts);
+    } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.post('/api/discounts', requireAdmin, async (req, res) => {
+    try {
+        const discount = await prisma.discount.create({ data: req.body });
+        res.json(discount);
+    } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.delete('/api/discounts/:id', requireAdmin, async (req, res) => {
+    try {
+        await prisma.discount.delete({ where: { id: req.params.id } });
+        res.json({ success: true });
+    } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// Validate Discount (Public)
+app.post('/api/discounts/validate', async (req, res) => {
+    const { code } = req.body;
+    try {
+        const discount = await prisma.discount.findUnique({
+            where: { code: code.toUpperCase() }
+        });
+
+        if (!discount || !discount.active) {
+            return res.status(404).json({ error: 'Invalid or expired code' });
+        }
+
+        res.json({
+            code: discount.code,
+            amount: discount.value,
+            type: discount.type
+        });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
 // --- PAYMENT ROUTES ---
 app.post('/api/create-payment-intent', async (req, res) => {
     const { items, currency, total } = req.body;
@@ -108,20 +193,18 @@ app.post('/api/create-payment-intent', async (req, res) => {
     try {
         let amount;
         if (total) {
-            // Use the total calculated by the frontend (includes shipping/tax)
+            // Use the total calculated by the frontend (includes shipping/tax/discounts)
             amount = Math.round(total * 100);
         } else {
-            // Fallback: Calculate from items (excludes shipping usually)
+            // Fallback
             const calculatedTotal = items.reduce((acc, item) => acc + (item.price * item.quantity), 0);
             amount = Math.round(calculatedTotal * 100);
         }
 
         const paymentIntent = await stripe.paymentIntents.create({
-            amount: amount > 50 ? amount : 50, // Minimum charge 50 cents
+            amount: amount > 50 ? amount : 50,
             currency: currency || 'usd',
-            automatic_payment_methods: {
-                enabled: true,
-            },
+            automatic_payment_methods: { enabled: true },
         });
 
         res.json({ clientSecret: paymentIntent.client_secret });
@@ -200,22 +283,13 @@ app.post('/api/auth/verify-email', async (req, res) => {
 app.post('/api/auth/google', async (req, res) => {
     const { token } = req.body;
     try {
-        // Validate token with Google UserInfo Endpoint
         const googleRes = await fetch(`https://www.googleapis.com/oauth2/v3/userinfo?access_token=${token}`);
-        
-        if(!googleRes.ok) {
-            const errText = await googleRes.text();
-            console.error('Google Validation Failed:', errText);
-            throw new Error('Invalid Google Token');
-        }
-        
+        if(!googleRes.ok) throw new Error('Invalid Google Token');
         const googleUser = await googleRes.json();
         
-        // Check if user exists
         let user = await prisma.user.findUnique({ where: { email: googleUser.email } });
         
         if (!user) {
-            // Create user
             user = await prisma.user.create({
                 data: {
                     email: googleUser.email,
@@ -247,22 +321,12 @@ app.get('/api/auth/me', authenticate, async (req, res) => {
     } catch(e) { res.status(500).json({ error: 'Failed to fetch profile' }); }
 });
 
-// Update Profile Route
 app.put('/api/auth/profile', authenticate, async (req, res) => {
     const { firstName, lastName, address, city, country, zip, phone } = req.body;
     try {
         const updatedUser = await prisma.user.update({
             where: { id: req.user.id },
-            data: { 
-                firstName, 
-                lastName, 
-                name: `${firstName} ${lastName}`,
-                address, 
-                city, 
-                country, 
-                zip, 
-                phone 
-            }
+            data: { firstName, lastName, name: `${firstName} ${lastName}`, address, city, country, zip, phone }
         });
         const { password: _, otp: __, ...safeUser } = updatedUser;
         res.json(safeUser);
@@ -274,25 +338,93 @@ app.put('/api/auth/profile', authenticate, async (req, res) => {
 
 // --- ADMIN ROUTES ---
 
-// Get Stats
+// Get Stats (Advanced)
 app.get('/api/admin/stats', requireAdmin, async (req, res) => {
     try {
-        const totalOrders = await prisma.order.count();
-        const paidOrders = await prisma.order.findMany({ where: { status: 'PAID' }, select: { total: true } });
-        const totalRevenue = paidOrders.reduce((acc, curr) => acc + curr.total, 0);
-        const avgOrderValue = totalOrders > 0 ? totalRevenue / totalOrders : 0;
+        const { startDate, endDate } = req.query;
+        
+        // Define date ranges
+        const end = endDate ? new Date(endDate) : new Date();
+        const start = startDate ? new Date(startDate) : new Date(new Date().setDate(end.getDate() - 30)); // Default 30 days
+        
+        // Calculate previous period for comparison (same duration)
+        const duration = end.getTime() - start.getTime();
+        const prevEnd = new Date(start.getTime());
+        const prevStart = new Date(prevEnd.getTime() - duration);
+
+        // Fetch Current Period Data
+        const currentOrders = await prisma.order.findMany({
+            where: {
+                createdAt: {
+                    gte: start,
+                    lte: end
+                },
+                status: 'Paid' // Only count paid revenue
+            },
+            select: { total: true, createdAt: true }
+        });
+
+        // Fetch Previous Period Data
+        const prevOrders = await prisma.order.findMany({
+            where: {
+                createdAt: {
+                    gte: prevStart,
+                    lte: prevEnd
+                },
+                status: 'Paid'
+            },
+            select: { total: true }
+        });
+
+        const totalRevenue = currentOrders.reduce((acc, curr) => acc + curr.total, 0);
+        const prevRevenue = prevOrders.reduce((acc, curr) => acc + curr.total, 0);
+        
+        const totalOrders = await prisma.order.count({ where: { createdAt: { gte: start, lte: end } } }); // Count all orders (incl pending)
+        const prevTotalOrders = await prisma.order.count({ where: { createdAt: { gte: prevStart, lte: prevEnd } } });
+
+        const avgOrderValue = totalOrders > 0 ? totalRevenue / currentOrders.length : 0;
+        const prevAvgOrderValue = prevOrders.length > 0 ? prevRevenue / prevOrders.length : 0;
+
+        // Calculate Percent Changes
+        const calcTrend = (curr, prev) => {
+            if (prev === 0) return curr > 0 ? 100 : 0;
+            return ((curr - prev) / prev) * 100;
+        };
+
+        // Chart Data (Group by Day)
+        const chartData = {};
+        currentOrders.forEach(order => {
+            const dateStr = order.createdAt.toISOString().split('T')[0];
+            chartData[dateStr] = (chartData[dateStr] || 0) + order.total;
+        });
+        
+        // Fill in missing days
+        const chart = [];
+        for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+            const dateStr = d.toISOString().split('T')[0];
+            chart.push({
+                date: dateStr,
+                revenue: chartData[dateStr] || 0
+            });
+        }
 
         res.json({
             totalRevenue,
             totalOrders,
-            avgOrderValue
+            avgOrderValue,
+            trends: {
+                revenue: calcTrend(totalRevenue, prevRevenue),
+                orders: calcTrend(totalOrders, prevTotalOrders),
+                aov: calcTrend(avgOrderValue, prevAvgOrderValue)
+            },
+            chart
         });
     } catch (e) {
+        console.error(e);
         res.status(500).json({ error: 'Stats failed' });
     }
 });
 
-// Get All Orders
 app.get('/api/admin/orders', requireAdmin, async (req, res) => {
     try {
         const orders = await prisma.order.findMany({
@@ -319,7 +451,6 @@ app.get('/api/admin/orders', requireAdmin, async (req, res) => {
     }
 });
 
-// Update Order Status
 app.put('/api/admin/orders/:id/status', requireAdmin, async (req, res) => {
     const { status } = req.body;
     try {
@@ -333,7 +464,6 @@ app.put('/api/admin/orders/:id/status', requireAdmin, async (req, res) => {
     }
 });
 
-// Update Tracking
 app.put('/api/admin/orders/:id/tracking', requireAdmin, async (req, res) => {
     const { trackingNumber, carrier, notify } = req.body;
     try {
@@ -347,22 +477,11 @@ app.put('/api/admin/orders/:id/tracking', requireAdmin, async (req, res) => {
         });
 
         if (notify) {
-            // Attempt to send email
             try {
                 await sendEmail(
                     order.customerEmail,
                     `Your Order ${order.orderNumber} has shipped!`,
-                    `Good news! Your order is on the way.\n\nCarrier: ${carrier}\nTracking Number: ${trackingNumber}\n\nTrack here: https://www.google.com/search?q=${carrier}+tracking+${trackingNumber}`,
-                    `<div style="font-family: sans-serif; color: #333; padding: 20px;">
-                        <h2 style="color: #D0202F;">Order Shipped</h2>
-                        <p>Good news, <strong>${order.customerName}</strong>!</p>
-                        <p>Your order <strong>${order.orderNumber}</strong> has been dispatched.</p>
-                        <div style="background: #f9f9f9; padding: 15px; border-radius: 8px; margin: 20px 0;">
-                            <p style="margin: 5px 0;"><strong>Carrier:</strong> ${carrier}</p>
-                            <p style="margin: 5px 0;"><strong>Tracking Number:</strong> ${trackingNumber}</p>
-                        </div>
-                        <p>Your vitality boost is getting closer.</p>
-                    </div>`
+                    `Good news! Your order is on the way.\n\nCarrier: ${carrier}\nTracking Number: ${trackingNumber}\n\nTrack here: https://www.google.com/search?q=${carrier}+tracking+${trackingNumber}`
                 );
             } catch (emailErr) {
                 console.warn("Failed to send tracking email:", emailErr);
@@ -375,8 +494,6 @@ app.put('/api/admin/orders/:id/tracking', requireAdmin, async (req, res) => {
         res.status(500).json({ error: 'Tracking update failed' });
     }
 });
-
-// --- PUBLIC ORDER ROUTES ---
 
 app.post('/api/orders', async (req, res) => {
     const { customer, items, total, paymentId, userId } = req.body;
@@ -422,11 +539,8 @@ app.post('/api/orders', async (req, res) => {
     }
 });
 
-// Get User Orders (Fixed: Added Logging)
 app.get('/api/orders/my-orders', authenticate, async (req, res) => {
     try {
-        console.log(`[ORDERS] Fetching orders for User ID: ${req.user.id}`);
-        // Ensure these fields exist in schema before selecting or filtering
         const orders = await prisma.order.findMany({
             where: { userId: req.user.id },
             include: { items: true },
@@ -438,7 +552,7 @@ app.get('/api/orders/my-orders', authenticate, async (req, res) => {
             date: new Date(o.createdAt).toLocaleDateString(),
             total: o.total,
             status: o.status,
-            trackingNumber: o.trackingNumber, // Will be null if column missing in schema, but crashes if missing in DB
+            trackingNumber: o.trackingNumber, 
             carrier: o.carrier,
             itemsDetails: o.items.map(i => ({
                 title: 'Himalaya Shilajit', 
@@ -451,15 +565,8 @@ app.get('/api/orders/my-orders', authenticate, async (req, res) => {
         res.json(formatted);
     } catch(e) {
         console.error("[ORDERS] Fetch Error:", e);
-        // Better error message
         res.status(500).json({ error: 'Failed to fetch orders. DB Sync Required: ' + e.message });
     }
-});
-
-// --- MISC ---
-// Force return product for now to keep frontend happy
-app.get('/api/products/:id', (req, res) => {
-    res.json({ id: 'himalaya-shilajit-resin' }); 
 });
 
 if (require.main === module) {
