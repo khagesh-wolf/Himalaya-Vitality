@@ -24,6 +24,23 @@ const JWT_SECRET = process.env.JWT_SECRET || 'dev-secret-key';
 app.use(cors());
 app.use(express.json());
 
+// --- CONSTANTS ---
+const DEFAULT_PRODUCT_ID = 'himalaya-shilajit-resin';
+const DEFAULT_PRODUCT_DATA = {
+    id: DEFAULT_PRODUCT_ID,
+    title: 'Pure Himalayan Shilajit Resin',
+    description: 'Sourced from 18,000ft in the Himalayas, our Gold Grade Shilajit is purified using traditional Ayurvedic methods.',
+    rating: 4.9,
+    reviewCount: 1248,
+    features: ['85+ Trace Minerals', 'Lab Tested', 'Supports Energy'],
+    images: ['https://i.ibb.co/zTB7Fx9m/Whats-App-Image-2026-01-26-at-7-08-18-PM.jpg', 'https://i.ibb.co/9H8yWSgP/Whats-App-Image-2026-01-26-at-7-08-21-PM.jpg'],
+    variants: [
+        { id: 'var_single', type: 'SINGLE', name: 'Starter Pack (1 Jar)', price: 49, compareAtPrice: 65, label: '1 Month Supply', savings: 'Save $16', stock: 100 },
+        { id: 'var_double', type: 'DOUBLE', name: 'Commitment Pack (2 Jars)', price: 88, compareAtPrice: 130, label: '2 Month Supply', savings: 'Save $42', stock: 100 },
+        { id: 'var_triple', type: 'TRIPLE', name: 'Transformation Pack (3 Jars)', price: 117, compareAtPrice: 195, label: '3 Month Supply', savings: 'Save $78', isPopular: true, stock: 100 }
+    ]
+};
+
 // --- Middleware ---
 const authenticate = (req, res, next) => {
     const authHeader = req.headers['authorization'];
@@ -99,10 +116,48 @@ app.get('/api/health', (req, res) => res.json({ status: 'ok', time: new Date() }
 // --- PRODUCTS ---
 app.get('/api/products/:id', async (req, res) => {
     try {
-        const product = await prisma.product.findUnique({
+        let product = await prisma.product.findUnique({
             where: { id: req.params.id },
             include: { variants: true }
         });
+
+        // --- AUTO-SEED FALLBACK ---
+        if (!product && req.params.id === DEFAULT_PRODUCT_ID) {
+            console.log("⚠️ Product not found in DB. Auto-seeding default data...");
+            try {
+                // Ensure no partial state exists
+                const { variants, ...productData } = DEFAULT_PRODUCT_DATA;
+                
+                // Use upsert on product just in case
+                product = await prisma.product.upsert({
+                    where: { id: DEFAULT_PRODUCT_ID },
+                    update: {},
+                    create: {
+                        ...productData,
+                        variants: {
+                            create: variants.map(v => ({
+                                id: v.id,
+                                type: v.type,
+                                name: v.name,
+                                price: v.price,
+                                compareAtPrice: v.compareAtPrice,
+                                label: v.label,
+                                savings: v.savings,
+                                isPopular: v.isPopular,
+                                stock: v.stock
+                            }))
+                        }
+                    },
+                    include: { variants: true }
+                });
+                console.log("✅ Auto-seed successful");
+            } catch (seedErr) {
+                console.error("Auto-seed failed:", seedErr);
+                // Even if seed fails, return a 404 with error details so frontend developer knows
+                return res.status(404).json({ error: "Product not found and auto-seed failed", details: seedErr.message });
+            }
+        }
+
         if (!product) return res.status(404).json({ error: "Product not found" });
         
         // Sort variants by price to ensure consistent order
@@ -117,19 +172,72 @@ app.get('/api/products/:id', async (req, res) => {
 
 app.put('/api/products/:id', requireAdmin, async (req, res) => {
     const { variants } = req.body;
+    const productId = req.params.id;
+
     try {
-        // Transaction to ensure all updates happen or none
+        // 1. Ensure Product Exists First
+        const productExists = await prisma.product.findUnique({ where: { id: productId } });
+        
+        if (!productExists) {
+            console.log("⚠️ PUT: Product missing. Creating full product structure.");
+            // If product doesn't exist, create it fully using default data + incoming variant overrides
+            const { variants: defaultVariants, ...productData } = DEFAULT_PRODUCT_DATA;
+            
+            // Merge defaults with incoming updates
+            const mergedVariants = defaultVariants.map(dv => {
+                const incoming = variants.find(v => v.id === dv.id);
+                return incoming ? { ...dv, ...incoming } : dv;
+            });
+
+            await prisma.product.create({
+                data: {
+                    ...productData,
+                    id: productId, // Ensure ID matches URL
+                    variants: {
+                        create: mergedVariants.map(v => ({
+                            id: v.id,
+                            type: v.type,
+                            name: v.name,
+                            price: parseFloat(v.price),
+                            compareAtPrice: parseFloat(v.compareAtPrice),
+                            label: v.label,
+                            savings: v.savings,
+                            isPopular: v.isPopular || false,
+                            stock: parseInt(v.stock)
+                        }))
+                    }
+                }
+            });
+            return res.json({ success: true, message: "Product created via recovery" });
+        }
+
+        // 2. Product Exists - UPSERT Variants (Handle Update or Create)
         await prisma.$transaction(
-            variants.map(v => 
-                prisma.productVariant.update({
+            variants.map(v => {
+                // Find default for missing fields if this is a new variant
+                const defaultV = DEFAULT_PRODUCT_DATA.variants.find(dv => dv.id === v.id) || {};
+                
+                return prisma.productVariant.upsert({
                     where: { id: v.id },
-                    data: {
+                    update: {
                         price: parseFloat(v.price),
                         compareAtPrice: parseFloat(v.compareAtPrice),
                         stock: parseInt(v.stock)
+                    },
+                    create: {
+                        id: v.id,
+                        productId: productId,
+                        type: v.type || defaultV.type || 'SINGLE',
+                        name: v.name || defaultV.name || 'New Variant',
+                        price: parseFloat(v.price),
+                        compareAtPrice: parseFloat(v.compareAtPrice),
+                        stock: parseInt(v.stock),
+                        label: v.label || defaultV.label || '',
+                        savings: v.savings || defaultV.savings || '',
+                        isPopular: v.isPopular || defaultV.isPopular || false
                     }
-                })
-            )
+                });
+            })
         );
         res.json({ success: true });
     } catch (e) {
