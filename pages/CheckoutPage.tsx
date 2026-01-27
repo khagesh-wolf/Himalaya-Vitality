@@ -7,11 +7,12 @@ import { MAIN_PRODUCT } from '../constants';
 import { useCurrency } from '../context/CurrencyContext';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
-import { CartItem } from '../types';
+import { CartItem, RegionConfig } from '../types';
 import { useLoading } from '../context/LoadingContext';
-import { getDeliverableCountries, simulateShipping } from '../utils';
-import { createPaymentIntent, createOrder } from '../services/api';
+import { calculateShipping, getDeliverableCountries } from '../utils';
+import { createPaymentIntent, createOrder, fetchShippingRegions } from '../services/api';
 import { trackPurchase } from '../services/analytics'; // Analytics
+import { useQuery } from '@tanstack/react-query';
 
 // Stripe Imports
 import { loadStripe } from '@stripe/stripe-js';
@@ -242,10 +243,12 @@ const PaymentStep = ({
 // --- COMPONENT: ADDRESS FORM ---
 const AddressStep = ({ 
     initialData, 
-    onSubmit 
+    onSubmit,
+    regions 
 }: { 
     initialData: Partial<CheckoutFormData>, 
-    onSubmit: (data: CheckoutFormData) => void 
+    onSubmit: (data: CheckoutFormData) => void,
+    regions: RegionConfig[]
 }) => {
     const { register, handleSubmit, formState: { errors } } = useForm<CheckoutFormData>({
         resolver: zodResolver(addressSchema),
@@ -294,7 +297,7 @@ const AddressStep = ({
                 <div className="space-y-1">
                     <label className="text-xs font-bold text-gray-500 uppercase">Country</label>
                     <select {...register('country')} autoComplete="country" className="w-full p-3 bg-gray-50 border border-gray-200 rounded-lg outline-none focus:border-brand-red">
-                        {getDeliverableCountries().map(c => <option key={c.id} value={c.code}>{c.name}</option>)}
+                        {regions.map(c => <option key={c.id} value={c.code}>{c.name}</option>)}
                     </select>
                 </div>
                 <div className="space-y-1">
@@ -361,6 +364,15 @@ export const CheckoutPage = () => {
     const [clientSecret, setClientSecret] = useState<string>('');
     const [customerData, setCustomerData] = useState<CheckoutFormData | null>(null);
 
+    // Fetch Regions
+    const { data: regions = [] } = useQuery({ 
+        queryKey: ['shipping-regions'], 
+        queryFn: fetchShippingRegions,
+        staleTime: 1000 * 60 * 5 // 5 minutes
+    });
+
+    const activeRegions = regions.length > 0 ? regions : getDeliverableCountries();
+
     // Prepare User Data for Form
     const userData = user ? {
         email: user.email,
@@ -383,8 +395,8 @@ export const CheckoutPage = () => {
         setIsLoading(true, 'Calculating Shipping & Taxes...');
         
         try {
-            // 1. Calculate Shipping based on address
-            const shipping = await simulateShipping(data.country, baseSubtotal, itemCount);
+            // 1. Calculate Shipping based on selected address and fetched regions
+            const shipping = calculateShipping(activeRegions, data.country, baseSubtotal, itemCount);
             setShippingData({ cost: shipping.cost, tax: shipping.tax });
             
             // 2. Create/Update Payment Intent with FINAL Total
@@ -485,7 +497,7 @@ export const CheckoutPage = () => {
                             </div>
 
                             {step === 1 ? (
-                                <AddressStep initialData={userData} onSubmit={handleAddressSubmit} />
+                                <AddressStep initialData={userData} onSubmit={handleAddressSubmit} regions={activeRegions} />
                             ) : (
                                 clientSecret && customerData && (
                                     <Elements options={{ 
