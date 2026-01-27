@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { Star, Check, ArrowLeft, Filter, Loader2 } from 'lucide-react';
+import { Star, Check, ArrowLeft, Filter, Loader2, ThumbsUp } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { Container, Button, Card, Reveal } from '../components/UI';
@@ -11,23 +11,28 @@ import { SEO } from '../components/SEO';
 export const ReviewsPage = () => {
   const product = MAIN_PRODUCT;
   const [filter, setFilter] = useState<'All' | 'Athlete'>('All');
+  const [visibleCount, setVisibleCount] = useState(5);
   
-  // Use API for reviews
   const { data: reviews = [], isLoading } = useQuery({
     queryKey: ['reviews'],
     queryFn: fetchReviews,
     initialData: []
   });
   
-  // Calculate stats
   const totalReviews = reviews.length || 1248;
   const rating = 4.9;
   const stars = [5, 4, 3, 2, 1];
-  const distribution = [85, 10, 3, 1, 1]; // percentages
+  const distribution = [85, 10, 3, 1, 1]; 
 
   const displayedReviews = filter === 'All' 
     ? reviews 
     : reviews.filter(r => r.tags?.includes('Athlete') || r.tags?.includes('Endurance'));
+
+  const visibleReviews = displayedReviews.slice(0, visibleCount);
+
+  const handleLoadMore = () => {
+    setVisibleCount(prev => prev + 5);
+  };
 
   return (
     <div className="bg-gray-50 py-20 min-h-screen">
@@ -35,7 +40,7 @@ export const ReviewsPage = () => {
       <Container>
         <Reveal>
             <div className="mb-10">
-                <Link to={`/product/${product.id}`} className="text-sm font-bold text-gray-500 hover:text-brand-red flex items-center mb-6 w-fit">
+                <Link to={`/product/${product.id}`} className="text-sm font-bold text-gray-500 hover:text-brand-red flex items-center mb-6 w-fit transition-colors">
                     <ArrowLeft size={16} className="mr-2" /> Back to Product
                 </Link>
                 <h1 className="font-heading text-4xl font-extrabold text-brand-dark mb-4">Customer Reviews</h1>
@@ -47,12 +52,12 @@ export const ReviewsPage = () => {
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
             {/* Left Sidebar: Summary */}
-            <div className="lg:col-span-4 space-y-8">
+            <div className="lg:col-span-4 space-y-8 h-fit lg:sticky lg:top-24">
                 <Reveal delay={200}>
                     <Card className="p-8 border-none shadow-lg">
                         <div className="text-center mb-6">
                             <div className="text-6xl font-heading font-extrabold text-brand-dark mb-2">{rating}</div>
-                            <div className="flex justify-center text-brand-red mb-2">
+                            <div className="flex justify-center text-brand-gold-500 mb-2">
                                 {[...Array(5)].map((_, i) => (
                                     <Star key={i} size={24} fill="currentColor" strokeWidth={0} />
                                 ))}
@@ -63,10 +68,10 @@ export const ReviewsPage = () => {
                         <div className="space-y-3 mb-8">
                             {stars.map((star, i) => (
                                 <div key={star} className="flex items-center text-xs font-bold">
-                                    <span className="w-8 text-gray-500">{star} Star</span>
+                                    <span className="w-8 text-gray-500 flex items-center gap-1">{star} <Star size={10} fill="currentColor" className="text-gray-400"/></span>
                                     <div className="flex-1 mx-3 h-2 bg-gray-100 rounded-full overflow-hidden">
                                         <div 
-                                            className="h-full bg-brand-red" 
+                                            className="h-full bg-brand-gold-500 rounded-full" 
                                             style={{ width: `${distribution[i]}%` }}
                                         ></div>
                                     </div>
@@ -75,9 +80,9 @@ export const ReviewsPage = () => {
                             ))}
                         </div>
 
-                        <div className="bg-gray-50 p-4 rounded-xl text-center">
-                            <h4 className="font-bold text-brand-dark mb-1">We Value Transparency</h4>
-                            <p className="text-xs text-gray-500">We post all reviews, good or bad, from verified purchases.</p>
+                        <div className="bg-gray-50 p-4 rounded-xl text-center border border-gray-100">
+                            <h4 className="font-bold text-brand-dark mb-1 text-sm">100% Verified</h4>
+                            <p className="text-xs text-gray-500">Reviews are from verified purchases only.</p>
                         </div>
                     </Card>
                 </Reveal>
@@ -87,19 +92,19 @@ export const ReviewsPage = () => {
             <div className="lg:col-span-8">
                 {/* Filters */}
                 <Reveal delay={300}>
-                    <div className="flex gap-4 mb-6 overflow-x-auto pb-2">
-                    <button 
-                        onClick={() => setFilter('All')}
-                        className={`px-4 py-2 rounded-full text-sm font-bold transition-colors whitespace-nowrap ${filter === 'All' ? 'bg-brand-dark text-white' : 'bg-white text-gray-600 hover:bg-gray-100'}`}
-                    >
-                        All Reviews
-                    </button>
-                    <button 
-                        onClick={() => setFilter('Athlete')}
-                        className={`px-4 py-2 rounded-full text-sm font-bold transition-colors whitespace-nowrap flex items-center ${filter === 'Athlete' ? 'bg-brand-red text-white' : 'bg-white text-gray-600 hover:bg-gray-100'}`}
-                    >
-                        <Filter size={14} className="mr-2" /> Athlete Stories
-                    </button>
+                    <div className="flex gap-4 mb-8 overflow-x-auto pb-2 scrollbar-hide">
+                        <button 
+                            onClick={() => { setFilter('All'); setVisibleCount(5); }}
+                            className={`px-6 py-2.5 rounded-full text-sm font-bold transition-all whitespace-nowrap border ${filter === 'All' ? 'bg-brand-dark text-white border-brand-dark shadow-md' : 'bg-white text-gray-600 border-gray-200 hover:border-gray-300'}`}
+                        >
+                            All Reviews
+                        </button>
+                        <button 
+                            onClick={() => { setFilter('Athlete'); setVisibleCount(5); }}
+                            className={`px-6 py-2.5 rounded-full text-sm font-bold transition-all whitespace-nowrap flex items-center border ${filter === 'Athlete' ? 'bg-brand-red text-white border-brand-red shadow-md' : 'bg-white text-gray-600 border-gray-200 hover:border-gray-300'}`}
+                        >
+                            <Filter size={14} className="mr-2" /> Athlete Stories
+                        </button>
                     </div>
                 </Reveal>
 
@@ -108,51 +113,72 @@ export const ReviewsPage = () => {
                 ) : (
                     <div className="space-y-6">
                         {displayedReviews.length === 0 ? (
-                            <div className="text-center py-12 bg-white rounded-3xl">
-                                <p className="text-gray-500">No specific reviews found for this filter.</p>
-                                <button onClick={() => setFilter('All')} className="text-brand-red font-bold text-sm mt-2">View All</button>
+                            <div className="text-center py-16 bg-white rounded-3xl border border-dashed border-gray-200">
+                                <p className="text-gray-500 font-medium">No reviews found for this filter.</p>
+                                <button onClick={() => setFilter('All')} className="text-brand-red font-bold text-sm mt-3 hover:underline">View All Reviews</button>
                             </div>
                         ) : (
-                            displayedReviews.map((review, idx) => (
-                                <Reveal key={`${review.id}-${idx}`} delay={idx * 100}>
-                                    <Card className="p-8 border-none shadow-sm hover:shadow-md transition-shadow">
-                                        <div className="flex justify-between items-start mb-4">
-                                            <div>
-                                                <div className="flex text-brand-red mb-2">
+                            <>
+                                {visibleReviews.map((review, idx) => (
+                                    <Reveal key={`${review.id}-${idx}`} delay={idx * 50}>
+                                        <div className="bg-white p-8 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-shadow group">
+                                            <div className="flex justify-between items-start mb-6">
+                                                <div className="flex items-center gap-3">
+                                                    <div className="w-10 h-10 bg-gradient-to-br from-gray-100 to-gray-200 rounded-full flex items-center justify-center font-bold text-sm text-gray-600 shadow-inner">
+                                                        {review.author?.charAt(0) || 'U'}
+                                                    </div>
+                                                    <div>
+                                                        <div className="font-bold text-brand-dark text-sm flex items-center gap-2">
+                                                            {review.author}
+                                                            {review.verified && (
+                                                                <span className="text-[10px] font-bold text-green-600 uppercase tracking-wider bg-green-50 px-2 py-0.5 rounded-full flex items-center border border-green-100">
+                                                                    <Check size={10} className="mr-1" strokeWidth={3} /> Verified
+                                                                </span>
+                                                            )}
+                                                        </div>
+                                                        <div className="text-xs text-gray-400 mt-0.5">{review.date}</div>
+                                                    </div>
+                                                </div>
+                                                <div className="flex text-brand-gold-500">
                                                     {[...Array(5)].map((_, i) => (
-                                                        <Star key={i} size={16} fill={i < review.rating ? "currentColor" : "none"} className={i < review.rating ? "" : "text-gray-300"} strokeWidth={0} />
+                                                        <Star key={i} size={14} fill={i < review.rating ? "currentColor" : "none"} className={i < review.rating ? "" : "text-gray-300"} strokeWidth={0} />
                                                     ))}
                                                 </div>
-                                                <div className="flex items-center gap-3">
-                                                    <h3 className="font-heading font-bold text-lg text-brand-dark">{review.title}</h3>
+                                            </div>
+                                            
+                                            <div className="mb-4">
+                                                <h3 className="font-heading font-bold text-lg text-brand-dark mb-2 flex items-center gap-2">
+                                                    {review.title}
                                                     {review.tags?.includes('Athlete') && (
                                                         <span className="bg-brand-dark text-white text-[10px] font-bold px-2 py-0.5 rounded uppercase tracking-wider">Athlete</span>
                                                     )}
-                                                </div>
+                                                </h3>
+                                                <p className="text-gray-600 text-sm leading-relaxed relative pl-4 border-l-2 border-brand-red/20 italic">
+                                                    "{review.content}"
+                                                </p>
                                             </div>
-                                            <span className="text-xs text-gray-400 font-medium">{review.date}</span>
-                                        </div>
-                                        
-                                        <p className="text-gray-600 text-sm leading-relaxed mb-6">"{review.content}"</p>
-                                        
-                                        <div className="flex items-center border-t border-gray-50 pt-4">
-                                            <div className="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center font-bold text-xs text-gray-500 mr-3">
-                                                {review.author?.charAt(0) || 'U'}
-                                            </div>
-                                            <div>
-                                                <div className="flex items-center gap-2">
-                                                    <span className="font-bold text-sm text-brand-dark">{review.author}</span>
-                                                    {review.verified && (
-                                                        <span className="text-[10px] font-bold text-green-600 uppercase tracking-wider bg-green-50 px-2 py-0.5 rounded-full flex items-center">
-                                                            <Check size={10} className="mr-1" strokeWidth={3} /> Verified Buyer
-                                                        </span>
-                                                    )}
-                                                </div>
+
+                                            <div className="flex items-center gap-4 mt-6">
+                                                <button className="text-xs font-bold text-gray-400 hover:text-brand-dark flex items-center gap-1 transition-colors">
+                                                    <ThumbsUp size={14} /> Helpful
+                                                </button>
                                             </div>
                                         </div>
-                                    </Card>
-                                </Reveal>
-                            ))
+                                    </Reveal>
+                                ))}
+
+                                {visibleCount < displayedReviews.length && (
+                                    <div className="text-center pt-8">
+                                        <Button 
+                                            variant="outline-dark" 
+                                            onClick={handleLoadMore}
+                                            className="min-w-[200px]"
+                                        >
+                                            Load More Reviews
+                                        </Button>
+                                    </div>
+                                )}
+                            </>
                         )}
                     </div>
                 )}
