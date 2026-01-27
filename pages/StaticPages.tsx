@@ -244,7 +244,7 @@ export const SciencePage = () => (
                             </div>
                             <div className="flex justify-between items-center p-4 bg-gray-50 rounded-xl">
                                 <span className="font-bold text-gray-600">Fulvic Acid</span>
-                                <span className="font-bold text-brand-dark">> 60%</span>
+                                <span className="font-bold text-brand-dark"> 60%</span>
                             </div>
                             <div className="flex justify-between items-center p-4 bg-gray-50 rounded-xl">
                                 <span className="font-bold text-gray-600">Dibenzo-alpha-pyrones</span>
