@@ -58,6 +58,13 @@ const SCIENCE_BENEFITS = [
     { title: "Cognitive Health", icon: Brain, text: "Fulvic acid prevents the aggregation of tau protein, potentially protecting against cognitive decline and improving memory." }
 ];
 
+const FULVIC_BENEFITS = [
+    "Enhances nutrient absorption by making cell walls more permeable.",
+    "Combats free radicals with potent antioxidant properties.",
+    "Chelates heavy metals and aids in detoxification.",
+    "Supports gut health and immune function."
+];
+
 const PROCESS_STEPS = [
     { 
         title: "Collection", 
@@ -218,12 +225,7 @@ export const SciencePage = () => (
                         Fulvic acid is the key bioactive compound in Shilajit. It acts as a powerful electrolyte and carrier molecule, transporting minerals directly into cells and removing toxins.
                     </p>
                     <ul className="space-y-4">
-                        {[
-                            "Enhances nutrient absorption by making cell walls more permeable.",
-                            "Combats free radicals with potent antioxidant properties.",
-                            "Chelates heavy metals and aids in detoxification.",
-                            "Supports gut health and immune function."
-                        ].map((item, i) => (
+                        {FULVIC_BENEFITS.map((item, i) => (
                             <li key={`sci-list-${i}`} className="flex items-start gap-3">
                                 <CheckCircle className="text-brand-red shrink-0 mt-1" size={20} />
                                 <span className="text-gray-700 font-medium">{item}</span>
