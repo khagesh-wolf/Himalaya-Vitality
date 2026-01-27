@@ -1,4 +1,5 @@
 
+
 import React, { useState, useEffect } from 'react';
 import { Link, useSearchParams, useNavigate } from 'react-router-dom';
 import { ShieldCheck, Lock, ArrowLeft, Loader2, AlertCircle, CheckCircle, Package, UserCircle, ShoppingCart, ChevronDown, ChevronUp, CreditCard } from 'lucide-react';
@@ -24,8 +25,9 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 
 // --- CONFIGURATION ---
-const STRIPE_PUBLIC_KEY = (import.meta as any).env?.VITE_STRIPE_PUBLIC_KEY || 'pk_test_TYooMQauvdEDq54NiTphI7jx'; 
-const stripePromise = loadStripe(STRIPE_PUBLIC_KEY);
+const STRIPE_PUBLIC_KEY = (import.meta as any).env?.VITE_STRIPE_PUBLIC_KEY;
+// Load stripe only if key exists, otherwise null
+const stripePromise = STRIPE_PUBLIC_KEY ? loadStripe(STRIPE_PUBLIC_KEY) : null;
 
 // --- ZOD SCHEMAS ---
 const addressSchema = z.object({
@@ -64,14 +66,14 @@ const MobileOrderSummary = ({
             <Container>
                 <button 
                     onClick={() => setIsOpen(!isOpen)}
-                    className="w-full py-4 flex items-center justify-between text-brand-dark"
+                    className="w-full py-4 flex items-center justify-center space-x-2 text-brand-dark"
                 >
                     <div className="flex items-center text-sm font-bold text-brand-dark">
                         <ShoppingCart size={16} className="mr-2 text-gray-500" />
                         <span>{isOpen ? 'Hide' : 'Show'} Order Summary</span>
                         {isOpen ? <ChevronUp size={16} className="ml-2 text-gray-400" /> : <ChevronDown size={16} className="ml-2 text-gray-400" />}
                     </div>
-                    <span className="font-heading font-extrabold text-lg text-brand-dark">{formatPrice(total)}</span>
+                    <span className="font-heading font-extrabold text-lg text-brand-dark ml-auto">{formatPrice(total)}</span>
                 </button>
 
                 {isOpen && (
@@ -112,7 +114,7 @@ const MobileOrderSummary = ({
     );
 };
 
-// --- COMPONENT: PAYMENT STEP ---
+// --- COMPONENT: PAYMENT STEP (STRIPE) ---
 const PaymentStep = ({ 
     items, 
     total, 
@@ -414,14 +416,16 @@ export const CheckoutPage = () => {
             
             // 2. Create/Update Payment Intent with FINAL Total
             const finalTotal = baseSubtotal + shipping.cost + shipping.tax;
-            const { clientSecret, mockSecret } = await createPaymentIntent(checkoutItems, 'USD', finalTotal); 
+            const { clientSecret } = await createPaymentIntent(checkoutItems, 'USD', finalTotal); 
             
-            setClientSecret(clientSecret || mockSecret || '');
+            if (!clientSecret) throw new Error("Failed to initialize payment");
+
+            setClientSecret(clientSecret);
             setStep(2);
             window.scrollTo({ top: 0, behavior: 'smooth' });
-        } catch (error) {
+        } catch (error: any) {
             console.error("Checkout init failed", error);
-            alert("Could not initialize payment. Please try again.");
+            alert("Payment Initialization Failed: " + (error.message || "Unknown error"));
         } finally {
             setIsLoading(false);
         }
@@ -434,6 +438,20 @@ export const CheckoutPage = () => {
         alert(`Order ${orderId} placed successfully! Check your email.`);
         navigate('/profile');
     };
+
+    if (!stripePromise && step === 2) {
+        return (
+            <div className="min-h-screen flex items-center justify-center text-center p-4">
+                <div className="max-w-md bg-white p-8 rounded-xl shadow-lg border-t-4 border-red-500">
+                    <h2 className="font-bold text-xl mb-2 text-brand-dark">Configuration Error</h2>
+                    <p className="text-gray-600 mb-4">
+                        Stripe Public Key is missing in environment variables. Payments cannot be processed.
+                    </p>
+                    <Link to="/"><Button variant="outline-dark">Return Home</Button></Link>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="min-h-screen bg-gray-50 pb-20">

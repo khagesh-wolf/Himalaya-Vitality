@@ -375,8 +375,10 @@ app.post('/api/discounts/validate', async (req, res) => {
 app.post('/api/create-payment-intent', async (req, res) => {
     const { items, currency, total } = req.body;
     
+    // STRICT MODE: Fail if Stripe key is missing on server
     if (!stripe) {
-        return res.status(500).json({ error: "Stripe not configured on server" });
+        console.error("SERVER ERROR: STRIPE_SECRET_KEY is missing in environment variables.");
+        return res.status(500).json({ error: "Server Configuration Error: Payments are not configured." });
     }
 
     try {

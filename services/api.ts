@@ -1,4 +1,5 @@
 
+
 import { MAIN_PRODUCT, REVIEWS, BLOG_POSTS, MOCK_ORDERS } from '../constants';
 import { User, Order, Product, Review, BlogPost, CartItem, Discount, Subscriber, InventoryLog, RegionConfig } from '../types';
 
@@ -62,6 +63,7 @@ async function mockAdapter(endpoint: string, options: any) {
         { id: 'us', code: 'US', name: 'United States', shippingCost: 19.95, taxRate: 0, eta: '6-12 Business Days', active: true },
         { id: 'gb', code: 'GB', name: 'United Kingdom', shippingCost: 24.95, taxRate: 20, eta: '7-14 Business Days', active: true },
     ];
+    // Removed mock logic for payments to force error if mock mode is on but payments needed
     
     // Default Fallback
     return {};
@@ -89,7 +91,7 @@ export const fetchBlogPosts = () => Promise.resolve(BLOG_POSTS);
 export const fetchUserOrders = () => apiFetch<Order[]>('/orders/my-orders');
 
 export const createPaymentIntent = (items: CartItem[], currency: string, total?: number) => 
-    apiFetch<{ clientSecret: string; mockSecret?: string }>('/create-payment-intent', { 
+    apiFetch<{ clientSecret: string }>('/create-payment-intent', { 
         method: 'POST', 
         body: JSON.stringify({ items, currency, total }) 
     });
