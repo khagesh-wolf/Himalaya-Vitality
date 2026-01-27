@@ -113,6 +113,87 @@ const sendEmail = async (to, subject, text, html) => {
 // Health & Debug
 app.get('/api/health', (req, res) => res.json({ status: 'ok', time: new Date() }));
 
+// --- SHIPPING MANAGEMENT ---
+app.get('/api/shipping-regions', async (req, res) => {
+    try {
+        const regions = await prisma.shippingRegion.findMany({ orderBy: { name: 'asc' } });
+        res.json(regions);
+    } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.post('/api/shipping-regions', requireAdmin, async (req, res) => {
+    try {
+        const region = await prisma.shippingRegion.create({ data: req.body });
+        res.json(region);
+    } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.put('/api/shipping-regions/:id', requireAdmin, async (req, res) => {
+    try {
+        const region = await prisma.shippingRegion.update({
+            where: { id: req.params.id },
+            data: req.body
+        });
+        res.json(region);
+    } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.delete('/api/shipping-regions/:id', requireAdmin, async (req, res) => {
+    try {
+        await prisma.shippingRegion.delete({ where: { id: req.params.id } });
+        res.json({ success: true });
+    } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// --- SUBSCRIBERS & NEWSLETTER ---
+app.post('/api/newsletter/subscribe', async (req, res) => {
+    const { email, source } = req.body;
+    try {
+        const existing = await prisma.subscriber.findUnique({ where: { email } });
+        if (existing) return res.json({ message: 'Already subscribed' });
+
+        const sub = await prisma.subscriber.create({
+            data: { email, source: source || 'Website' }
+        });
+        res.json({ success: true, subscriber: sub });
+    } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.get('/api/admin/subscribers', requireAdmin, async (req, res) => {
+    try {
+        const subscribers = await prisma.subscriber.findMany({ orderBy: { createdAt: 'desc' } });
+        const formatted = subscribers.map(s => ({
+            id: s.id,
+            email: s.email,
+            date: new Date(s.createdAt).toLocaleDateString(),
+            source: s.source
+        }));
+        res.json(formatted);
+    } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.post('/api/admin/newsletter/send', requireAdmin, async (req, res) => {
+    const { subject, message } = req.body;
+    try {
+        const subscribers = await prisma.subscriber.findMany();
+        if(subscribers.length === 0) return res.json({ success: true, count: 0 });
+
+        // In production, use a queue (Bull/Redis) or a service like Resend/SendGrid batch API.
+        // For this implementation using SMTP, we loop (careful with rate limits).
+        let count = 0;
+        for (const sub of subscribers) {
+            try {
+                await sendEmail(sub.email, subject, message.replace(/<[^>]*>?/gm, ''), message); // Strip HTML for text version
+                count++;
+            } catch(err) {
+                console.error(`Failed to send to ${sub.email}`, err);
+            }
+        }
+        res.json({ success: true, sent: count });
+    } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+
 // --- PRODUCTS ---
 app.get('/api/products/:id', async (req, res) => {
     try {

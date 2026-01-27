@@ -1,6 +1,6 @@
 
 import { MAIN_PRODUCT, REVIEWS, BLOG_POSTS, MOCK_ORDERS } from '../constants';
-import { User, Order, Product, Review, BlogPost, CartItem, Discount, Subscriber, InventoryLog } from '../types';
+import { User, Order, Product, Review, BlogPost, CartItem, Discount, Subscriber, InventoryLog, RegionConfig } from '../types';
 
 // Env Config
 const envMock = (import.meta as any).env?.VITE_USE_MOCK;
@@ -56,6 +56,12 @@ async function mockAdapter(endpoint: string, options: any) {
 
     if (endpoint === '/auth/login') return { token: 'mock_jwt', user: { id: 'u1', name: 'Admin', email: 'admin@himalaya.com', role: 'ADMIN' } };
     if (endpoint === '/auth/me') return { id: 'u1', name: 'Admin', email: 'admin@himalaya.com', role: 'ADMIN' };
+    if (endpoint === '/shipping-regions') return [
+        { id: 'au', code: 'AU', name: 'Australia', shippingCost: 0, taxRate: 10, eta: '2-5 Business Days (AusPost)', active: true },
+        { id: 'nz', code: 'NZ', name: 'New Zealand', shippingCost: 14.95, taxRate: 15, eta: '5-10 Business Days', active: true },
+        { id: 'us', code: 'US', name: 'United States', shippingCost: 19.95, taxRate: 0, eta: '6-12 Business Days', active: true },
+        { id: 'gb', code: 'GB', name: 'United Kingdom', shippingCost: 24.95, taxRate: 20, eta: '7-14 Business Days', active: true },
+    ];
     
     // Default Fallback
     return {};
@@ -94,6 +100,17 @@ export const createOrder = (data: any) =>
         body: JSON.stringify(data) 
     });
 
+// --- SHIPPING REGIONS ---
+export const fetchShippingRegions = () => apiFetch<RegionConfig[]>('/shipping-regions');
+export const createShippingRegion = (data: Partial<RegionConfig>) => apiFetch<RegionConfig>('/shipping-regions', { method: 'POST', body: JSON.stringify(data) });
+export const updateShippingRegion = (id: string, data: Partial<RegionConfig>) => apiFetch<RegionConfig>(`/shipping-regions/${id}`, { method: 'PUT', body: JSON.stringify(data) });
+export const deleteShippingRegion = (id: string) => apiFetch<{ success: boolean }>(`/shipping-regions/${id}`, { method: 'DELETE' });
+
+// --- SUBSCRIBERS ---
+export const subscribeToNewsletter = (email: string, source: string = 'Website') => apiFetch<{ success: boolean, subscriber: Subscriber }>('/newsletter/subscribe', { method: 'POST', body: JSON.stringify({ email, source }) });
+export const fetchSubscribers = () => apiFetch<Subscriber[]>('/admin/subscribers');
+export const sendAdminNewsletter = (subject: string, message: string) => apiFetch<{ success: boolean, sent: number }>('/admin/newsletter/send', { method: 'POST', body: JSON.stringify({ subject, message }) });
+
 // --- ADMIN SERVICES ---
 // Updated to accept date filters
 export const fetchAdminStats = (startDate?: Date, endDate?: Date) => {
@@ -128,5 +145,4 @@ export const validateDiscount = (code: string) => apiFetch<{ code: string, amoun
 export const fetchAdminReviews = () => Promise.resolve(REVIEWS);
 export const updateReviewStatus = (id: string, status: string) => Promise.resolve({ success: true });
 export const deleteReview = (id: string) => Promise.resolve({ success: true });
-export const fetchSubscribers = () => Promise.resolve([]);
 export const fetchInventoryLogs = () => Promise.resolve([]);

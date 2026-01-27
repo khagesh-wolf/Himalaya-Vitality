@@ -6,11 +6,11 @@ import {
 } from 'recharts';
 import { 
   LayoutDashboard, ShoppingCart, Package, Tag, Check, X, Trash2, 
-  Save, Mail, Truck, DollarSign, Percent, ArrowUpRight, ArrowDownRight, Download, History, Menu, Send, Box, Calendar
+  Save, Mail, Truck, DollarSign, Percent, ArrowUpRight, ArrowDownRight, Download, History, Menu, Send, Box, Calendar, Globe, Plus, Pencil
 } from 'lucide-react';
 import { Card, Button, Badge } from '../components/UI';
 import { MAIN_PRODUCT } from '../constants';
-import { Order, ProductVariant, Product } from '../types';
+import { Order, ProductVariant, Product, RegionConfig } from '../types';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { SEO } from '../components/SEO';
@@ -18,12 +18,13 @@ import {
     fetchAdminOrders, updateOrderStatus, updateOrderTracking, updateProduct, 
     fetchDiscounts, createDiscount, deleteDiscount, 
     fetchSubscribers, fetchInventoryLogs, fetchAdminStats,
-    fetchProduct
+    fetchProduct, sendAdminNewsletter,
+    fetchShippingRegions, createShippingRegion, updateShippingRegion, deleteShippingRegion
 } from '../services/api';
 import { DashboardSkeleton } from '../components/Skeletons';
 import { useCurrency } from '../context/CurrencyContext';
 
-type AdminView = 'DASHBOARD' | 'ORDERS' | 'DISCOUNTS' | 'PRODUCTS' | 'SUBSCRIBERS' | 'INVENTORY_LOGS';
+type AdminView = 'DASHBOARD' | 'ORDERS' | 'DISCOUNTS' | 'PRODUCTS' | 'SUBSCRIBERS' | 'SHIPPING' | 'INVENTORY_LOGS';
 
 // Extended types for local admin state
 interface AdminVariant extends ProductVariant {
@@ -541,8 +542,198 @@ const DiscountsView = () => {
     );
 };
 
+// --- Shipping Regions Management ---
+const ShippingView = () => {
+    const queryClient = useQueryClient();
+    const { data: regions = [], isLoading } = useQuery({ queryKey: ['shipping-regions'], queryFn: fetchShippingRegions });
+    
+    // Form State
+    const [editingId, setEditingId] = useState<string | null>(null);
+    const [formData, setFormData] = useState({
+        code: '',
+        name: '',
+        shippingCost: 0,
+        taxRate: 0,
+        eta: ''
+    });
+
+    const createMutation = useMutation({
+        mutationFn: createShippingRegion,
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['shipping-regions'] });
+            resetForm();
+        }
+    });
+
+    const updateMutation = useMutation({
+        mutationFn: ({id, data}: {id: string, data: Partial<RegionConfig>}) => updateShippingRegion(id, data),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['shipping-regions'] });
+            resetForm();
+        }
+    });
+
+    const deleteMutation = useMutation({
+        mutationFn: deleteShippingRegion,
+        onSuccess: () => queryClient.invalidateQueries({ queryKey: ['shipping-regions'] })
+    });
+
+    const resetForm = () => {
+        setEditingId(null);
+        setFormData({ code: '', name: '', shippingCost: 0, taxRate: 0, eta: '' });
+    };
+
+    const handleEdit = (region: RegionConfig) => {
+        setEditingId(region.id);
+        setFormData({
+            code: region.code,
+            name: region.name,
+            shippingCost: region.shippingCost,
+            taxRate: region.taxRate,
+            eta: region.eta
+        });
+    };
+
+    const handleSubmit = (e: React.FormEvent) => {
+        e.preventDefault();
+        if (editingId) {
+            updateMutation.mutate({ id: editingId, data: formData });
+        } else {
+            createMutation.mutate(formData);
+        }
+    };
+
+    return (
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <div className="lg:col-span-1">
+                <Card className="p-6 sticky top-8">
+                    <h3 className="font-heading font-bold text-lg text-brand-dark mb-4">
+                        {editingId ? 'Edit Region' : 'Add Shipping Region'}
+                    </h3>
+                    <form onSubmit={handleSubmit} className="space-y-4">
+                        <div className="grid grid-cols-2 gap-4">
+                            <div>
+                                <label className="text-xs font-bold text-gray-500 uppercase">Code</label>
+                                <input 
+                                    value={formData.code}
+                                    onChange={(e) => setFormData({...formData, code: e.target.value.toUpperCase()})}
+                                    placeholder="US" 
+                                    className="w-full p-2 border border-gray-200 rounded-lg uppercase outline-none focus:border-brand-red" 
+                                    maxLength={2}
+                                    required
+                                />
+                            </div>
+                            <div>
+                                <label className="text-xs font-bold text-gray-500 uppercase">Country Name</label>
+                                <input 
+                                    value={formData.name}
+                                    onChange={(e) => setFormData({...formData, name: e.target.value})}
+                                    placeholder="United States" 
+                                    className="w-full p-2 border border-gray-200 rounded-lg outline-none focus:border-brand-red" 
+                                    required
+                                />
+                            </div>
+                        </div>
+                        <div className="grid grid-cols-2 gap-4">
+                             <div>
+                                <label className="text-xs font-bold text-gray-500 uppercase">Cost ($)</label>
+                                <input 
+                                    type="number"
+                                    step="0.01"
+                                    value={formData.shippingCost}
+                                    onChange={(e) => setFormData({...formData, shippingCost: parseFloat(e.target.value)})}
+                                    className="w-full p-2 border border-gray-200 rounded-lg outline-none focus:border-brand-red" 
+                                    required
+                                />
+                            </div>
+                            <div>
+                                <label className="text-xs font-bold text-gray-500 uppercase">Tax (%)</label>
+                                <input 
+                                    type="number"
+                                    step="0.01"
+                                    value={formData.taxRate}
+                                    onChange={(e) => setFormData({...formData, taxRate: parseFloat(e.target.value)})}
+                                    className="w-full p-2 border border-gray-200 rounded-lg outline-none focus:border-brand-red" 
+                                    required
+                                />
+                            </div>
+                        </div>
+                        <div>
+                             <label className="text-xs font-bold text-gray-500 uppercase">Estimated Delivery</label>
+                             <input 
+                                value={formData.eta}
+                                onChange={(e) => setFormData({...formData, eta: e.target.value})}
+                                placeholder="5-10 Business Days" 
+                                className="w-full p-2 border border-gray-200 rounded-lg outline-none focus:border-brand-red" 
+                                required
+                            />
+                        </div>
+
+                        <div className="flex gap-2 pt-2">
+                            <Button fullWidth type="submit">
+                                {editingId ? 'Update Region' : 'Add Region'}
+                            </Button>
+                            {editingId && (
+                                <Button type="button" variant="secondary" onClick={resetForm}>Cancel</Button>
+                            )}
+                        </div>
+                    </form>
+                </Card>
+            </div>
+            
+            <div className="lg:col-span-2">
+                <Card className="p-0 overflow-hidden">
+                    <table className="w-full text-left">
+                        <thead>
+                            <tr className="bg-gray-50 text-gray-500 text-xs uppercase">
+                                <th className="p-4">Region</th>
+                                <th className="p-4">Cost</th>
+                                <th className="p-4">Tax</th>
+                                <th className="p-4">ETA</th>
+                                <th className="p-4 text-right">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-100 text-sm">
+                            {regions.map((r) => (
+                                <tr key={r.id} className="hover:bg-gray-50">
+                                    <td className="p-4">
+                                        <div className="font-bold text-brand-dark">{r.name}</div>
+                                        <div className="text-xs text-gray-400 font-mono">{r.code}</div>
+                                    </td>
+                                    <td className="p-4">${r.shippingCost}</td>
+                                    <td className="p-4">{r.taxRate}%</td>
+                                    <td className="p-4 text-gray-500 text-xs">{r.eta}</td>
+                                    <td className="p-4 text-right">
+                                        <div className="flex justify-end gap-2">
+                                            <button onClick={() => handleEdit(r)} className="text-gray-400 hover:text-brand-dark transition-colors">
+                                                <Pencil size={16} />
+                                            </button>
+                                            <button onClick={() => deleteMutation.mutate(r.id)} className="text-gray-400 hover:text-red-500 transition-colors">
+                                                <Trash2 size={16} />
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                            ))}
+                            {regions.length === 0 && (
+                                <tr>
+                                    <td colSpan={5} className="p-8 text-center text-gray-400">No shipping regions configured.</td>
+                                </tr>
+                            )}
+                        </tbody>
+                    </table>
+                </Card>
+            </div>
+        </div>
+    );
+};
+
 const SubscribersView = () => {
     const { data: subscribers = [] } = useQuery({ queryKey: ['admin-subscribers'], queryFn: fetchSubscribers });
+    const [isEmailModalOpen, setIsEmailModalOpen] = useState(false);
+    const [emailSubject, setEmailSubject] = useState('');
+    const [emailMessage, setEmailMessage] = useState('');
+    const [sending, setSending] = useState(false);
 
     const exportCSV = () => {
         const csvContent = "data:text/csv;charset=utf-8," 
@@ -556,33 +747,105 @@ const SubscribersView = () => {
         link.click();
     };
 
+    const handleSendEmail = async () => {
+        if(!emailSubject || !emailMessage) return alert("Please fill in subject and message");
+        setSending(true);
+        try {
+            const res = await sendAdminNewsletter(emailSubject, emailMessage);
+            alert(`Email sent successfully to ${res.sent} subscribers!`);
+            setIsEmailModalOpen(false);
+            setEmailSubject('');
+            setEmailMessage('');
+        } catch (e: any) {
+            alert("Failed to send: " + e.message);
+        } finally {
+            setSending(false);
+        }
+    };
+
     return (
-        <Card className="p-0 overflow-hidden">
-            <div className="p-6 border-b border-gray-100 flex justify-between items-center">
-                <h3 className="font-heading font-bold text-lg text-brand-dark">Newsletter Subscribers</h3>
-                <Button size="sm" variant="outline" onClick={exportCSV}><Download size={16} className="mr-2"/> Export CSV</Button>
-            </div>
-            <div className="overflow-x-auto">
-                <table className="w-full text-left">
-                    <thead>
-                        <tr className="bg-gray-50 text-gray-500 text-xs uppercase">
-                            <th className="p-4">Email</th>
-                            <th className="p-4">Date Joined</th>
-                            <th className="p-4">Source</th>
-                        </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-100 text-sm">
-                        {subscribers.map((sub, i) => (
-                            <tr key={i} className="hover:bg-gray-50">
-                                <td className="p-4 font-bold text-brand-dark">{sub.email}</td>
-                                <td className="p-4 text-gray-500">{sub.date}</td>
-                                <td className="p-4"><Badge color="bg-gray-500">{sub.source}</Badge></td>
+        <div className="space-y-6">
+            <Card className="p-0 overflow-hidden">
+                <div className="p-6 border-b border-gray-100 flex justify-between items-center">
+                    <h3 className="font-heading font-bold text-lg text-brand-dark">Newsletter Subscribers</h3>
+                    <div className="flex gap-3">
+                         <Button size="sm" onClick={() => setIsEmailModalOpen(true)}>
+                            <Mail size={16} className="mr-2"/> Compose Email
+                         </Button>
+                         <Button size="sm" variant="outline" onClick={exportCSV}><Download size={16} className="mr-2"/> Export CSV</Button>
+                    </div>
+                </div>
+                <div className="overflow-x-auto">
+                    <table className="w-full text-left">
+                        <thead>
+                            <tr className="bg-gray-50 text-gray-500 text-xs uppercase">
+                                <th className="p-4">Email</th>
+                                <th className="p-4">Date Joined</th>
+                                <th className="p-4">Source</th>
                             </tr>
-                        ))}
-                    </tbody>
-                </table>
-            </div>
-        </Card>
+                        </thead>
+                        <tbody className="divide-y divide-gray-100 text-sm">
+                            {subscribers.map((sub, i) => (
+                                <tr key={i} className="hover:bg-gray-50">
+                                    <td className="p-4 font-bold text-brand-dark">{sub.email}</td>
+                                    <td className="p-4 text-gray-500">{sub.date}</td>
+                                    <td className="p-4"><Badge color="bg-gray-500">{sub.source}</Badge></td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
+            </Card>
+            
+            {/* Email Composition Modal */}
+            {isEmailModalOpen && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+                    <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setIsEmailModalOpen(false)} />
+                    <div className="bg-white rounded-xl shadow-2xl p-6 w-full max-w-2xl relative z-10 animate-in fade-in zoom-in-95">
+                        <div className="flex justify-between items-center mb-4 border-b border-gray-100 pb-4">
+                            <h3 className="font-heading font-bold text-lg text-brand-dark flex items-center">
+                                <Send className="mr-2" size={20}/> Broadcast Newsletter
+                            </h3>
+                            <button onClick={() => setIsEmailModalOpen(false)}><X size={20} className="text-gray-400" /></button>
+                        </div>
+                        
+                        <div className="space-y-4">
+                            <div>
+                                <label className="text-xs font-bold text-gray-500 uppercase mb-1 block">To</label>
+                                <div className="p-2 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-600">
+                                    All Subscribers ({subscribers.length})
+                                </div>
+                            </div>
+                            <div>
+                                <label className="text-xs font-bold text-gray-500 uppercase mb-1 block">Subject</label>
+                                <input 
+                                    type="text" 
+                                    value={emailSubject} 
+                                    onChange={(e) => setEmailSubject(e.target.value)}
+                                    placeholder="e.g. Special Offer Inside!" 
+                                    className="w-full p-3 border border-gray-200 rounded-lg outline-none focus:border-brand-red font-medium"
+                                />
+                            </div>
+                            <div>
+                                <label className="text-xs font-bold text-gray-500 uppercase mb-1 block">Message (HTML Supported)</label>
+                                <textarea 
+                                    value={emailMessage} 
+                                    onChange={(e) => setEmailMessage(e.target.value)}
+                                    placeholder="<p>Hello Tribe,</p>..." 
+                                    className="w-full p-3 border border-gray-200 rounded-lg outline-none focus:border-brand-red font-mono text-sm h-64"
+                                />
+                            </div>
+                            
+                            <div className="flex justify-end pt-4 border-t border-gray-100">
+                                <Button onClick={handleSendEmail} disabled={sending} className="shadow-lg shadow-brand-red/20">
+                                    {sending ? 'Sending...' : <><Send size={16} className="mr-2"/> Send Broadcast</>}
+                                </Button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+        </div>
     );
 };
 
@@ -665,6 +928,7 @@ export const AdminDashboard = () => {
           <SidebarItem icon={ShoppingCart} label="Orders" active={currentView === 'ORDERS'} onClick={() => handleViewChange('ORDERS')} />
           <SidebarItem icon={Package} label="Products" active={currentView === 'PRODUCTS'} onClick={() => handleViewChange('PRODUCTS')} />
           <SidebarItem icon={Tag} label="Discounts" active={currentView === 'DISCOUNTS'} onClick={() => handleViewChange('DISCOUNTS')} />
+          <SidebarItem icon={Globe} label="Shipping" active={currentView === 'SHIPPING'} onClick={() => handleViewChange('SHIPPING')} />
           <SidebarItem icon={Mail} label="Subscribers" active={currentView === 'SUBSCRIBERS'} onClick={() => handleViewChange('SUBSCRIBERS')} />
           <SidebarItem icon={History} label="Inventory Logs" active={currentView === 'INVENTORY_LOGS'} onClick={() => handleViewChange('INVENTORY_LOGS')} />
         </div>
@@ -698,6 +962,7 @@ export const AdminDashboard = () => {
             {currentView === 'ORDERS' && <OrdersView />}
             {currentView === 'PRODUCTS' && <ProductsView />}
             {currentView === 'DISCOUNTS' && <DiscountsView />}
+            {currentView === 'SHIPPING' && <ShippingView />}
             {currentView === 'SUBSCRIBERS' && <SubscribersView />}
             {currentView === 'INVENTORY_LOGS' && <InventoryLogView />}
         </div>

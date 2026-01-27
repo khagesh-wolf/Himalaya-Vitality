@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { X, Mail, ArrowRight, Check } from 'lucide-react';
 import { Button, LazyImage } from './UI';
 import { useSettings } from '../context/SettingsContext';
-import { Subscriber } from '../types';
+import { subscribeToNewsletter } from '../services/api';
 
 export const NewsletterModal = () => {
   const [isOpen, setIsOpen] = useState(false);
@@ -65,34 +65,34 @@ export const NewsletterModal = () => {
     sessionStorage.setItem('himalaya_newsletter_dismissed', 'true');
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if(!email) return;
 
-    setSubmitted(true);
-    
-    // Save to LocalStorage (Permanent suppression)
-    localStorage.setItem('himalaya_subscribed', 'true');
-    // Save to SessionStorage (Just in case logic relies on it)
-    sessionStorage.setItem('himalaya_newsletter_dismissed', 'true');
-    
-    // Persist Subscriber for Admin
-    const newSubscriber: Subscriber = {
-        id: Date.now().toString(),
-        email: email,
-        date: new Date().toLocaleDateString(),
-        source: 'Popup'
-    };
-    
-    const existingSubscribers = JSON.parse(localStorage.getItem('himalaya_subscribers_list') || '[]');
-    localStorage.setItem('himalaya_subscribers_list', JSON.stringify([...existingSubscribers, newSubscriber]));
-
-    // Close after delay
-    setTimeout(() => {
-        setIsOpen(false);
-        setEmail('');
-        setSubmitted(false);
-    }, 4000);
+    try {
+        // Save to DB via API
+        await subscribeToNewsletter(email, 'Popup');
+        
+        setSubmitted(true);
+        
+        // Save to LocalStorage (Permanent suppression)
+        localStorage.setItem('himalaya_subscribed', 'true');
+        // Save to SessionStorage (Just in case logic relies on it)
+        sessionStorage.setItem('himalaya_newsletter_dismissed', 'true');
+        
+        // Close after delay
+        setTimeout(() => {
+            setIsOpen(false);
+            setEmail('');
+            setSubmitted(false);
+        }, 4000);
+    } catch (error) {
+        console.error("Subscription failed:", error);
+        // Still treat as success for UX if it's just a duplicate
+        setSubmitted(true);
+        localStorage.setItem('himalaya_subscribed', 'true');
+        setTimeout(() => setIsOpen(false), 3000);
+    }
   };
 
   if (!isOpen) return null;
@@ -119,7 +119,7 @@ export const NewsletterModal = () => {
         {/* Image Side */}
         <div className="hidden md:block w-2/5 relative">
            <LazyImage 
-             src="https://unsplash.com/photos/a-buddha-statue-sitting-in-front-of-a-tree-s3bt3HeHbYY?q=80&w=800&auto=format&fit=crop" 
+             src="https://images.unsplash.com/photo-1518241353330-0f7941c2d9b5?q=80&w=800&auto=format&fit=crop" 
              alt="Himalayan Zen" 
              className="absolute inset-0 w-full h-full object-cover" 
            />

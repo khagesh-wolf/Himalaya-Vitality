@@ -123,6 +123,7 @@ export interface RegionConfig {
   shippingCost: number;
   taxRate: number;
   eta: string;
+  active?: boolean;
 }
 
 export interface InventoryLog {

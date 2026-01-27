@@ -162,6 +162,18 @@ model BlogPost {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
+
+model ShippingRegion {
+  id           String   @id @default(uuid())
+  code         String   @unique // ISO Country Code (US, AU, etc.)
+  name         String
+  shippingCost Float
+  taxRate      Float
+  eta          String
+  active       Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
 ```
 
 ## 2. Environment Variables (.env)
