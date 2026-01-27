@@ -63,7 +63,9 @@ const sendEmail = async (to, subject, text, html) => {
         console.log(`[EMAIL] Attempting send to ${to}...`);
         
         if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
-            throw new Error('EMAIL_USER or EMAIL_PASS environment variables are missing. Check your .env file.');
+            // Only throw if in a critical path that catches it, otherwise log
+            console.warn('EMAIL_USER or EMAIL_PASS missing in .env');
+            return;
         }
 
         const info = await transporter.sendMail({ 
@@ -82,7 +84,6 @@ const sendEmail = async (to, subject, text, html) => {
         return info;
     } catch (e) {
         console.error('[EMAIL FAIL]', e.message);
-        // We throw here so the API route knows it failed and can alert the frontend
         throw e;
     }
 };
@@ -103,9 +104,13 @@ app.post('/api/auth/signup', async (req, res) => {
         const otp = generateOTP();
         const otpExpires = new Date(Date.now() + 15 * 60 * 1000); 
 
-        // Send Email FIRST. If it fails, don't create user (or handle rollback)
-        // This ensures user knows if OTP failed.
-        await sendEmail(email, 'Verify your email', `Your verification code is: ${otp}`);
+        // Send Email FIRST.
+        try {
+            await sendEmail(email, 'Verify your email', `Your verification code is: ${otp}`);
+        } catch (mailError) {
+            console.error("Mail error during signup:", mailError);
+            return res.status(500).json({ error: 'Failed to send verification email. Check server logs.' });
+        }
 
         const newUser = await prisma.user.create({
             data: { name, email, password: hashedPassword, otp, otpExpires }
@@ -114,7 +119,7 @@ app.post('/api/auth/signup', async (req, res) => {
         res.json({ message: 'Signup successful', requiresVerification: true, email });
     } catch (e) {
         console.error("Signup Error:", e);
-        res.status(500).json({ error: e.message || 'Failed to send verification email' });
+        res.status(500).json({ error: e.message });
     }
 });
 
@@ -203,7 +208,7 @@ app.get('/api/auth/me', authenticate, async (req, res) => {
     } catch(e) { res.status(500).json({ error: 'Failed to fetch profile' }); }
 });
 
-// Update Profile Route (FIXED: Missing Endpoint)
+// Update Profile Route
 app.put('/api/auth/profile', authenticate, async (req, res) => {
     const { firstName, lastName, address, city, country, zip, phone } = req.body;
     try {
@@ -303,7 +308,7 @@ app.put('/api/admin/orders/:id/tracking', requireAdmin, async (req, res) => {
         });
 
         if (notify) {
-            // Attempt to send email, but don't fail the request if tracking email fails
+            // Attempt to send email
             try {
                 await sendEmail(
                     order.customerEmail,
@@ -344,7 +349,7 @@ app.post('/api/orders', async (req, res) => {
             customerName: `${customer.firstName} ${customer.lastName}`,
             shippingAddress: customer, 
             total,
-            status: 'Paid', // Assuming payment succeeded before calling this
+            status: 'Paid', 
             paymentId,
             items: {
                 create: items.map(i => ({
@@ -382,6 +387,7 @@ app.post('/api/orders', async (req, res) => {
 app.get('/api/orders/my-orders', authenticate, async (req, res) => {
     try {
         console.log(`[ORDERS] Fetching orders for User ID: ${req.user.id}`);
+        // Ensure these fields exist in schema before selecting or filtering
         const orders = await prisma.order.findMany({
             where: { userId: req.user.id },
             include: { items: true },
@@ -393,7 +399,7 @@ app.get('/api/orders/my-orders', authenticate, async (req, res) => {
             date: new Date(o.createdAt).toLocaleDateString(),
             total: o.total,
             status: o.status,
-            trackingNumber: o.trackingNumber,
+            trackingNumber: o.trackingNumber, // Will be null if column missing in schema, but crashes if missing in DB
             carrier: o.carrier,
             itemsDetails: o.items.map(i => ({
                 title: 'Himalaya Shilajit', 
@@ -406,7 +412,8 @@ app.get('/api/orders/my-orders', authenticate, async (req, res) => {
         res.json(formatted);
     } catch(e) {
         console.error("[ORDERS] Fetch Error:", e);
-        res.status(500).json({ error: 'Failed to fetch orders: ' + e.message });
+        // Better error message
+        res.status(500).json({ error: 'Failed to fetch orders. DB Sync Required: ' + e.message });
     }
 });
 
