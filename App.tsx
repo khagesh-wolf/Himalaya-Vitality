@@ -45,10 +45,37 @@ const ShippingReturnsPage = React.lazy(() => import('./pages/StaticPages').then(
 const SitemapPage = React.lazy(() => import('./pages/StaticPages').then(m => ({ default: m.SitemapPage })));
 
 const queryClient = new QueryClient();
-const ScrollToTop = () => { const { pathname } = useLocation(); useEffect(() => window.scrollTo(0, 0), [pathname]); return null; };
 const GOOGLE_CLIENT_ID = (import.meta as any).env?.VITE_GOOGLE_CLIENT_ID || "YOUR_GOOGLE_CLIENT_ID_PLACEHOLDER";
 
-const App: React.FC = () => {
+const ScrollToTop = () => { 
+    const { pathname } = useLocation(); 
+    useEffect(() => window.scrollTo(0, 0), [pathname]); 
+    return null; 
+};
+
+// Wrapper to conditionally render Layout
+const LayoutWrapper = ({ children }: { children?: React.ReactNode }) => {
+    const location = useLocation();
+    const isCheckout = location.pathname === '/checkout';
+    const isAdmin = location.pathname.startsWith('/admin');
+
+    // If Checkout or Admin, don't show main Navbar/Footer
+    if (isCheckout || isAdmin) {
+        return <>{children}</>;
+    }
+
+    return (
+        <div className="flex flex-col min-h-screen font-sans text-earth-900">
+            <Navbar />
+            <main className="flex-grow">
+                {children}
+            </main>
+            <Footer />
+        </div>
+    );
+};
+
+const App = () => {
   useEffect(() => {
     initAnalytics();
   }, []);
@@ -64,23 +91,26 @@ const App: React.FC = () => {
                   <CartProvider>
                     <HashRouter>
                       <ScrollToTop />
-                      <div className="flex flex-col min-h-screen font-sans text-earth-900">
-                        <Navbar />
-                        <main className="flex-grow">
+                      <LayoutWrapper>
                           <Suspense fallback={<GlobalLoader />}>
                             <Routes>
                               <Route path="/" element={<><SEO title="Premium Shilajit Resin" description="Boost your energy naturally." /><HomePage /></>} />
                               <Route path="/product/:productId" element={<><SEO title="Shop Shilajit" /><ProductPage /></>} />
                               <Route path="/shop" element={<><SEO title="Shop Shilajit" /><ProductPage /></>} /> 
                               <Route path="/cart" element={<><SEO title="Your Cart" /><CartPage /></>} />
+                              
+                              {/* Checkout has its own layout inside the component */}
                               <Route path="/checkout" element={<><SEO title="Secure Checkout" /><CheckoutPage /></>} />
+                              
                               <Route path="/login" element={<LoginPage />} />
                               <Route path="/signup" element={<SignupPage />} />
                               <Route path="/verify-email" element={<VerifyEmailPage />} />
                               <Route path="/forgot-password" element={<ForgotPasswordPage />} />
                               <Route path="/profile" element={<ProfilePage />} />
+                              
                               <Route path="/admin" element={<AdminDashboard />} />
                               <Route path="/admin/login" element={<AdminLoginPage />} />
+                              
                               <Route path="/about" element={<><SEO title="Our Story" /><AboutPage /></>} />
                               <Route path="/science" element={<><SEO title="The Science" /><SciencePage /></>} />
                               <Route path="/how-to-use" element={<><SEO title="How To Use" /><HowToUsePage /></>} />
@@ -97,9 +127,7 @@ const App: React.FC = () => {
                               <Route path="*" element={<NotFoundPage />} />
                             </Routes>
                           </Suspense>
-                        </main>
-                        <Footer />
-                      </div>
+                      </LayoutWrapper>
                     </HashRouter>
                   </CartProvider>
                 </CurrencyProvider>

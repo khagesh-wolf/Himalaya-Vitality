@@ -9,17 +9,12 @@ import { Link } from 'react-router-dom';
 import { BLOG_POSTS, MAIN_PRODUCT, FAQ_DATA } from '../constants';
 
 // --- Shared Page Header Component ---
-const PageHeader = ({ title, subtitle, bgImage }: { title: string, subtitle?: string, bgImage?: string }) => (
-    <div className="relative min-h-[50vh] flex items-center justify-center overflow-hidden bg-brand-dark pt-20">
+const PageHeader = ({ title, subtitle }: { title: string, subtitle?: string }) => (
+    <div className="relative min-h-[40vh] flex items-center justify-center overflow-hidden bg-brand-dark pt-20">
         <div className="absolute inset-0">
-            {bgImage && (
-                <LazyImage 
-                src={bgImage} 
-                alt="Background" 
-                className="w-full h-full object-cover opacity-40"
-                />
-            )}
-            <div className="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-black/60"></div>
+            <div className="absolute inset-0 bg-gradient-to-b from-brand-dark via-black to-brand-dark"></div>
+            {/* Abstract pattern */}
+            <div className="absolute inset-0 opacity-10 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')]"></div>
         </div>
         
         <Container className="relative z-10 text-center text-white pt-10 pb-20">
@@ -28,7 +23,7 @@ const PageHeader = ({ title, subtitle, bgImage }: { title: string, subtitle?: st
                     {title}
                 </h1>
                 {subtitle && (
-                    <p className="text-lg md:text-xl text-gray-300 max-w-2xl mx-auto font-medium leading-relaxed px-4">
+                    <p className="text-lg md:text-xl text-gray-400 max-w-2xl mx-auto font-medium leading-relaxed px-4">
                         {subtitle}
                     </p>
                 )}
@@ -44,7 +39,6 @@ export const AboutPage = () => {
         <PageHeader 
             title="The Gold of Nepal" 
             subtitle="Sourced from the pristine Himalayan landscape, specifically Dolpa, Mugu, Jajarkot, Humla, Rukum, and Gorkha."
-            bgImage="https://images.unsplash.com/photo-1544367563-12123d832e34?q=80&w=1920&auto=format&fit=crop"
         />
 
         <Container className="py-16 md:py-24">
@@ -65,12 +59,8 @@ export const AboutPage = () => {
                 </div>
             </Reveal>
             <Reveal delay={200}>
-                <div className="relative rounded-3xl overflow-hidden shadow-2xl group h-[400px] md:h-[500px]">
-                    <LazyImage 
-                        src="https://images.unsplash.com/photo-1596522354728-66228784b293?q=80&w=800&auto=format&fit=crop" 
-                        alt="Sherpa harvesting" 
-                        className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" 
-                    />
+                <div className="relative rounded-3xl overflow-hidden shadow-2xl group h-[400px] md:h-[500px] bg-stone-100 flex items-center justify-center">
+                    <img src={MAIN_PRODUCT.images[0]} alt="Himalaya Shilajit" className="w-full h-full object-cover" />
                     <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/90 to-transparent p-8">
                         <div className="flex items-center text-white gap-2 font-bold uppercase tracking-widest text-xs mb-2">
                             <MapPin size={16} className="text-brand-red" /> Dolpa District, Nepal
@@ -117,7 +107,6 @@ export const SciencePage = () => (
         <PageHeader 
             title="The Science of Shilajit" 
             subtitle="Rich in Humic (80-85%) and Non-humic (15-20%) compounds."
-            bgImage="https://images.unsplash.com/photo-1532187863486-abf9dbad1b69?q=80&w=1920&auto=format&fit=crop"
         />
         <Container className="py-20">
             <div className="max-w-4xl mx-auto">
@@ -206,7 +195,7 @@ export const ContactPage = () => (
                             <div className="w-10 h-10 bg-brand-dark text-white flex items-center justify-center rounded-full"><MapPin size={18}/></div>
                             <div>
                                 <div className="text-xs font-bold uppercase text-gray-400">Headquarters</div>
-                                <div className="font-bold text-brand-dark">Denver, Colorado, USA</div>
+                                <div className="font-bold text-brand-dark">Melbourne, Australia</div>
                             </div>
                         </div>
                     </div>
@@ -233,7 +222,7 @@ export const TrackOrderPage = () => (
          <Container className="py-20 text-center">
              <Card className="max-w-md mx-auto p-10 shadow-xl">
                 <Truck size={48} className="text-brand-dark mx-auto mb-6" />
-                <p className="mb-6 text-gray-600">Enter your order number to check the status of your shipment.</p>
+                <p className="mb-6 text-gray-600">Enter your order number to check the status of your Australia Post shipment.</p>
                 <div className="space-y-4">
                     <input className="w-full p-4 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-brand-red" placeholder="Order # (e.g. HV-1234)" />
                     <Button fullWidth>Track Order</Button>
@@ -305,9 +294,9 @@ export const ShippingReturnsPage = () => (
             <div>
                 <h2 className="text-2xl font-bold text-brand-dark mb-4 flex items-center gap-3"><Truck size={24} className="text-brand-red"/> Shipping Policy</h2>
                 <div className="prose text-gray-600">
-                    <p>We ship worldwide. All orders are processed within 24 hours.</p>
+                    <p>We are Australian operated and ship worldwide. All orders are processed within 24 hours.</p>
                     <ul>
-                        <li><strong>USA:</strong> 2-4 Business Days</li>
+                        <li><strong>Australia (AusPost):</strong> 2-5 Business Days</li>
                         <li><strong>International:</strong> 6-12 Business Days</li>
                     </ul>
                     <p>Free shipping is available on all multi-jar bundles.</p>

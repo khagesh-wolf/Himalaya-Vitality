@@ -1,14 +1,10 @@
 
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
-import { Check, Star, ArrowRight, ShieldCheck, Zap, Activity, Award, Droplet, Mountain, CheckCircle2, XCircle, Instagram, Heart, Truck, Globe, Lock } from 'lucide-react';
+import { Check, Star, ArrowRight, ShieldCheck, Zap, Activity, Award, Droplet, Mountain, CheckCircle2, XCircle, Truck, Globe, Lock, Instagram } from 'lucide-react';
 import { Button, Container, LazyImage, Reveal } from '../components/UI';
-import { MAIN_PRODUCT } from '../constants';
-import { fetchReviews } from '../services/api';
+import { MAIN_PRODUCT, REVIEWS } from '../constants';
 import { SEO } from '../components/SEO';
-
-// --- Components ---
 
 // Animated Letter Component
 const AnimatedLetters = ({ text, delayStart = 0, className = "" }: { text: string, delayStart?: number, className?: string }) => {
@@ -31,9 +27,7 @@ const AnimatedLetters = ({ text, delayStart = 0, className = "" }: { text: strin
 };
 
 const BenefitCard = ({ icon: Icon, title, description }: { icon: any, title: string, description: string }) => (
-  <div 
-    className="flex flex-col items-center text-center p-8 rounded-2xl bg-white border border-gray-200 shadow-sm hover:shadow-xl hover:-translate-y-2 transition-all duration-500 group h-full"
-  >
+  <div className="flex flex-col items-center text-center p-8 rounded-2xl bg-white border border-gray-200 shadow-sm hover:shadow-xl hover:-translate-y-2 transition-all duration-500 group h-full">
     <div className="w-14 h-14 bg-stone-50 rounded-2xl flex items-center justify-center mb-6 text-brand-red group-hover:bg-brand-red group-hover:text-white transition-colors duration-300 shadow-sm group-hover:shadow-lg group-hover:shadow-brand-red/30">
       <Icon size={28} />
     </div>
@@ -54,25 +48,17 @@ const ComparisonRow = ({ feature, us, them }: { feature: string, us: string | bo
   </div>
 );
 
-const InstagramPost = ({ src, likes }: { src: string, likes: string }) => (
-    <div className="relative group aspect-square overflow-hidden rounded-2xl bg-gray-100 cursor-pointer border border-gray-200 shadow-sm">
-        <LazyImage src={src} alt="Instagram Post" className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" />
-        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
-            <Instagram className="text-white w-8 h-8 drop-shadow-lg" />
-        </div>
-        <div className="absolute bottom-4 left-4 text-white text-xs font-bold opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center drop-shadow-md">
-            <Heart size={12} className="mr-1 fill-white" /> {likes}
-        </div>
-    </div>
-);
-
 export const HomePage = () => {
-  // Fetch reviews from API
-  const { data: reviews = [] } = useQuery({
-    queryKey: ['reviews'],
-    queryFn: fetchReviews,
-    initialData: []
-  });
+  // Use hardcoded reviews
+  const reviews = REVIEWS.slice(0, 3);
+
+  // Simulated Instagram Feed (Using product images for visual consistency)
+  const instagramPosts = MAIN_PRODUCT.images.slice(0, 4).map((img, i) => ({
+    id: `insta-${i}`,
+    image: img,
+    link: 'https://www.instagram.com/himalaya_vitality/',
+    caption: 'Unleash your potential with Himalaya Vitality.'
+  }));
 
   return (
     <div className="bg-white">
@@ -84,18 +70,16 @@ export const HomePage = () => {
       {/* --- HERO SECTION --- */}
       <section className="relative min-h-screen w-full flex items-center justify-center overflow-hidden bg-black pb-20 pt-32 md:pt-40">
         
-        {/* Background Image with Zoom Effect */}
+        {/* Background Image with Zoom Animation */}
         <div className="absolute inset-0 z-0">
-             <div className="w-full h-full animate-zoom-slow">
-                <LazyImage 
-                    src="https://yuzfkj.vercel.app/images/hero-bg.jpg" 
-                    alt="Majestic Himalayan Peaks" 
-                    className="w-full h-full object-cover opacity-80" 
-                />
-             </div>
-             {/* Complex Gradients for Depth & Readability */}
-             <div className="absolute inset-0 bg-gradient-to-b from-black/80 via-black/20 to-black/90"></div>
-             <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,transparent_0%,rgba(0,0,0,0.6)_100%)]"></div>
+            <LazyImage 
+              src="https://yuzfkj.vercel.app/images/hero-bg.jpg" 
+              alt="Himalayan Mountains" 
+              className="w-full h-full object-cover opacity-60 animate-zoom-slow" 
+            />
+            {/* Gradient Overlays for Readability */}
+            <div className="absolute inset-0 bg-gradient-to-b from-black/70 via-transparent to-black"></div>
+            <div className="absolute inset-0 bg-gradient-to-t from-black via-black/20 to-transparent"></div>
         </div>
 
         <Container className="relative z-10 text-center flex flex-col items-center">
@@ -110,9 +94,6 @@ export const HomePage = () => {
 
              {/* Main Headline */}
              <div className="mb-8 md:mb-10 relative w-full">
-                {/* Glow behind text */}
-                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[80%] h-[120%] bg-yellow-500/5 blur-[80px] -z-10 rounded-full pointer-events-none"></div>
-                
                 <h1 className="font-heading text-5xl sm:text-6xl md:text-8xl lg:text-9xl font-extrabold leading-[0.9] text-white tracking-tighter drop-shadow-2xl">
                     <span className="block mb-2 text-white drop-shadow-xl animate-fade-in-up opacity-0" style={{ animationDelay: '300ms' }}>
                         HIMALAYAN
@@ -126,16 +107,14 @@ export const HomePage = () => {
              {/* Description */}
              <p className="text-base sm:text-lg md:text-xl text-gray-200 mb-10 md:mb-12 font-medium max-w-xl md:max-w-2xl mx-auto drop-shadow-lg leading-relaxed animate-fade-in-up opacity-0 px-4" style={{ animationDelay: '1800ms' }}>
                  Unleash your primal potential with the purest <span className="text-yellow-400 font-bold border-b border-yellow-400/50 pb-0.5">Gold Grade</span> resin. 
-                 Ethically sourced from the Ladakh range for peak performance and recovery.
+                 Ethically sourced from the Ladakh range for peak performance.
              </p>
 
              {/* CTA Buttons */}
              <div className="flex flex-col sm:flex-row gap-4 sm:gap-6 w-full sm:w-auto px-4 animate-fade-in-up opacity-0" style={{ animationDelay: '2000ms' }}>
                  <Link to="/product/himalaya-shilajit-resin" className="group relative w-full sm:w-auto">
-                     <div className="absolute -inset-1 bg-gradient-to-r from-brand-red to-orange-600 rounded-full blur opacity-40 group-hover:opacity-100 transition duration-500 animate-pulse-fast"></div>
                      <Button size="lg" className="relative h-14 md:h-16 px-8 md:px-12 text-lg bg-brand-red hover:bg-red-600 text-white border-none w-full sm:w-auto font-heading font-bold tracking-wide shadow-2xl flex items-center justify-center gap-3 overflow-hidden transform group-hover:-translate-y-0.5 transition-all">
                          <span className="relative z-10 flex items-center gap-2">Shop The Resin <ArrowRight size={20} className="group-hover:translate-x-1 transition-transform" /></span>
-                         <div className="absolute inset-0 -translate-x-full group-hover:animate-shimmer bg-gradient-to-r from-transparent via-white/20 to-transparent z-0"></div>
                      </Button>
                  </Link>
                  <Link to="/science" className="w-full sm:w-auto group">
@@ -148,22 +127,22 @@ export const HomePage = () => {
              {/* Bottom Trust Indicators with Float Animation */}
              <div className="mt-16 md:mt-20 flex flex-wrap justify-center gap-6 sm:gap-8 md:gap-20 animate-fade-in-up opacity-0" style={{ animationDelay: '2200ms' }}>
                 <div className="flex flex-col items-center gap-2 md:gap-3 group animate-float" style={{ animationDelay: '0s' }}>
-                    <div className="w-12 h-12 md:w-14 md:h-14 rounded-full bg-white/5 backdrop-blur-md border border-white/10 flex items-center justify-center text-yellow-400 shadow-lg group-hover:scale-110 group-hover:bg-yellow-400 group-hover:text-black transition-all duration-300">
-                        <CheckCircle2 size={20} className="text-yellow-400 group-hover:text-black transition-colors md:w-6 md:h-6" />
+                    <div className="w-12 h-12 md:w-14 md:h-14 rounded-full bg-white/5 backdrop-blur-md border border-white/10 flex items-center justify-center text-yellow-400 shadow-lg">
+                        <CheckCircle2 size={20} className="text-yellow-400 md:w-6 md:h-6" />
                     </div>
-                    <span className="text-[10px] md:text-xs font-bold uppercase tracking-widest text-white/80 group-hover:text-yellow-400 transition-colors">Lab Tested</span>
+                    <span className="text-[10px] md:text-xs font-bold uppercase tracking-widest text-white/80">Lab Tested</span>
                 </div>
                 <div className="flex flex-col items-center gap-2 md:gap-3 group animate-float" style={{ animationDelay: '1.5s' }}>
-                    <div className="w-12 h-12 md:w-14 md:h-14 rounded-full bg-white/5 backdrop-blur-md border border-white/10 flex items-center justify-center text-yellow-400 shadow-lg group-hover:scale-110 group-hover:bg-yellow-400 group-hover:text-black transition-all duration-300">
-                        <Mountain size={20} className="text-yellow-400 group-hover:text-black transition-colors md:w-6 md:h-6" />
+                    <div className="w-12 h-12 md:w-14 md:h-14 rounded-full bg-white/5 backdrop-blur-md border border-white/10 flex items-center justify-center text-yellow-400 shadow-lg">
+                        <Mountain size={20} className="text-yellow-400 md:w-6 md:h-6" />
                     </div>
-                    <span className="text-[10px] md:text-xs font-bold uppercase tracking-widest text-white/80 group-hover:text-yellow-400 transition-colors">Authentic</span>
+                    <span className="text-[10px] md:text-xs font-bold uppercase tracking-widest text-white/80">Authentic</span>
                 </div>
                 <div className="flex flex-col items-center gap-2 md:gap-3 group animate-float" style={{ animationDelay: '3s' }}>
-                    <div className="w-12 h-12 md:w-14 md:h-14 rounded-full bg-white/5 backdrop-blur-md border border-white/10 flex items-center justify-center text-yellow-400 shadow-lg group-hover:scale-110 group-hover:bg-yellow-400 group-hover:text-black transition-all duration-300">
-                        <Zap size={20} className="text-yellow-400 group-hover:text-black transition-colors md:w-6 md:h-6" />
+                    <div className="w-12 h-12 md:w-14 md:h-14 rounded-full bg-white/5 backdrop-blur-md border border-white/10 flex items-center justify-center text-yellow-400 shadow-lg">
+                        <Zap size={20} className="text-yellow-400 md:w-6 md:h-6" />
                     </div>
-                    <span className="text-[10px] md:text-xs font-bold uppercase tracking-widest text-white/80 group-hover:text-yellow-400 transition-colors">Potent</span>
+                    <span className="text-[10px] md:text-xs font-bold uppercase tracking-widest text-white/80">Potent</span>
                 </div>
              </div>
         </Container>
@@ -241,7 +220,6 @@ export const HomePage = () => {
 
       {/* --- COMPARISON SECTION (Dark Background) --- */}
       <section className="py-20 md:py-24 bg-stone-900 text-white relative overflow-hidden">
-        <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-5"></div>
         <Container className="relative z-10">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-16 items-center">
             <Reveal>
@@ -371,83 +349,77 @@ export const HomePage = () => {
             </Reveal>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
-                {reviews.length === 0 ? (
-                    <div className="col-span-full text-center py-10">
-                        <p className="text-gray-500">Loading reviews...</p>
-                    </div>
-                ) : (
-                    reviews.slice(0, 3).map((review, i) => (
-                        <Reveal key={review.id} delay={i * 150} className="h-full">
-                            <div className="bg-white p-8 rounded-3xl border border-gray-200 shadow-sm hover:shadow-xl transition-all duration-300 relative group h-full flex flex-col">
-                                <div className="absolute top-8 right-8 text-gray-100 group-hover:text-brand-red/10 transition-colors">
-                                    <svg width="40" height="40" viewBox="0 0 24 24" fill="currentColor"><path d="M14.017 21L14.017 18C14.017 16.8954 14.9124 16 16.017 16H19.017C19.5693 16 20.017 15.5523 20.017 15V9C20.017 8.44772 19.5693 8 19.017 8H15.017C14.4647 8 14.017 8.44772 14.017 9V11C14.017 11.5523 13.5693 12 13.017 12H12.017V5H22.017V15C22.017 18.3137 19.3307 21 16.017 21H14.017ZM5.0166 21L5.0166 18C5.0166 16.8954 5.91203 16 7.0166 16H10.0166C10.5689 16 11.0166 15.5523 11.0166 15V9C11.0166 8.44772 10.5689 8 10.0166 8H6.0166C5.46432 8 5.0166 8.44772 5.0166 9V11C5.0166 11.5523 4.56889 12 4.0166 12H3.0166V5H13.0166V15C13.0166 18.3137 10.3303 21 7.0166 21H5.0166Z" /></svg>
-                                </div>
-                                <div className="flex text-brand-gold-500 mb-6">
-                                    {[...Array(5)].map((_, i) => <Star key={i} size={16} fill="currentColor" strokeWidth={0} />)}
-                                </div>
-                                <h4 className="font-bold text-lg text-brand-dark mb-3 leading-tight">"{review.title}"</h4>
-                                <p className="text-sm text-gray-600 leading-relaxed mb-6 line-clamp-4 relative z-10 flex-grow">{review.content}</p>
-                                <div className="flex items-center justify-between pt-6 border-t border-gray-100 mt-auto">
-                                    <span className="font-bold text-sm text-brand-dark">{review.author}</span>
-                                    {review.verified && <span className="text-[10px] uppercase font-bold text-green-600 flex items-center tracking-wider bg-green-50 px-2 py-1 rounded-full"><CheckCircle2 size={12} className="mr-1"/> Verified</span>}
-                                </div>
+                {reviews.map((review, i) => (
+                    <Reveal key={review.id} delay={i * 150} className="h-full">
+                        <div className="bg-white p-8 rounded-3xl border border-gray-200 shadow-sm hover:shadow-xl transition-all duration-300 relative group h-full flex flex-col">
+                            <div className="flex text-brand-gold-500 mb-6">
+                                {[...Array(5)].map((_, i) => <Star key={i} size={16} fill="currentColor" strokeWidth={0} />)}
                             </div>
-                        </Reveal>
-                    ))
-                )}
-            </div>
-            
-            <div className="mt-8 text-center md:hidden">
-                <Link to="/reviews">
-                    <Button variant="outline-dark" fullWidth>Read All Reviews</Button>
-                </Link>
+                            <h4 className="font-bold text-lg text-brand-dark mb-3 leading-tight">"{review.title}"</h4>
+                            <p className="text-sm text-gray-600 leading-relaxed mb-6 line-clamp-4 relative z-10 flex-grow">{review.content}</p>
+                            <div className="flex items-center justify-between pt-6 border-t border-gray-100 mt-auto">
+                                <span className="font-bold text-sm text-brand-dark">{review.author}</span>
+                                {review.verified && <span className="text-[10px] uppercase font-bold text-green-600 flex items-center tracking-wider bg-green-50 px-2 py-1 rounded-full"><CheckCircle2 size={12} className="mr-1"/> Verified</span>}
+                            </div>
+                        </div>
+                    </Reveal>
+                ))}
             </div>
         </Container>
       </section>
 
-      {/* --- MOCK INSTAGRAM FEED --- */}
-      <section className="py-20 md:py-24 bg-white">
+      {/* --- INSTAGRAM FEED SECTION --- */}
+      <section className="py-20 border-t border-gray-100 overflow-hidden bg-white">
         <Container>
-           <Reveal>
-             <div className="text-center mb-12">
-                 <div className="flex items-center justify-center gap-2 mb-2">
-                     <Instagram size={20} className="text-brand-dark" />
-                     <span className="text-brand-red font-bold text-sm uppercase tracking-widest">Join the Tribe</span>
-                 </div>
-                 <h2 className="font-heading text-3xl font-extrabold text-brand-dark">@HimalayaVitality</h2>
-             </div>
-           </Reveal>
-           
-           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <Reveal delay={0}>
-                  <InstagramPost src="https://images.unsplash.com/photo-1519681393798-38e43269d877?q=80&w=600&auto=format&fit=crop" likes="1.4k" /> 
-              </Reveal>
-              <Reveal delay={150}>
-                  <InstagramPost src="https://images.unsplash.com/photo-1620916566398-39f1143ab7be?q=80&w=600&auto=format&fit=crop" likes="2.1k" /> 
-              </Reveal>
-              <Reveal delay={300}>
-                  <InstagramPost src="https://images.unsplash.com/photo-1551632811-561732d1e306?q=80&w=600&auto=format&fit=crop" likes="950" /> 
-              </Reveal>
-              <Reveal delay={450}>
-                  <InstagramPost src="https://images.unsplash.com/photo-1512621776951-a57141f2eefd?q=80&w=600&auto=format&fit=crop" likes="3.2k" /> 
-              </Reveal>
-           </div>
+            <Reveal>
+                <div className="text-center mb-12">
+                    <div className="flex items-center justify-center gap-2 mb-2 text-brand-red font-bold uppercase tracking-widest text-xs">
+                        <Instagram size={16} /> Social Community
+                    </div>
+                    <h2 className="font-heading text-3xl md:text-4xl font-extrabold text-brand-dark mb-4">
+                        Follow @himalaya_vitality
+                    </h2>
+                    <p className="text-gray-500 max-w-lg mx-auto">
+                        Join our community of high performers. Tag us to be featured.
+                    </p>
+                </div>
+            </Reveal>
 
-           <div className="text-center mt-10">
-               <Reveal delay={600}>
-                   <a href="https://www.instagram.com/himalaya_vitality/" target="_blank" rel="noreferrer">
-                       <Button variant="outline-dark" className="border border-gray-300 font-bold px-8 hover:border-brand-dark">Follow Us</Button>
-                   </a>
-               </Reveal>
-           </div>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
+                {instagramPosts.map((post, i) => (
+                    <Reveal key={post.id} delay={i * 100}>
+                        <a 
+                            href={post.link} 
+                            target="_blank" 
+                            rel="noopener noreferrer" 
+                            className="block relative aspect-square group overflow-hidden rounded-2xl cursor-pointer"
+                        >
+                            <LazyImage 
+                                src={post.image} 
+                                alt="Instagram Post" 
+                                className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" 
+                            />
+                            <div className="absolute inset-0 bg-brand-dark/40 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center backdrop-blur-[2px]">
+                                <Instagram className="text-white drop-shadow-lg transform scale-90 group-hover:scale-100 transition-transform" size={32} />
+                            </div>
+                        </a>
+                    </Reveal>
+                ))}
+            </div>
+            
+            <div className="text-center mt-10">
+                <a href="https://www.instagram.com/himalaya_vitality/" target="_blank" rel="noopener noreferrer">
+                    <Button variant="outline-dark" className="gap-2 px-8">
+                        <Instagram size={18} /> Follow on Instagram
+                    </Button>
+                </a>
+            </div>
         </Container>
       </section>
 
       {/* --- PRODUCT SHOWCASE CTA --- */}
       <section className="relative py-24 md:py-32 bg-stone-900 text-white overflow-hidden">
-        <div className="absolute inset-0 opacity-15">
-             <LazyImage src="https://images.unsplash.com/photo-1614850523459-c2f4c699c52e?q=80&w=2000&auto=format&fit=crop" alt="Abstract Dark Stone Texture" className="w-full h-full object-cover" />
-        </div>
+        <div className="absolute inset-0 opacity-15 bg-black"></div>
         
         <Container className="relative z-10">
             <div className="flex flex-col md:flex-row items-center gap-12 lg:gap-20">
@@ -485,7 +457,7 @@ export const HomePage = () => {
                         </div>
 
                         <div className="mt-8 flex flex-col sm:flex-row items-center justify-center md:justify-start gap-4 sm:gap-6 text-xs font-bold text-gray-500 uppercase tracking-widest">
-                            <div className="flex items-center gap-2"><Truck size={16} /> Free Global Shipping</div>
+                            <div className="flex items-center gap-2"><Truck size={16} /> Free Aus Shipping (2+)</div>
                             <div className="flex items-center gap-2"><ShieldCheck size={16} /> Money Back Guarantee</div>
                         </div>
                     </Reveal>

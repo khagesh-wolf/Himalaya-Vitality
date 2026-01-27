@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams, useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { Star, Check, Info, ShieldCheck, Truck, Clock, Lock, Award, XCircle, Filter, Mail, ArrowRight } from 'lucide-react';
+import { Star, Check, ShieldCheck, Truck, Clock, Lock, Award, Filter, ArrowRight } from 'lucide-react';
 import { Button, Container, LazyImage, Reveal } from '../components/UI';
 import { BundleType } from '../types';
 import { useCurrency } from '../context/CurrencyContext';
@@ -12,66 +12,8 @@ import { SEO } from '../components/SEO';
 import { Breadcrumbs } from '../components/Breadcrumbs';
 import { fetchProduct, fetchReviews } from '../services/api';
 import { ProductPageSkeleton } from '../components/Skeletons';
-import { MAIN_PRODUCT } from '../constants'; 
-import { trackViewItem, trackAddToCart } from '../services/analytics'; // Import Analytics
-
-const NewsletterSection = () => {
-  const [email, setEmail] = useState('');
-  const [subscribed, setSubscribed] = useState(false);
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if(email) {
-        setSubscribed(true);
-        setTimeout(() => {
-            setEmail('');
-            setSubscribed(false);
-        }, 3000);
-    }
-  };
-
-  return (
-    <div className="bg-brand-dark relative overflow-hidden py-16 rounded-3xl my-20">
-        {/* Background elements */}
-        <div className="absolute top-0 right-0 w-64 h-64 bg-brand-red/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2"></div>
-        <div className="absolute bottom-0 left-0 w-64 h-64 bg-gray-100/5 rounded-full blur-3xl translate-y-1/2 -translate-x-1/2"></div>
-        
-        <Container className="relative z-10 text-center max-w-2xl px-4">
-            <Reveal>
-                <div className="w-16 h-16 bg-white/10 rounded-2xl flex items-center justify-center mx-auto mb-6 text-white backdrop-blur-sm">
-                    <Mail size={32} />
-                </div>
-                <h2 className="font-heading text-3xl md:text-4xl font-extrabold text-white mb-4">Join the Inner Circle</h2>
-                <p className="text-gray-400 text-lg mb-8">
-                    Get exclusive access to new harvests, recovery protocols, and <strong>10% off your first order</strong>.
-                </p>
-
-                {subscribed ? (
-                    <div className="bg-green-500/20 border border-green-500/50 text-green-400 px-6 py-4 rounded-xl flex items-center justify-center gap-2 animate-in fade-in">
-                        <Check size={20} />
-                        <span className="font-bold">Welcome to the tribe! Check your email.</span>
-                    </div>
-                ) : (
-                    <form onSubmit={handleSubmit} className="flex flex-col sm:flex-row gap-3">
-                        <input 
-                            type="email" 
-                            placeholder="Enter your email address" 
-                            className="flex-1 p-4 rounded-xl bg-white/10 border border-white/10 text-white placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-brand-red focus:bg-white/20 transition-all"
-                            value={email}
-                            onChange={(e) => setEmail(e.target.value)}
-                            required
-                        />
-                        <Button className="h-auto py-4 px-8 text-lg bg-brand-red hover:bg-red-600 shadow-lg shadow-brand-red/25">
-                            Subscribe
-                        </Button>
-                    </form>
-                )}
-                <p className="text-xs text-gray-600 mt-4">We respect your privacy. Unsubscribe at any time.</p>
-            </Reveal>
-        </Container>
-    </div>
-  );
-};
+import { MAIN_PRODUCT, REVIEWS } from '../constants'; 
+import { trackViewItem, trackAddToCart } from '../services/analytics'; 
 
 export const ProductPage = () => {
   const { productId } = useParams();
@@ -83,18 +25,11 @@ export const ProductPage = () => {
   const { addToCart } = useCart();
   const { setIsLoading } = useLoading();
 
-  // React Query for Data Fetching
-  const { data: product, isLoading: isProductLoading } = useQuery({
-    queryKey: ['product', productId],
-    queryFn: () => fetchProduct(productId || 'himalaya-shilajit-resin'),
-    initialData: MAIN_PRODUCT
-  });
+  // Use MAIN_PRODUCT directly mostly, ensuring images are correct
+  const product = MAIN_PRODUCT;
 
-  const { data: reviews } = useQuery({
-    queryKey: ['reviews', productId],
-    queryFn: fetchReviews,
-    initialData: []
-  });
+  // Use hardcoded reviews
+  const reviews = REVIEWS;
 
   const initialBundle = (bundleParam && Object.values(BundleType).includes(bundleParam as BundleType))
     ? (bundleParam as BundleType)
@@ -109,12 +44,9 @@ export const ProductPage = () => {
   
   const currentVariant = product.variants.find(v => v.type === selectedBundle) || product.variants[0];
 
-  // Track View Item on Load
   useEffect(() => {
-    if (product) {
-        trackViewItem(product);
-    }
-  }, [product]);
+    trackViewItem(product);
+  }, []);
 
   useEffect(() => {
      const newParams = new URLSearchParams(searchParams);
@@ -122,7 +54,6 @@ export const ProductPage = () => {
      navigate(`?${newParams.toString()}`, { replace: true });
   }, [selectedBundle, navigate, searchParams]);
 
-  // Handle Sticky Bar Visibility
   useEffect(() => {
     const handleScroll = () => {
       const scrollPosition = window.scrollY;
@@ -133,7 +64,6 @@ export const ProductPage = () => {
   }, []);
 
   const handleAddToCart = () => {
-    // 1. Analytics
     const qty = 1;
     trackAddToCart({
         variantId: currentVariant.id,
@@ -145,7 +75,6 @@ export const ProductPage = () => {
         bundleType: currentVariant.type
     });
 
-    // 2. Add to Cart
     setIsLoading(true, 'Adding to Cart...');
     setTimeout(() => {
       addToCart(product, currentVariant, qty);
@@ -166,8 +95,6 @@ export const ProductPage = () => {
     });
     navigate(`/checkout?variantId=${currentVariant.id}`);
   };
-
-  if (isProductLoading) return <ProductPageSkeleton />;
 
   // Filter Reviews Logic
   const filteredReviews = reviewFilter === 'All' 
@@ -215,7 +142,7 @@ export const ProductPage = () => {
 
             <Reveal delay={300}>
                 <div className="grid grid-cols-3 gap-4">
-                {product.images.map((img, idx) => (
+                {product.images.slice(0,3).map((img, idx) => (
                     <div key={idx} className="aspect-square bg-white rounded-2xl overflow-hidden border border-gray-200 cursor-pointer hover:border-brand-red transition-all shadow-sm hover:shadow-md relative">
                     <LazyImage 
                         src={img} 
@@ -228,11 +155,10 @@ export const ProductPage = () => {
                 </div>
             </Reveal>
             
-            {/* Detailed Trust Info - Desktop */}
             <div className="hidden lg:grid grid-cols-3 gap-6 pt-8">
                {[
                    { Icon: ShieldCheck, title: "Lab Tested", text: "Certified pure and free from heavy metals." },
-                   { Icon: Truck, title: "Fast Shipping", text: "Free worldwide shipping on bundles." },
+                   { Icon: Truck, title: "Fast Shipping", text: "Dispatched from Australia via AusPost." },
                    { Icon: Clock, title: "30 Day Returns", text: "Risk-free trial. Money back guarantee." }
                ].map((item, i) => (
                    <Reveal key={i} delay={400 + (i * 100)}>
@@ -246,20 +172,15 @@ export const ProductPage = () => {
             </div>
           </div>
 
-          {/* Right: Details & Purchase - Sticky Sidebar Container */}
+          {/* Right: Details & Purchase */}
           <div className="lg:col-span-5 relative">
             <Reveal delay={200}>
-                {/* Mobile: relative / Desktop: sticky top-24 */}
                 <div className="relative lg:sticky lg:top-24 bg-white p-6 md:p-8 rounded-3xl shadow-lg shadow-gray-200/50 border border-gray-100">
                     <div className="flex items-center space-x-2 mb-4">
                     <div className="flex text-brand-red">
-                        <Star size={16} fill="currentColor" strokeWidth={0} />
-                        <Star size={16} fill="currentColor" strokeWidth={0} />
-                        <Star size={16} fill="currentColor" strokeWidth={0} />
-                        <Star size={16} fill="currentColor" strokeWidth={0} />
-                        <Star size={16} fill="currentColor" strokeWidth={0} />
+                        {[...Array(5)].map((_,i) => <Star key={i} size={16} fill="currentColor" strokeWidth={0} />)}
                     </div>
-                    <span className="text-xs font-bold text-brand-dark border-b border-gray-300 pb-0.5">{product.reviewCount} Verified Reviews</span>
+                    <span className="text-xs font-bold text-brand-dark border-b border-gray-300 pb-0.5">{reviews.length} Verified Reviews</span>
                     </div>
 
                     <div className="flex flex-wrap items-center gap-3 mb-4">
@@ -283,7 +204,7 @@ export const ProductPage = () => {
                     <div className="space-y-4 mb-8 bg-gray-50 p-4 rounded-2xl border border-gray-100">
                     <div className="flex justify-between items-center mb-2 px-1">
                         <h3 className="font-bold text-brand-dark text-sm uppercase tracking-wide">Select Package</h3>
-                        <span className="text-[10px] font-bold text-green-700 bg-green-100 px-2 py-1 rounded-full">Free Shipping on 2+ Jars</span>
+                        <span className="text-[10px] font-bold text-green-700 bg-green-100 px-2 py-1 rounded-full">Free AusPost Shipping</span>
                     </div>
                     
                     {product.variants.map((variant) => {
@@ -328,7 +249,7 @@ export const ProductPage = () => {
                         })}
                     </div>
 
-                    {/* Main Action Buttons (Desktop) */}
+                    {/* Main Action Buttons */}
                     <div className="space-y-4 hidden lg:block">
                         <div className="flex gap-3">
                             <Button 
@@ -354,9 +275,6 @@ export const ProductPage = () => {
           </div>
         </div>
 
-        {/* Newsletter Section (Replaces Subscription Plan) */}
-        <NewsletterSection />
-
         {/* Customer Reviews Section */}
         <div id="reviews" className="border-t border-gray-200 pt-20">
             <Reveal>
@@ -367,14 +285,10 @@ export const ProductPage = () => {
                     </div>
                     <div className="hidden md:flex items-center gap-2">
                         <div className="flex text-brand-red">
-                            <Star size={20} fill="currentColor" strokeWidth={0} />
-                            <Star size={20} fill="currentColor" strokeWidth={0} />
-                            <Star size={20} fill="currentColor" strokeWidth={0} />
-                            <Star size={20} fill="currentColor" strokeWidth={0} />
-                            <Star size={20} fill="currentColor" strokeWidth={0} />
+                            {[...Array(5)].map((_,i) => <Star key={i} size={20} fill="currentColor" strokeWidth={0} />)}
                         </div>
                         <span className="font-bold text-lg text-brand-dark">{product.rating}/5</span>
-                        <span className="text-gray-400 text-sm">({product.reviewCount} reviews)</span>
+                        <span className="text-gray-400 text-sm">({reviews.length} reviews)</span>
                     </div>
                 </div>
             </Reveal>
@@ -418,7 +332,7 @@ export const ProductPage = () => {
                                     <span className="font-bold text-sm text-brand-dark">{review.author}</span>
                                     {review.verified && (
                                         <div className="flex items-center text-[10px] font-bold text-green-600 uppercase tracking-wider bg-green-50 px-2 py-0.5 rounded-full">
-                                            <Check size={12} className="mr-1" strokeWidth={3} /> Verified
+                                            <Check size={12} className="mr-1" strokeWidth={3} /> Verified Buyer
                                         </div>
                                     )}
                                 </div>
@@ -434,7 +348,7 @@ export const ProductPage = () => {
             
             {hasMoreReviews && (
               <div className="text-center">
-                  <Button variant="outline-dark">Load More Reviews</Button>
+                  <Button variant="outline-dark" onClick={() => setVisibleReviews(prev => prev + 3)}>Load More Reviews</Button>
               </div>
             )}
         </div>
