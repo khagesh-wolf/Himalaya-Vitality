@@ -77,6 +77,8 @@ export const HomePage = () => {
               src="https://yuzfkj.vercel.app/images/hero-bg.jpg" 
               alt="Himalayan Mountains - Home of Shilajit" 
               className="w-full h-full object-cover opacity-60 animate-zoom-slow" 
+              loading="eager"
+              fetchPriority="high"
             />
             {/* Gradient Overlays for Readability */}
             <div className="absolute inset-0 bg-gradient-to-b from-black/70 via-transparent to-black"></div>

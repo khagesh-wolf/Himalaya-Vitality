@@ -74,10 +74,13 @@ interface LazyImageProps extends React.ImgHTMLAttributes<HTMLImageElement> {
     alt: string;
     srcSet?: string;
     sizes?: string;
+    fetchPriority?: "high" | "low" | "auto";
 }
 
-export const LazyImage: React.FC<LazyImageProps> = ({ src, alt, className = '', srcSet, sizes, ...props }) => {
-    const [loaded, setLoaded] = useState(false);
+export const LazyImage: React.FC<LazyImageProps> = ({ src, alt, className = '', srcSet, sizes, fetchPriority, ...props }) => {
+    // If priority is high or loading is eager, consider it loaded immediately to avoid LCP fade-in delay
+    const isPriority = fetchPriority === 'high' || props.loading === 'eager';
+    const [loaded, setLoaded] = useState(isPriority);
 
     return (
         <div className={`relative overflow-hidden ${className}`}>
@@ -91,7 +94,9 @@ export const LazyImage: React.FC<LazyImageProps> = ({ src, alt, className = '', 
                 alt={alt}
                 srcSet={srcSet}
                 sizes={sizes}
-                loading="lazy"
+                loading={props.loading || "lazy"}
+                // React uses camelCase for fetchPriority, but passes it to DOM correctly
+                fetchPriority={fetchPriority} 
                 onLoad={() => setLoaded(true)}
                 className={`transition-all duration-700 ${loaded ? 'opacity-100 scale-100' : 'opacity-0 scale-105'} ${className}`}
                 {...props}
