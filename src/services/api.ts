@@ -137,6 +137,7 @@ export const verifyEmail = async (email: string, otp: string) => {
 };
 
 export const googleAuthenticate = async (token: string) => {
+    // Note: Assuming backend has /auth/google implemented or we skip for now
     const res = await fetch(`${API_BASE}/auth/google`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

@@ -31,7 +31,7 @@ const DEFAULT_SETTINGS: Settings = {
 export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [settings, setSettings] = useState<Settings>(DEFAULT_SETTINGS);
 
-  // Removed localStorage effects
+  // Removed localStorage loading and saving logic
 
   const updateSetting = <K extends keyof Settings>(key: K, value: Settings[K]) => {
     setSettings(prev => ({ ...prev, [key]: value }));

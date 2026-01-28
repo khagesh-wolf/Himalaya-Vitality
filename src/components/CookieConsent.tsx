@@ -37,7 +37,7 @@ export const CookieConsent = () => {
             <h4 className="font-bold text-sm mb-1">We value your privacy</h4>
             <p className="text-xs text-gray-400 leading-relaxed max-w-xl">
               We use cookies to enhance your experience, analyze site traffic, and personalize content. 
-              By clicking "Accept", you agree to our use of cookies.
+              By clicking "Accept", you agree to our use of cookies during this session.
             </p>
           </div>
         </div>
