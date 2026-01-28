@@ -29,8 +29,6 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [discount, setDiscount] = useState<DiscountDetails | null>(null);
 
-  // Removed localStorage loading/saving effects.
-
   const addToCart = (product: Product, variant: ProductVariant, quantity: number) => {
     const fallbackImage = 'https://placehold.co/400x400/f3f4f6/111111?text=No+Image';
     const productImage = (product.images && product.images.length > 0) ? product.images[0] : fallbackImage;

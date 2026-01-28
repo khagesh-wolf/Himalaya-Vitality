@@ -47,7 +47,7 @@ export const CurrencyProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         console.warn('Failed to fetch live exchange rates, using defaults.', error);
       }
 
-      // 2. Detect Currency via IP (no localStorage check)
+      // 2. Detect Currency via IP
       try {
         const ipResponse = await fetch('https://ipapi.co/json/');
         if (!ipResponse.ok) throw new Error('IP API limit or error');
@@ -86,7 +86,6 @@ export const CurrencyProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
   const handleSetCurrency = (c: CurrencyCode) => {
     setCurrency(c);
-    // No persistence
   };
 
   const formatPrice = (priceInUSD: number) => {

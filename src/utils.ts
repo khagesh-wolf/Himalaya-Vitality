@@ -15,7 +15,7 @@ export const getDeliverableCountries = (): RegionConfig[] => {
 };
 
 export const saveDeliverableCountries = (regions: RegionConfig[]) => {
-  // No-op for persistence
+  // No-op
 };
 
 export const calculateShipping = (

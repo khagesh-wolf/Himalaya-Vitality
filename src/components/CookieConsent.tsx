@@ -7,7 +7,6 @@ export const CookieConsent = () => {
   const [isVisible, setIsVisible] = useState(false);
 
   useEffect(() => {
-    // Changed to sessionStorage. 
     const consent = sessionStorage.getItem('himalaya_cookie_consent');
     if (!consent) {
       const timer = setTimeout(() => setIsVisible(true), 1500);
