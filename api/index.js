@@ -34,10 +34,11 @@ const DEFAULT_PRODUCT_DATA = {
     reviewCount: 1248,
     features: ['85+ Trace Minerals', 'Lab Tested', 'Supports Energy'],
     images: ['https://i.ibb.co/zTB7Fx9m/Whats-App-Image-2026-01-26-at-7-08-18-PM.jpg', 'https://i.ibb.co/9H8yWSgP/Whats-App-Image-2026-01-26-at-7-08-21-PM.jpg'],
+    // totalStock default is 100
     variants: [
         { id: 'var_single', type: 'SINGLE', name: 'Starter Pack (1 Jar)', price: 49, compareAtPrice: 65, label: '1 Month Supply', savings: 'Save $16', stock: 100 },
-        { id: 'var_double', type: 'DOUBLE', name: 'Commitment Pack (2 Jars)', price: 88, compareAtPrice: 130, label: '2 Month Supply', savings: 'Save $42', stock: 100 },
-        { id: 'var_triple', type: 'TRIPLE', name: 'Transformation Pack (3 Jars)', price: 117, compareAtPrice: 195, label: '3 Month Supply', savings: 'Save $78', isPopular: true, stock: 100 }
+        { id: 'var_double', type: 'DOUBLE', name: 'Commitment Pack (2 Jars)', price: 88, compareAtPrice: 130, label: '2 Month Supply', savings: 'Save $42', stock: 50 },
+        { id: 'var_triple', type: 'TRIPLE', name: 'Transformation Pack (3 Jars)', price: 117, compareAtPrice: 195, label: '3 Month Supply', savings: 'Save $78', isPopular: true, stock: 33 }
     ]
 };
 
@@ -178,12 +179,10 @@ app.post('/api/admin/newsletter/send', requireAdmin, async (req, res) => {
         const subscribers = await prisma.subscriber.findMany();
         if(subscribers.length === 0) return res.json({ success: true, count: 0 });
 
-        // In production, use a queue (Bull/Redis) or a service like Resend/SendGrid batch API.
-        // For this implementation using SMTP, we loop (careful with rate limits).
         let count = 0;
         for (const sub of subscribers) {
             try {
-                await sendEmail(sub.email, subject, message.replace(/<[^>]*>?/gm, ''), message); // Strip HTML for text version
+                await sendEmail(sub.email, subject, message.replace(/<[^>]*>?/gm, ''), message); 
                 count++;
             } catch(err) {
                 console.error(`Failed to send to ${sub.email}`, err);
@@ -206,15 +205,13 @@ app.get('/api/products/:id', async (req, res) => {
         if (!product && req.params.id === DEFAULT_PRODUCT_ID) {
             console.log("⚠️ Product not found in DB. Auto-seeding default data...");
             try {
-                // Ensure no partial state exists
                 const { variants, ...productData } = DEFAULT_PRODUCT_DATA;
-                
-                // Use upsert on product just in case
                 product = await prisma.product.upsert({
                     where: { id: DEFAULT_PRODUCT_ID },
                     update: {},
                     create: {
                         ...productData,
+                        totalStock: 100, // Default Master Stock
                         variants: {
                             create: variants.map(v => ({
                                 id: v.id,
@@ -225,22 +222,34 @@ app.get('/api/products/:id', async (req, res) => {
                                 label: v.label,
                                 savings: v.savings,
                                 isPopular: v.isPopular,
-                                stock: v.stock
+                                stock: 0 // Ignored in favor of totalStock calculation
                             }))
                         }
                     },
                     include: { variants: true }
                 });
-                console.log("✅ Auto-seed successful");
             } catch (seedErr) {
                 console.error("Auto-seed failed:", seedErr);
-                // Even if seed fails, return a 404 with error details so frontend developer knows
                 return res.status(404).json({ error: "Product not found and auto-seed failed", details: seedErr.message });
             }
         }
 
         if (!product) return res.status(404).json({ error: "Product not found" });
         
+        // --- DYNAMIC STOCK CALCULATION ---
+        // Calculate virtual stock for each variant based on Bundle Type multiplier
+        // SINGLE = 1 jar, DOUBLE = 2 jars, TRIPLE = 3 jars
+        product.variants = product.variants.map(v => {
+            let multiplier = 1;
+            if (v.type === 'DOUBLE') multiplier = 2;
+            if (v.type === 'TRIPLE') multiplier = 3;
+            
+            return {
+                ...v,
+                stock: Math.floor(product.totalStock / multiplier)
+            };
+        });
+
         // Sort variants by price to ensure consistent order
         product.variants.sort((a, b) => a.price - b.price);
         
@@ -252,74 +261,33 @@ app.get('/api/products/:id', async (req, res) => {
 });
 
 app.put('/api/products/:id', requireAdmin, async (req, res) => {
-    const { variants } = req.body;
+    const { variants, totalStock } = req.body;
     const productId = req.params.id;
 
     try {
-        // 1. Ensure Product Exists First
-        const productExists = await prisma.product.findUnique({ where: { id: productId } });
-        
-        if (!productExists) {
-            console.log("⚠️ PUT: Product missing. Creating full product structure.");
-            // If product doesn't exist, create it fully using default data + incoming variant overrides
-            const { variants: defaultVariants, ...productData } = DEFAULT_PRODUCT_DATA;
-            
-            // Merge defaults with incoming updates
-            const mergedVariants = defaultVariants.map(dv => {
-                const incoming = variants.find(v => v.id === dv.id);
-                return incoming ? { ...dv, ...incoming } : dv;
+        // 1. Update the Master Stock on the Product
+        if (totalStock !== undefined) {
+            await prisma.product.update({
+                where: { id: productId },
+                data: { totalStock: parseInt(totalStock) }
             });
-
-            await prisma.product.create({
-                data: {
-                    ...productData,
-                    id: productId, // Ensure ID matches URL
-                    variants: {
-                        create: mergedVariants.map(v => ({
-                            id: v.id,
-                            type: v.type,
-                            name: v.name,
-                            price: parseFloat(v.price),
-                            compareAtPrice: parseFloat(v.compareAtPrice),
-                            label: v.label,
-                            savings: v.savings,
-                            isPopular: v.isPopular || false,
-                            stock: parseInt(v.stock)
-                        }))
-                    }
-                }
-            });
-            return res.json({ success: true, message: "Product created via recovery" });
         }
 
-        // 2. Product Exists - UPSERT Variants (Handle Update or Create)
-        await prisma.$transaction(
-            variants.map(v => {
-                // Find default for missing fields if this is a new variant
-                const defaultV = DEFAULT_PRODUCT_DATA.variants.find(dv => dv.id === v.id) || {};
-                
-                return prisma.productVariant.upsert({
-                    where: { id: v.id },
-                    update: {
-                        price: parseFloat(v.price),
-                        compareAtPrice: parseFloat(v.compareAtPrice),
-                        stock: parseInt(v.stock)
-                    },
-                    create: {
-                        id: v.id,
-                        productId: productId,
-                        type: v.type || defaultV.type || 'SINGLE',
-                        name: v.name || defaultV.name || 'New Variant',
-                        price: parseFloat(v.price),
-                        compareAtPrice: parseFloat(v.compareAtPrice),
-                        stock: parseInt(v.stock),
-                        label: v.label || defaultV.label || '',
-                        savings: v.savings || defaultV.savings || '',
-                        isPopular: v.isPopular || defaultV.isPopular || false
-                    }
-                });
-            })
-        );
+        // 2. Update Variants (Prices/Metadata only, ignore stock update here as it's calculated)
+        if (variants && variants.length > 0) {
+            await prisma.$transaction(
+                variants.map(v => {
+                    return prisma.productVariant.update({
+                        where: { id: v.id },
+                        data: {
+                            price: parseFloat(v.price),
+                            compareAtPrice: parseFloat(v.compareAtPrice),
+                            // We do NOT update 'stock' here because it is a calculated field derived from Product.totalStock
+                        }
+                    });
+                })
+            );
+        }
         res.json({ success: true });
     } catch (e) {
         console.error("Update Product Error:", e);
@@ -375,19 +343,15 @@ app.post('/api/discounts/validate', async (req, res) => {
 app.post('/api/create-payment-intent', async (req, res) => {
     const { items, currency, total } = req.body;
     
-    // STRICT MODE: Fail if Stripe key is missing on server
     if (!stripe) {
-        console.error("SERVER ERROR: STRIPE_SECRET_KEY is missing in environment variables.");
         return res.status(500).json({ error: "Server Configuration Error: Payments are not configured." });
     }
 
     try {
         let amount;
         if (total) {
-            // Use the total calculated by the frontend (includes shipping/tax/discounts)
             amount = Math.round(total * 100);
         } else {
-            // Fallback
             const calculatedTotal = items.reduce((acc, item) => acc + (item.price * item.quantity), 0);
             amount = Math.round(calculatedTotal * 100);
         }
@@ -417,7 +381,6 @@ app.post('/api/auth/signup', async (req, res) => {
         const otp = generateOTP();
         const otpExpires = new Date(Date.now() + 15 * 60 * 1000); 
 
-        // Send Email FIRST.
         try {
             await sendEmail(email, 'Verify your email', `Your verification code is: ${otp}`);
         } catch (mailError) {
@@ -443,7 +406,6 @@ app.post('/api/auth/login', async (req, res) => {
         if (!user || !user.password || !(await bcrypt.compare(password, user.password))) {
             return res.status(400).json({ message: 'Invalid credentials' });
         }
-        // Check verification - skipping for Admin to prevent lockout if manually inserted
         if (!user.isVerified && user.role !== 'ADMIN') {
             return res.status(403).json({ message: 'Verification required', requiresVerification: true, email });
         }
@@ -529,67 +491,46 @@ app.put('/api/auth/profile', authenticate, async (req, res) => {
 
 // --- ADMIN ROUTES ---
 
-// Get Stats (Advanced)
 app.get('/api/admin/stats', requireAdmin, async (req, res) => {
     try {
         const { startDate, endDate } = req.query;
-        
-        // Define date ranges
         const end = endDate ? new Date(endDate) : new Date();
-        const start = startDate ? new Date(startDate) : new Date(new Date().setDate(end.getDate() - 30)); // Default 30 days
+        const start = startDate ? new Date(startDate) : new Date(new Date().setDate(end.getDate() - 30));
         
-        // Calculate previous period for comparison (same duration)
         const duration = end.getTime() - start.getTime();
         const prevEnd = new Date(start.getTime());
         const prevStart = new Date(prevEnd.getTime() - duration);
 
-        // Fetch Current Period Data
         const currentOrders = await prisma.order.findMany({
-            where: {
-                createdAt: {
-                    gte: start,
-                    lte: end
-                },
-                status: 'Paid' // Only count paid revenue
-            },
+            where: { createdAt: { gte: start, lte: end }, status: 'Paid' },
             select: { total: true, createdAt: true }
         });
 
-        // Fetch Previous Period Data
         const prevOrders = await prisma.order.findMany({
-            where: {
-                createdAt: {
-                    gte: prevStart,
-                    lte: prevEnd
-                },
-                status: 'Paid'
-            },
+            where: { createdAt: { gte: prevStart, lte: prevEnd }, status: 'Paid' },
             select: { total: true }
         });
 
         const totalRevenue = currentOrders.reduce((acc, curr) => acc + curr.total, 0);
         const prevRevenue = prevOrders.reduce((acc, curr) => acc + curr.total, 0);
         
-        const totalOrders = await prisma.order.count({ where: { createdAt: { gte: start, lte: end } } }); // Count all orders (incl pending)
+        const totalOrders = await prisma.order.count({ where: { createdAt: { gte: start, lte: end } } }); 
         const prevTotalOrders = await prisma.order.count({ where: { createdAt: { gte: prevStart, lte: prevEnd } } });
 
         const avgOrderValue = totalOrders > 0 ? totalRevenue / currentOrders.length : 0;
         const prevAvgOrderValue = prevOrders.length > 0 ? prevRevenue / prevOrders.length : 0;
 
-        // Calculate Percent Changes
         const calcTrend = (curr, prev) => {
             if (prev === 0) return curr > 0 ? 100 : 0;
             return ((curr - prev) / prev) * 100;
         };
 
-        // Chart Data (Group by Day)
         const chartData = {};
         currentOrders.forEach(order => {
             const dateStr = order.createdAt.toISOString().split('T')[0];
             chartData[dateStr] = (chartData[dateStr] || 0) + order.total;
         });
         
-        // Fill in missing days
         const chart = [];
         for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
             const dateStr = d.toISOString().split('T')[0];
@@ -623,16 +564,16 @@ app.get('/api/admin/orders', requireAdmin, async (req, res) => {
             include: { items: true }
         });
         
-        const formatted = orders.map(o => {
-            // Generate items summary
+        const formatted = await Promise.all(orders.map(async o => {
             const itemsSummary = o.items.map(i => {
-                const variant = DEFAULT_PRODUCT_DATA.variants.find(v => v.id === i.variantId);
-                return `${i.quantity}x ${variant ? variant.name : i.variantId}`;
+                // We just send the variantID/Qty summary for admin
+                // In a real scenario, we'd join variant name
+                return `${i.quantity}x ${i.variantId.replace('var_', '')}`;
             }).join(', ');
 
             return {
                 id: o.orderNumber,
-                dbId: o.id, // Internal ID for updates
+                dbId: o.id,
                 customer: o.customerName,
                 email: o.customerEmail,
                 date: new Date(o.createdAt).toLocaleDateString(),
@@ -643,7 +584,7 @@ app.get('/api/admin/orders', requireAdmin, async (req, res) => {
                 trackingNumber: o.trackingNumber,
                 carrier: o.carrier
             };
-        });
+        }));
         res.json(formatted);
     } catch (e) {
         console.error(e);
@@ -672,7 +613,7 @@ app.put('/api/admin/orders/:id/tracking', requireAdmin, async (req, res) => {
             data: { 
                 trackingNumber, 
                 carrier,
-                status: 'Fulfilled' // Auto set to fulfilled
+                status: 'Fulfilled' 
             }
         });
 
@@ -703,28 +644,79 @@ app.post('/api/orders', async (req, res) => {
     const { customer, items, total, paymentId, userId } = req.body;
     
     try {
-        const orderData = {
-            orderNumber: `HV-${Date.now()}`,
-            customerEmail: customer.email,
-            customerName: `${customer.firstName} ${customer.lastName}`,
-            shippingAddress: customer, 
-            total,
-            status: 'Paid', 
-            paymentId,
-            items: {
-                create: items.map(i => ({
-                    variantId: i.variantId,
-                    quantity: i.quantity,
-                    price: i.price
-                }))
+        // --- INVENTORY MANAGEMENT LOGIC ---
+        // 1. Calculate total individual jars required by this order
+        let totalJarsNeeded = 0;
+        
+        // We need to look up variant types to apply multipliers.
+        // For efficiency, we assume the frontend sends bundleType, OR we fetch logic.
+        // Let's be robust and fetch variants to check types.
+        const variants = await prisma.productVariant.findMany({
+            where: { id: { in: items.map(i => i.variantId) } }
+        });
+
+        items.forEach(item => {
+            const variant = variants.find(v => v.id === item.variantId);
+            if (variant) {
+                let multiplier = 1;
+                if (variant.type === 'DOUBLE') multiplier = 2;
+                if (variant.type === 'TRIPLE') multiplier = 3;
+                totalJarsNeeded += (item.quantity * multiplier);
             }
-        };
+        });
 
-        if (userId) {
-            orderData.user = { connect: { id: userId } };
-        }
+        // 2. Transaction: Check Stock -> Decrement Stock -> Create Order
+        const order = await prisma.$transaction(async (tx) => {
+            // Lock Product Row for reading stock
+            const product = await tx.product.findUnique({ 
+                where: { id: DEFAULT_PRODUCT_ID }
+            });
 
-        const order = await prisma.order.create({ data: orderData });
+            if (!product) throw new Error("Product not found");
+
+            if (product.totalStock < totalJarsNeeded) {
+                throw new Error("Insufficient Stock to fulfill this order.");
+            }
+
+            // Decrement Master Stock
+            await tx.product.update({
+                where: { id: DEFAULT_PRODUCT_ID },
+                data: { totalStock: { decrement: totalJarsNeeded } }
+            });
+
+            // Create Order
+            const newOrder = await tx.order.create({
+                data: {
+                    orderNumber: `HV-${Date.now()}`,
+                    customerEmail: customer.email,
+                    customerName: `${customer.firstName} ${customer.lastName}`,
+                    shippingAddress: customer, 
+                    total,
+                    status: 'Paid', 
+                    paymentId,
+                    userId: userId ? userId : undefined,
+                    items: {
+                        create: items.map(i => ({
+                            variantId: i.variantId,
+                            quantity: i.quantity,
+                            price: i.price
+                        }))
+                    }
+                }
+            });
+            
+            // Log Inventory Move (Optional but good for tracking)
+            await tx.inventoryLog.create({
+                data: {
+                    sku: 'himalaya-shilajit-resin',
+                    action: 'SALE',
+                    quantity: -totalJarsNeeded,
+                    user: 'System (Order)'
+                }
+            });
+
+            return newOrder;
+        });
         
         try {
             await sendEmail(
@@ -739,7 +731,7 @@ app.post('/api/orders', async (req, res) => {
         res.json({ success: true, orderId: order.orderNumber });
     } catch(e) {
         console.error("Order Create Error:", e);
-        res.status(500).json({ error: 'Order creation failed' });
+        res.status(500).json({ error: e.message || 'Order creation failed' });
     }
 });
 

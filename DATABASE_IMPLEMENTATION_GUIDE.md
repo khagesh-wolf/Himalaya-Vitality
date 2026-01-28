@@ -54,6 +54,10 @@ model Product {
   reviewCount Int              @default(0)
   features    String[]
   images      String[]
+  
+  // Master Inventory: Total physical jars available
+  totalStock  Int              @default(100) 
+
   variants    ProductVariant[]
   reviews     Review[]
   createdAt   DateTime         @default(now())
@@ -71,7 +75,7 @@ model ProductVariant {
   label          String
   savings        String
   isPopular      Boolean  @default(false)
-  stock          Int      @default(100)
+  stock          Int      @default(0) // Virtual stock (calculated field in API)
 }
 
 model Review {
