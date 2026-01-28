@@ -25,7 +25,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   useEffect(() => {
     const initAuth = async () => {
-      // Use sessionStorage for token
+      // Switched to sessionStorage for session-only persistence
       const token = sessionStorage.getItem('hv_token');
       if (token) {
         try {

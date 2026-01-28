@@ -11,6 +11,7 @@ export const DEFAULT_REGIONS: RegionConfig[] = [
 ];
 
 export const getDeliverableCountries = (): RegionConfig[] => {
+  // Always return defaults or fetched array, no localStorage fallback
   return DEFAULT_REGIONS;
 };
 

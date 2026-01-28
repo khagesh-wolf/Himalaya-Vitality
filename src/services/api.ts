@@ -1,13 +1,14 @@
 
-import { Product, Review, Order, CartItem, User, Subscriber, RegionConfig } from '../types';
+import { Product, Review, Order, CartItem, User, RegionConfig } from '../types';
 import { MAIN_PRODUCT, REVIEWS, BLOG_POSTS } from '../constants';
 import { DEFAULT_REGIONS } from '../utils';
 
-// Base URL for API
+// Base URL for API (Relative path uses Vite proxy in dev, or same domain in prod)
 const API_BASE = '/api';
 
 // --- SHARED UTILS ---
 const getAuthHeaders = () => {
+    // Use sessionStorage instead of localStorage for ephemeral auth
     const token = sessionStorage.getItem('hv_token');
     return token ? { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' } : { 'Content-Type': 'application/json' };
 };
@@ -34,7 +35,10 @@ const handleResponse = async (res: Response) => {
 export const fetchProduct = async (id: string): Promise<Product> => {
     try {
         const res = await fetch(`${API_BASE}/products/${id}`);
-        if (!res.ok) return MAIN_PRODUCT; 
+        if (!res.ok) {
+            console.warn("Product not found in DB, using fallback.");
+            return MAIN_PRODUCT; 
+        }
         return await res.json();
     } catch (e) {
         console.warn("API Error fetching product, using fallback constant.", e);
@@ -57,7 +61,7 @@ export const fetchReviews = async (): Promise<Review[]> => {
         const res = await fetch(`${API_BASE}/reviews`);
         return await handleResponse(res);
     } catch (e) {
-        return REVIEWS;
+        return REVIEWS; // Fallback if API fails
     }
 };
 
