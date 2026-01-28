@@ -743,6 +743,18 @@ app.post('/api/orders', async (req, res) => {
     }
 });
 
+// --- PUBLIC ORDER TRACKING ---
+app.get('/api/orders/:id/track', async (req, res) => {
+    try {
+        const order = await prisma.order.findUnique({
+            where: { orderNumber: req.params.id },
+            select: { status: true, trackingNumber: true, carrier: true }
+        });
+        if (!order) return res.status(404).json({ error: 'Order not found' });
+        res.json(order);
+    } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 app.get('/api/orders/my-orders', authenticate, async (req, res) => {
     try {
         const orders = await prisma.order.findMany({

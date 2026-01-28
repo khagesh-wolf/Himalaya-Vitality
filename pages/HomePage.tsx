@@ -63,8 +63,9 @@ export const HomePage = () => {
   return (
     <div className="bg-white">
       <SEO 
-        title="Pure Himalayan Shilajit Resin | Gold Grade" 
-        description="Experience the power of nature with ethically sourced, lab-tested Himalayan Shilajit. Boost energy, focus, and vitality naturally."
+        title="Pure Himalayan Shilajit Resin (शिलाजित) | Gold Grade" 
+        description="Buy authentic Shilajit resin sourced from Nepal. Known as 'शिलाजित' in Nepali, our asphaltum punjabianum is lab-tested for purity and potency."
+        keywords={['Shilajit Nepal', 'शिलाजित', 'Mineral Pitch', 'Asphaltum Punjabianum', 'Salajeet']}
       />
 
       {/* --- HERO SECTION --- */}
@@ -74,7 +75,7 @@ export const HomePage = () => {
         <div className="absolute inset-0 z-0">
             <LazyImage 
               src="https://yuzfkj.vercel.app/images/hero-bg.jpg" 
-              alt="Himalayan Mountains" 
+              alt="Himalayan Mountains - Home of Shilajit" 
               className="w-full h-full object-cover opacity-60 animate-zoom-slow" 
             />
             {/* Gradient Overlays for Readability */}
@@ -87,7 +88,7 @@ export const HomePage = () => {
              <div className="animate-fade-in-up opacity-0" style={{ animationDelay: '100ms' }}>
                  <div className="inline-block mb-8 md:mb-10 group cursor-default">
                      <span className="inline-flex items-center gap-2 py-2 px-4 md:px-6 rounded-full border border-yellow-500/40 bg-black/40 backdrop-blur-xl text-[10px] md:text-xs font-bold uppercase tracking-[0.25em] text-yellow-400 shadow-[0_0_20px_rgba(250,204,21,0.15)] group-hover:border-yellow-500/70 group-hover:shadow-[0_0_25px_rgba(250,204,21,0.25)] transition-all duration-500">
-                        <Mountain size={14} className="text-yellow-400 mb-0.5" /> Nature's Ultimate Fuel
+                        <Mountain size={14} className="text-yellow-400 mb-0.5" /> Authentic Nepali Shilajit (शिलाजित)
                      </span>
                  </div>
              </div>
@@ -107,7 +108,7 @@ export const HomePage = () => {
              {/* Description */}
              <p className="text-base sm:text-lg md:text-xl text-gray-200 mb-10 md:mb-12 font-medium max-w-xl md:max-w-2xl mx-auto drop-shadow-lg leading-relaxed animate-fade-in-up opacity-0 px-4" style={{ animationDelay: '1800ms' }}>
                  Unleash your primal potential with the purest <span className="text-yellow-400 font-bold border-b border-yellow-400/50 pb-0.5">Gold Grade</span> resin. 
-                 Ethically sourced from the Ladakh range for peak performance.
+                 Scientifically known as <em>Asphaltum Punjabianum</em>, ethically sourced from the Ladakh range for peak performance.
              </p>
 
              {/* CTA Buttons */}
@@ -136,7 +137,7 @@ export const HomePage = () => {
                     <div className="w-12 h-12 md:w-14 md:h-14 rounded-full bg-white/5 backdrop-blur-md border border-white/10 flex items-center justify-center text-yellow-400 shadow-lg">
                         <Mountain size={20} className="text-yellow-400 md:w-6 md:h-6" />
                     </div>
-                    <span className="text-[10px] md:text-xs font-bold uppercase tracking-widest text-white/80">Authentic</span>
+                    <span className="text-[10px] md:text-xs font-bold uppercase tracking-widest text-white/80">Authentic (शिलाजित)</span>
                 </div>
                 <div className="flex flex-col items-center gap-2 md:gap-3 group animate-float" style={{ animationDelay: '3s' }}>
                     <div className="w-12 h-12 md:w-14 md:h-14 rounded-full bg-white/5 backdrop-blur-md border border-white/10 flex items-center justify-center text-yellow-400 shadow-lg">
@@ -155,7 +156,7 @@ export const HomePage = () => {
             <div className="text-center max-w-2xl mx-auto mb-12 md:mb-16">
                 <span className="text-brand-red font-bold text-xs uppercase tracking-widest mb-2 block">Why Shilajit?</span>
                 <h2 className="font-heading text-3xl md:text-4xl font-extrabold text-brand-dark mb-4">Ancient Wisdom, Modern Science</h2>
-                <p className="text-gray-500 text-sm md:text-base">Used for centuries in Ayurveda, now backed by clinical research for its profound impact on human health.</p>
+                <p className="text-gray-500 text-sm md:text-base">Used for centuries in Ayurveda (known as Silajit or Mumie), now backed by clinical research for its profound impact on human health.</p>
             </div>
           </Reveal>
 

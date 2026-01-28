@@ -1,5 +1,6 @@
 
 
+
 import { MAIN_PRODUCT, REVIEWS, BLOG_POSTS, MOCK_ORDERS } from '../constants';
 import { User, Order, Product, Review, BlogPost, CartItem, Discount, Subscriber, InventoryLog, RegionConfig } from '../types';
 
@@ -63,7 +64,13 @@ async function mockAdapter(endpoint: string, options: any) {
         { id: 'us', code: 'US', name: 'United States', shippingCost: 19.95, taxRate: 0, eta: '6-12 Business Days', active: true },
         { id: 'gb', code: 'GB', name: 'United Kingdom', shippingCost: 24.95, taxRate: 20, eta: '7-14 Business Days', active: true },
     ];
-    // Removed mock logic for payments to force error if mock mode is on but payments needed
+    // Mock Tracking
+    if (endpoint.includes('/track')) {
+        const id = endpoint.split('/')[2];
+        if (id === 'HV-1234') return { status: 'Delivered', trackingNumber: '33XHK782', carrier: 'Australia Post' };
+        if (id === 'HV-9999') return { status: 'Pending' };
+        throw new Error('Order not found');
+    }
     
     // Default Fallback
     return {};
@@ -89,6 +96,7 @@ export const fetchProduct = (id: string) => apiFetch<Product>(`/products/${id}`)
 export const createReview = (data: Partial<Review>) => Promise.resolve({ success: true });
 export const fetchBlogPosts = () => Promise.resolve(BLOG_POSTS);
 export const fetchUserOrders = () => apiFetch<Order[]>('/orders/my-orders');
+export const trackOrder = (orderId: string) => apiFetch<{ status: string, trackingNumber?: string, carrier?: string }>(`/orders/${orderId}/track`);
 
 export const createPaymentIntent = (items: CartItem[], currency: string, total?: number) => 
     apiFetch<{ clientSecret: string }>('/create-payment-intent', { 

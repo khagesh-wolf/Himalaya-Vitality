@@ -7,6 +7,7 @@ import {
 import { Container, Button, Card, Reveal, LazyImage, Badge } from '../components/UI';
 import { Link } from 'react-router-dom';
 import { BLOG_POSTS, MAIN_PRODUCT, FAQ_DATA } from '../constants';
+import { trackOrder } from '../services/api';
 
 // --- Shared Components ---
 const PageHeader = ({ title, subtitle, image }: { title: string, subtitle?: string, image?: string }) => (
@@ -629,24 +630,99 @@ export const SitemapPage = () => (
 );
 
 // --- Track Order Page ---
-export const TrackOrderPage = () => (
-    <div className="min-h-screen bg-gray-50 flex flex-col">
-         <PageHeader title="Track Your Order" />
-         <Container className="py-24 text-center flex-grow">
-             <Card className="max-w-md mx-auto p-10 shadow-2xl border-t-4 border-t-brand-red">
-                <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-6 text-brand-dark animate-pulse-fast">
-                    <Truck size={40} />
-                </div>
-                <h2 className="font-heading font-bold text-2xl text-brand-dark mb-2">Where is my package?</h2>
-                <p className="mb-8 text-gray-500">Enter your order ID found in your confirmation email.</p>
-                <div className="space-y-4">
-                    <div className="relative">
-                        <input className="w-full p-4 pl-12 bg-white border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-brand-red transition-all" placeholder="Order # (e.g. HV-1234)" />
-                        <Package className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
+export const TrackOrderPage = () => {
+    const [orderId, setOrderId] = useState('');
+    const [isSearching, setIsSearching] = useState(false);
+    const [orderStatus, setOrderStatus] = useState<any>(null);
+    const [error, setError] = useState('');
+
+    const handleTrack = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setError('');
+        setOrderStatus(null);
+        
+        if(!orderId.trim()) return;
+
+        setIsSearching(true);
+        try {
+            const data = await trackOrder(orderId.trim());
+            setOrderStatus(data);
+            
+            // If tracking number exists, open in new tab immediately as requested
+            if (data.trackingNumber) {
+                let trackingUrl = `https://auspost.com.au/mypost/track/details/${data.trackingNumber}`;
+                if (data.carrier === 'DHL Express') trackingUrl = `https://www.dhl.com/global-en/home/tracking/tracking-express.html?submit=1&tracking-id=${data.trackingNumber}`;
+                if (data.carrier === 'FedEx') trackingUrl = `https://www.fedex.com/fedextrack/?trknbr=${data.trackingNumber}`;
+                
+                window.open(trackingUrl, '_blank');
+            }
+        } catch (err: any) {
+            setError(err.message || 'Order not found. Please check your ID.');
+        } finally {
+            setIsSearching(false);
+        }
+    };
+
+    return (
+        <div className="min-h-screen bg-gray-50 flex flex-col">
+             <PageHeader title="Track Your Order" />
+             <Container className="py-24 text-center flex-grow">
+                 <Card className="max-w-md mx-auto p-10 shadow-2xl border-t-4 border-t-brand-red">
+                    <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-6 text-brand-dark animate-pulse-fast">
+                        <Truck size={40} />
                     </div>
-                    <Button fullWidth size="lg" className="shadow-lg shadow-brand-red/20">Track Order</Button>
-                </div>
-             </Card>
-         </Container>
-    </div>
-);
+                    <h2 className="font-heading font-bold text-2xl text-brand-dark mb-2">Where is my package?</h2>
+                    <p className="mb-8 text-gray-500">Enter your order ID found in your confirmation email.</p>
+                    
+                    <form onSubmit={handleTrack} className="space-y-4">
+                        <div className="relative">
+                            <input 
+                                value={orderId}
+                                onChange={(e) => setOrderId(e.target.value)}
+                                className="w-full p-4 pl-12 bg-white border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-brand-red transition-all" 
+                                placeholder="Order # (e.g. HV-1234)" 
+                            />
+                            <Package className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
+                        </div>
+                        <Button fullWidth size="lg" className="shadow-lg shadow-brand-red/20" disabled={isSearching}>
+                            {isSearching ? 'Locating...' : 'Track Order'}
+                        </Button>
+                    </form>
+
+                    {error && (
+                        <div className="mt-4 p-3 bg-red-50 text-red-600 rounded-lg text-sm font-bold border border-red-100 animate-in fade-in">
+                            {error}
+                        </div>
+                    )}
+
+                    {orderStatus && (
+                        <div className="mt-6 p-4 bg-gray-50 rounded-xl border border-gray-200 text-left animate-in slide-in-from-bottom-2">
+                            <div className="flex justify-between items-center mb-2">
+                                <span className="text-xs font-bold text-gray-500 uppercase">Status</span>
+                                <Badge color={orderStatus.status === 'Fulfilled' || orderStatus.status === 'Delivered' ? 'bg-green-500' : 'bg-yellow-500'}>{orderStatus.status}</Badge>
+                            </div>
+                            
+                            {orderStatus.trackingNumber ? (
+                                <div className="mt-4 text-center">
+                                    <p className="text-sm text-gray-600 mb-2">Redirecting to tracking page...</p>
+                                    <a 
+                                        href={`https://auspost.com.au/mypost/track/details/${orderStatus.trackingNumber}`}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="text-brand-red font-bold underline text-sm"
+                                    >
+                                        Click here if popup blocked
+                                    </a>
+                                </div>
+                            ) : (
+                                <div className="mt-2 text-sm text-gray-600">
+                                    <p>Your order is currently being processed. Tracking details will be available once shipped.</p>
+                                </div>
+                            )}
+                        </div>
+                    )}
+                 </Card>
+             </Container>
+        </div>
+    );
+};
