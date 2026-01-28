@@ -42,6 +42,12 @@ const DEFAULT_PRODUCT_DATA = {
     ]
 };
 
+const VARIANT_NAMES = {
+    'var_single': 'Single Jar',
+    'var_double': 'Double Jar',
+    'var_triple': 'Triple Jar'
+};
+
 // --- Middleware ---
 const authenticate = (req, res, next) => {
     const authHeader = req.headers['authorization'];
@@ -501,13 +507,22 @@ app.get('/api/admin/stats', requireAdmin, async (req, res) => {
         const prevEnd = new Date(start.getTime());
         const prevStart = new Date(prevEnd.getTime() - duration);
 
+        // Include Fulfilled and Delivered in revenue calculation
+        const revenueStatuses = ['Paid', 'Fulfilled', 'Delivered'];
+
         const currentOrders = await prisma.order.findMany({
-            where: { createdAt: { gte: start, lte: end }, status: 'Paid' },
+            where: { 
+                createdAt: { gte: start, lte: end }, 
+                status: { in: revenueStatuses } 
+            },
             select: { total: true, createdAt: true }
         });
 
         const prevOrders = await prisma.order.findMany({
-            where: { createdAt: { gte: prevStart, lte: prevEnd }, status: 'Paid' },
+            where: { 
+                createdAt: { gte: prevStart, lte: prevEnd }, 
+                status: { in: revenueStatuses } 
+            },
             select: { total: true }
         });
 
@@ -517,7 +532,7 @@ app.get('/api/admin/stats', requireAdmin, async (req, res) => {
         const totalOrders = await prisma.order.count({ where: { createdAt: { gte: start, lte: end } } }); 
         const prevTotalOrders = await prisma.order.count({ where: { createdAt: { gte: prevStart, lte: prevEnd } } });
 
-        const avgOrderValue = totalOrders > 0 ? totalRevenue / currentOrders.length : 0;
+        const avgOrderValue = currentOrders.length > 0 ? totalRevenue / currentOrders.length : 0;
         const prevAvgOrderValue = prevOrders.length > 0 ? prevRevenue / prevOrders.length : 0;
 
         const calcTrend = (curr, prev) => {
@@ -566,9 +581,9 @@ app.get('/api/admin/orders', requireAdmin, async (req, res) => {
         
         const formatted = await Promise.all(orders.map(async o => {
             const itemsSummary = o.items.map(i => {
-                // We just send the variantID/Qty summary for admin
-                // In a real scenario, we'd join variant name
-                return `${i.quantity}x ${i.variantId.replace('var_', '')}`;
+                // Map variant ID to readable name
+                const name = VARIANT_NAMES[i.variantId] || i.variantId.replace('var_', '');
+                return `${i.quantity}x ${name}`;
             }).join(', ');
 
             return {
