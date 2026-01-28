@@ -1,6 +1,6 @@
 
 const path = require('path');
-// Explicitly load .env from the project root (one level up) if possible, but don't crash
+// Explicitly load .env from the project root
 try {
     require('dotenv').config({ path: path.join(__dirname, '../.env') });
 } catch (e) {
@@ -15,7 +15,6 @@ const jwt = require('jsonwebtoken');
 const nodemailer = require('nodemailer'); 
 
 const prisma = new PrismaClient();
-// Initialize Stripe only if key exists
 const stripe = process.env.STRIPE_SECRET_KEY ? require('stripe')(process.env.STRIPE_SECRET_KEY) : null;
 const app = express();
 
@@ -23,30 +22,6 @@ const JWT_SECRET = process.env.JWT_SECRET || 'dev-secret-key';
 
 app.use(cors());
 app.use(express.json());
-
-// --- CONSTANTS ---
-const DEFAULT_PRODUCT_ID = 'himalaya-shilajit-resin';
-const DEFAULT_PRODUCT_DATA = {
-    id: DEFAULT_PRODUCT_ID,
-    title: 'Pure Himalayan Shilajit Resin',
-    description: 'Sourced from 18,000ft in the Himalayas, our Gold Grade Shilajit is purified using traditional Ayurvedic methods.',
-    rating: 4.9,
-    reviewCount: 1248,
-    features: ['85+ Trace Minerals', 'Lab Tested', 'Supports Energy'],
-    images: ['https://i.ibb.co/zTB7Fx9m/Whats-App-Image-2026-01-26-at-7-08-18-PM.jpg', 'https://i.ibb.co/9H8yWSgP/Whats-App-Image-2026-01-26-at-7-08-21-PM.jpg'],
-    // totalStock default is 100
-    variants: [
-        { id: 'var_single', type: 'SINGLE', name: 'Starter Pack (1 Jar)', price: 49, compareAtPrice: 65, label: '1 Month Supply', savings: 'Save $16', stock: 100 },
-        { id: 'var_double', type: 'DOUBLE', name: 'Commitment Pack (2 Jars)', price: 88, compareAtPrice: 130, label: '2 Month Supply', savings: 'Save $42', stock: 50 },
-        { id: 'var_triple', type: 'TRIPLE', name: 'Transformation Pack (3 Jars)', price: 117, compareAtPrice: 195, label: '3 Month Supply', savings: 'Save $78', isPopular: true, stock: 33 }
-    ]
-};
-
-const VARIANT_NAMES = {
-    'var_single': 'Single Jar',
-    'var_double': 'Double Jar',
-    'var_triple': 'Triple Jar'
-};
 
 // --- Middleware ---
 const authenticate = (req, res, next) => {
@@ -75,10 +50,11 @@ const requireAdmin = (req, res, next) => {
 const generateOTP = () => Math.floor(100000 + Math.random() * 900000).toString();
 
 // --- EMAIL SETUP ---
+// Using environment variables explicitly for SMTP
 const transporter = nodemailer.createTransport({
-    host: 'smtp.gmail.com', // Force Gmail host
-    port: 465, // Force SSL Port
-    secure: true, // Force Secure
+    host: 'smtp.gmail.com',
+    port: 465,
+    secure: true,
     auth: {
         user: process.env.EMAIL_USER, 
         pass: process.env.EMAIL_PASS  
@@ -88,14 +64,12 @@ const transporter = nodemailer.createTransport({
 
 const sendEmail = async (to, subject, text, html) => {
     try {
-        console.log(`[EMAIL] Attempting send to ${to}...`);
-        
         if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
-            console.warn('EMAIL_USER or EMAIL_PASS missing in .env');
+            console.error('EMAIL_USER or EMAIL_PASS missing in .env');
             return;
         }
 
-        const info = await transporter.sendMail({ 
+        await transporter.sendMail({ 
             from: `"Himalaya Vitality" <${process.env.EMAIL_USER}>`, 
             to, 
             subject, 
@@ -107,274 +81,11 @@ const sendEmail = async (to, subject, text, html) => {
                     <small style="color: #888;">This is an automated message.</small>
                    </div>`
         });
-        console.log('[EMAIL] Sent successfully:', info.messageId);
-        return info;
     } catch (e) {
         console.error('[EMAIL FAIL]', e.message);
-        throw e;
+        throw e; // Re-throw to alert the API caller
     }
 };
-
-// --- ROUTES ---
-
-// Health & Debug
-app.get('/api/health', (req, res) => res.json({ status: 'ok', time: new Date() }));
-
-// --- SHIPPING MANAGEMENT ---
-app.get('/api/shipping-regions', async (req, res) => {
-    try {
-        const regions = await prisma.shippingRegion.findMany({ orderBy: { name: 'asc' } });
-        res.json(regions);
-    } catch (e) { res.status(500).json({ error: e.message }); }
-});
-
-app.post('/api/shipping-regions', requireAdmin, async (req, res) => {
-    try {
-        const region = await prisma.shippingRegion.create({ data: req.body });
-        res.json(region);
-    } catch (e) { res.status(500).json({ error: e.message }); }
-});
-
-app.put('/api/shipping-regions/:id', requireAdmin, async (req, res) => {
-    try {
-        const region = await prisma.shippingRegion.update({
-            where: { id: req.params.id },
-            data: req.body
-        });
-        res.json(region);
-    } catch (e) { res.status(500).json({ error: e.message }); }
-});
-
-app.delete('/api/shipping-regions/:id', requireAdmin, async (req, res) => {
-    try {
-        await prisma.shippingRegion.delete({ where: { id: req.params.id } });
-        res.json({ success: true });
-    } catch (e) { res.status(500).json({ error: e.message }); }
-});
-
-// --- SUBSCRIBERS & NEWSLETTER ---
-app.post('/api/newsletter/subscribe', async (req, res) => {
-    const { email, source } = req.body;
-    try {
-        const existing = await prisma.subscriber.findUnique({ where: { email } });
-        if (existing) return res.json({ message: 'Already subscribed' });
-
-        const sub = await prisma.subscriber.create({
-            data: { email, source: source || 'Website' }
-        });
-        res.json({ success: true, subscriber: sub });
-    } catch (e) { res.status(500).json({ error: e.message }); }
-});
-
-app.get('/api/admin/subscribers', requireAdmin, async (req, res) => {
-    try {
-        const subscribers = await prisma.subscriber.findMany({ orderBy: { createdAt: 'desc' } });
-        const formatted = subscribers.map(s => ({
-            id: s.id,
-            email: s.email,
-            date: new Date(s.createdAt).toLocaleDateString(),
-            source: s.source
-        }));
-        res.json(formatted);
-    } catch (e) { res.status(500).json({ error: e.message }); }
-});
-
-app.post('/api/admin/newsletter/send', requireAdmin, async (req, res) => {
-    const { subject, message } = req.body;
-    try {
-        const subscribers = await prisma.subscriber.findMany();
-        if(subscribers.length === 0) return res.json({ success: true, count: 0 });
-
-        let count = 0;
-        for (const sub of subscribers) {
-            try {
-                await sendEmail(sub.email, subject, message.replace(/<[^>]*>?/gm, ''), message); 
-                count++;
-            } catch(err) {
-                console.error(`Failed to send to ${sub.email}`, err);
-            }
-        }
-        res.json({ success: true, sent: count });
-    } catch (e) { res.status(500).json({ error: e.message }); }
-});
-
-
-// --- PRODUCTS ---
-app.get('/api/products/:id', async (req, res) => {
-    try {
-        let product = await prisma.product.findUnique({
-            where: { id: req.params.id },
-            include: { variants: true }
-        });
-
-        // --- AUTO-SEED FALLBACK ---
-        if (!product && req.params.id === DEFAULT_PRODUCT_ID) {
-            console.log("⚠️ Product not found in DB. Auto-seeding default data...");
-            try {
-                const { variants, ...productData } = DEFAULT_PRODUCT_DATA;
-                product = await prisma.product.upsert({
-                    where: { id: DEFAULT_PRODUCT_ID },
-                    update: {},
-                    create: {
-                        ...productData,
-                        totalStock: 100, // Default Master Stock
-                        variants: {
-                            create: variants.map(v => ({
-                                id: v.id,
-                                type: v.type,
-                                name: v.name,
-                                price: v.price,
-                                compareAtPrice: v.compareAtPrice,
-                                label: v.label,
-                                savings: v.savings,
-                                isPopular: v.isPopular,
-                                stock: 0 // Ignored in favor of totalStock calculation
-                            }))
-                        }
-                    },
-                    include: { variants: true }
-                });
-            } catch (seedErr) {
-                console.error("Auto-seed failed:", seedErr);
-                return res.status(404).json({ error: "Product not found and auto-seed failed", details: seedErr.message });
-            }
-        }
-
-        if (!product) return res.status(404).json({ error: "Product not found" });
-        
-        // --- DYNAMIC STOCK CALCULATION ---
-        // Calculate virtual stock for each variant based on Bundle Type multiplier
-        // SINGLE = 1 jar, DOUBLE = 2 jars, TRIPLE = 3 jars
-        product.variants = product.variants.map(v => {
-            let multiplier = 1;
-            if (v.type === 'DOUBLE') multiplier = 2;
-            if (v.type === 'TRIPLE') multiplier = 3;
-            
-            return {
-                ...v,
-                stock: Math.floor(product.totalStock / multiplier)
-            };
-        });
-
-        // Sort variants by price to ensure consistent order
-        product.variants.sort((a, b) => a.price - b.price);
-        
-        res.json(product);
-    } catch (e) {
-        console.error("Fetch Product Error:", e);
-        res.status(500).json({ error: e.message });
-    }
-});
-
-app.put('/api/products/:id', requireAdmin, async (req, res) => {
-    const { variants, totalStock } = req.body;
-    const productId = req.params.id;
-
-    try {
-        // 1. Update the Master Stock on the Product
-        if (totalStock !== undefined) {
-            await prisma.product.update({
-                where: { id: productId },
-                data: { totalStock: parseInt(totalStock) }
-            });
-        }
-
-        // 2. Update Variants (Prices/Metadata only, ignore stock update here as it's calculated)
-        if (variants && variants.length > 0) {
-            await prisma.$transaction(
-                variants.map(v => {
-                    return prisma.productVariant.update({
-                        where: { id: v.id },
-                        data: {
-                            price: parseFloat(v.price),
-                            compareAtPrice: parseFloat(v.compareAtPrice),
-                            // We do NOT update 'stock' here because it is a calculated field derived from Product.totalStock
-                        }
-                    });
-                })
-            );
-        }
-        res.json({ success: true });
-    } catch (e) {
-        console.error("Update Product Error:", e);
-        res.status(500).json({ error: e.message });
-    }
-});
-
-// --- DISCOUNTS ---
-app.get('/api/discounts', requireAdmin, async (req, res) => {
-    try {
-        const discounts = await prisma.discount.findMany({ orderBy: { createdAt: 'desc' } });
-        res.json(discounts);
-    } catch (e) { res.status(500).json({ error: e.message }); }
-});
-
-app.post('/api/discounts', requireAdmin, async (req, res) => {
-    try {
-        const discount = await prisma.discount.create({ data: req.body });
-        res.json(discount);
-    } catch (e) { res.status(500).json({ error: e.message }); }
-});
-
-app.delete('/api/discounts/:id', requireAdmin, async (req, res) => {
-    try {
-        await prisma.discount.delete({ where: { id: req.params.id } });
-        res.json({ success: true });
-    } catch (e) { res.status(500).json({ error: e.message }); }
-});
-
-// Validate Discount (Public)
-app.post('/api/discounts/validate', async (req, res) => {
-    const { code } = req.body;
-    try {
-        const discount = await prisma.discount.findUnique({
-            where: { code: code.toUpperCase() }
-        });
-
-        if (!discount || !discount.active) {
-            return res.status(404).json({ error: 'Invalid or expired code' });
-        }
-
-        res.json({
-            code: discount.code,
-            amount: discount.value,
-            type: discount.type
-        });
-    } catch (e) {
-        res.status(500).json({ error: e.message });
-    }
-});
-
-// --- PAYMENT ROUTES ---
-app.post('/api/create-payment-intent', async (req, res) => {
-    const { items, currency, total } = req.body;
-    
-    if (!stripe) {
-        return res.status(500).json({ error: "Server Configuration Error: Payments are not configured." });
-    }
-
-    try {
-        let amount;
-        if (total) {
-            amount = Math.round(total * 100);
-        } else {
-            const calculatedTotal = items.reduce((acc, item) => acc + (item.price * item.quantity), 0);
-            amount = Math.round(calculatedTotal * 100);
-        }
-
-        const paymentIntent = await stripe.paymentIntents.create({
-            amount: amount > 50 ? amount : 50,
-            currency: currency || 'usd',
-            automatic_payment_methods: { enabled: true },
-        });
-
-        res.json({ clientSecret: paymentIntent.client_secret });
-
-    } catch (e) {
-        console.error("Stripe Error:", e);
-        res.status(500).json({ error: e.message });
-    }
-});
 
 // --- AUTH ROUTES ---
 app.post('/api/auth/signup', async (req, res) => {
@@ -387,22 +98,40 @@ app.post('/api/auth/signup', async (req, res) => {
         const otp = generateOTP();
         const otpExpires = new Date(Date.now() + 15 * 60 * 1000); 
 
+        // 1. Create User first (Unverified)
+        await prisma.user.create({
+            data: { name, email, password: hashedPassword, otp, otpExpires, isVerified: false }
+        });
+
+        // 2. Send Email
         try {
             await sendEmail(email, 'Verify your email', `Your verification code is: ${otp}`);
         } catch (mailError) {
-            console.error("Mail error during signup:", mailError);
-            return res.status(500).json({ error: 'Failed to send verification email. Check server logs.' });
+            // Return 500 so frontend knows email failed
+            return res.status(500).json({ error: 'Failed to send verification email. Please check server SMTP settings.' });
         }
-
-        const newUser = await prisma.user.create({
-            data: { name, email, password: hashedPassword, otp, otpExpires }
-        });
         
-        res.json({ message: 'Signup successful', requiresVerification: true, email });
+        // 3. Respond
+        res.json({ message: 'Signup successful. Please verify email.', requiresVerification: true, email });
     } catch (e) {
-        console.error("Signup Error:", e);
         res.status(500).json({ error: e.message });
     }
+});
+
+app.post('/api/auth/verify-email', async (req, res) => {
+    const { email, otp } = req.body;
+    try {
+        const user = await prisma.user.findUnique({ where: { email } });
+        if (!user || String(user.otp).trim() !== String(otp).trim()) return res.status(400).json({ message: 'Invalid code' });
+
+        const updated = await prisma.user.update({
+            where: { id: user.id },
+            data: { isVerified: true, otp: null, otpExpires: null }
+        });
+        const token = jwt.sign({ id: updated.id, role: updated.role, email: updated.email }, JWT_SECRET, { expiresIn: '7d' });
+        const { password: _, ...safeUser } = updated;
+        res.json({ token, user: safeUser });
+    } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 app.post('/api/auth/login', async (req, res) => {
@@ -423,53 +152,6 @@ app.post('/api/auth/login', async (req, res) => {
     }
 });
 
-app.post('/api/auth/verify-email', async (req, res) => {
-    const { email, otp } = req.body;
-    try {
-        const user = await prisma.user.findUnique({ where: { email } });
-        if (!user || String(user.otp).trim() !== String(otp).trim()) return res.status(400).json({ message: 'Invalid code' });
-
-        const updated = await prisma.user.update({
-            where: { id: user.id },
-            data: { isVerified: true, otp: null, otpExpires: null }
-        });
-        const token = jwt.sign({ id: updated.id, role: updated.role, email: updated.email }, JWT_SECRET, { expiresIn: '7d' });
-        const { password: _, ...safeUser } = updated;
-        res.json({ token, user: safeUser });
-    } catch (e) { res.status(500).json({ error: e.message }); }
-});
-
-app.post('/api/auth/google', async (req, res) => {
-    const { token } = req.body;
-    try {
-        const googleRes = await fetch(`https://www.googleapis.com/oauth2/v3/userinfo?access_token=${token}`);
-        if(!googleRes.ok) throw new Error('Invalid Google Token');
-        const googleUser = await googleRes.json();
-        
-        let user = await prisma.user.findUnique({ where: { email: googleUser.email } });
-        
-        if (!user) {
-            user = await prisma.user.create({
-                data: {
-                    email: googleUser.email,
-                    name: googleUser.name,
-                    provider: 'GOOGLE',
-                    isVerified: true,
-                    avatar: googleUser.picture
-                }
-            });
-        }
-
-        const jwtToken = jwt.sign({ id: user.id, role: user.role, email: user.email }, JWT_SECRET, { expiresIn: '7d' });
-        const { password: _, otp: __, ...safeUser } = user;
-        res.json({ token: jwtToken, user: safeUser });
-
-    } catch (e) {
-        console.error('Google Auth Error:', e);
-        res.status(401).json({ message: 'Google Auth Failed: ' + e.message });
-    }
-});
-
 app.get('/api/auth/me', authenticate, async (req, res) => {
     try {
         const user = await prisma.user.findUnique({ where: { id: req.user.id } });
@@ -480,288 +162,7 @@ app.get('/api/auth/me', authenticate, async (req, res) => {
     } catch(e) { res.status(500).json({ error: 'Failed to fetch profile' }); }
 });
 
-app.put('/api/auth/profile', authenticate, async (req, res) => {
-    const { firstName, lastName, address, city, country, zip, phone } = req.body;
-    try {
-        const updatedUser = await prisma.user.update({
-            where: { id: req.user.id },
-            data: { firstName, lastName, name: `${firstName} ${lastName}`, address, city, country, zip, phone }
-        });
-        const { password: _, otp: __, ...safeUser } = updatedUser;
-        res.json(safeUser);
-    } catch (e) {
-        console.error("Profile Update Error:", e);
-        res.status(500).json({ error: 'Failed to update profile' });
-    }
-});
-
-// --- ADMIN ROUTES ---
-
-app.get('/api/admin/stats', requireAdmin, async (req, res) => {
-    try {
-        const { startDate, endDate } = req.query;
-        const end = endDate ? new Date(endDate) : new Date();
-        const start = startDate ? new Date(startDate) : new Date(new Date().setDate(end.getDate() - 30));
-        
-        const duration = end.getTime() - start.getTime();
-        const prevEnd = new Date(start.getTime());
-        const prevStart = new Date(prevEnd.getTime() - duration);
-
-        // Include Fulfilled and Delivered in revenue calculation
-        const revenueStatuses = ['Paid', 'Fulfilled', 'Delivered'];
-
-        const currentOrders = await prisma.order.findMany({
-            where: { 
-                createdAt: { gte: start, lte: end }, 
-                status: { in: revenueStatuses } 
-            },
-            select: { total: true, createdAt: true }
-        });
-
-        const prevOrders = await prisma.order.findMany({
-            where: { 
-                createdAt: { gte: prevStart, lte: prevEnd }, 
-                status: { in: revenueStatuses } 
-            },
-            select: { total: true }
-        });
-
-        const totalRevenue = currentOrders.reduce((acc, curr) => acc + curr.total, 0);
-        const prevRevenue = prevOrders.reduce((acc, curr) => acc + curr.total, 0);
-        
-        const totalOrders = await prisma.order.count({ where: { createdAt: { gte: start, lte: end } } }); 
-        const prevTotalOrders = await prisma.order.count({ where: { createdAt: { gte: prevStart, lte: prevEnd } } });
-
-        const avgOrderValue = currentOrders.length > 0 ? totalRevenue / currentOrders.length : 0;
-        const prevAvgOrderValue = prevOrders.length > 0 ? prevRevenue / prevOrders.length : 0;
-
-        const calcTrend = (curr, prev) => {
-            if (prev === 0) return curr > 0 ? 100 : 0;
-            return ((curr - prev) / prev) * 100;
-        };
-
-        const chartData = {};
-        currentOrders.forEach(order => {
-            const dateStr = order.createdAt.toISOString().split('T')[0];
-            chartData[dateStr] = (chartData[dateStr] || 0) + order.total;
-        });
-        
-        const chart = [];
-        for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
-            const dateStr = d.toISOString().split('T')[0];
-            chart.push({
-                date: dateStr,
-                revenue: chartData[dateStr] || 0
-            });
-        }
-
-        res.json({
-            totalRevenue,
-            totalOrders,
-            avgOrderValue,
-            trends: {
-                revenue: calcTrend(totalRevenue, prevRevenue),
-                orders: calcTrend(totalOrders, prevTotalOrders),
-                aov: calcTrend(avgOrderValue, prevAvgOrderValue)
-            },
-            chart
-        });
-    } catch (e) {
-        console.error(e);
-        res.status(500).json({ error: 'Stats failed' });
-    }
-});
-
-app.get('/api/admin/orders', requireAdmin, async (req, res) => {
-    try {
-        const orders = await prisma.order.findMany({
-            orderBy: { createdAt: 'desc' },
-            include: { items: true }
-        });
-        
-        const formatted = await Promise.all(orders.map(async o => {
-            const itemsSummary = o.items.map(i => {
-                // Map variant ID to readable name
-                const name = VARIANT_NAMES[i.variantId] || i.variantId.replace('var_', '');
-                return `${i.quantity}x ${name}`;
-            }).join(', ');
-
-            return {
-                id: o.orderNumber,
-                dbId: o.id,
-                customer: o.customerName,
-                email: o.customerEmail,
-                date: new Date(o.createdAt).toLocaleDateString(),
-                total: o.total,
-                status: o.status,
-                items: o.items.length,
-                itemsSummary: itemsSummary,
-                trackingNumber: o.trackingNumber,
-                carrier: o.carrier
-            };
-        }));
-        res.json(formatted);
-    } catch (e) {
-        console.error(e);
-        res.status(500).json({ error: 'Failed to fetch orders' });
-    }
-});
-
-app.put('/api/admin/orders/:id/status', requireAdmin, async (req, res) => {
-    const { status } = req.body;
-    try {
-        await prisma.order.update({
-            where: { orderNumber: req.params.id },
-            data: { status }
-        });
-        res.json({ success: true });
-    } catch (e) {
-        res.status(500).json({ error: 'Update failed' });
-    }
-});
-
-app.put('/api/admin/orders/:id/tracking', requireAdmin, async (req, res) => {
-    const { trackingNumber, carrier, notify } = req.body;
-    try {
-        const order = await prisma.order.update({
-            where: { orderNumber: req.params.id },
-            data: { 
-                trackingNumber, 
-                carrier,
-                status: 'Fulfilled' 
-            }
-        });
-
-        if (notify) {
-            let trackingUrl = `https://auspost.com.au/mypost/track/details/${trackingNumber}`;
-            if (carrier === 'DHL Express') trackingUrl = `https://www.dhl.com/global-en/home/tracking/tracking-express.html?submit=1&tracking-id=${trackingNumber}`;
-            if (carrier === 'FedEx') trackingUrl = `https://www.fedex.com/fedextrack/?trknbr=${trackingNumber}`;
-
-            try {
-                await sendEmail(
-                    order.customerEmail,
-                    `Your Order ${order.orderNumber} has shipped!`,
-                    `Good news! Your order is on the way.\n\nCarrier: ${carrier}\nTracking Number: ${trackingNumber}\n\nTrack here: ${trackingUrl}`
-                );
-            } catch (emailErr) {
-                console.warn("Failed to send tracking email:", emailErr);
-            }
-        }
-
-        res.json({ success: true });
-    } catch (e) {
-        console.error(e);
-        res.status(500).json({ error: 'Tracking update failed' });
-    }
-});
-
-app.post('/api/orders', async (req, res) => {
-    const { customer, items, total, paymentId, userId } = req.body;
-    
-    try {
-        // --- INVENTORY MANAGEMENT LOGIC ---
-        // 1. Calculate total individual jars required by this order
-        let totalJarsNeeded = 0;
-        
-        // We need to look up variant types to apply multipliers.
-        // For efficiency, we assume the frontend sends bundleType, OR we fetch logic.
-        // Let's be robust and fetch variants to check types.
-        const variants = await prisma.productVariant.findMany({
-            where: { id: { in: items.map(i => i.variantId) } }
-        });
-
-        items.forEach(item => {
-            const variant = variants.find(v => v.id === item.variantId);
-            if (variant) {
-                let multiplier = 1;
-                if (variant.type === 'DOUBLE') multiplier = 2;
-                if (variant.type === 'TRIPLE') multiplier = 3;
-                totalJarsNeeded += (item.quantity * multiplier);
-            }
-        });
-
-        // 2. Transaction: Check Stock -> Decrement Stock -> Create Order
-        const order = await prisma.$transaction(async (tx) => {
-            // Lock Product Row for reading stock
-            const product = await tx.product.findUnique({ 
-                where: { id: DEFAULT_PRODUCT_ID }
-            });
-
-            if (!product) throw new Error("Product not found");
-
-            if (product.totalStock < totalJarsNeeded) {
-                throw new Error("Insufficient Stock to fulfill this order.");
-            }
-
-            // Decrement Master Stock
-            await tx.product.update({
-                where: { id: DEFAULT_PRODUCT_ID },
-                data: { totalStock: { decrement: totalJarsNeeded } }
-            });
-
-            // Create Order
-            const newOrder = await tx.order.create({
-                data: {
-                    orderNumber: `HV-${Date.now()}`,
-                    customerEmail: customer.email,
-                    customerName: `${customer.firstName} ${customer.lastName}`,
-                    shippingAddress: customer, 
-                    total,
-                    status: 'Paid', 
-                    paymentId,
-                    userId: userId ? userId : undefined,
-                    items: {
-                        create: items.map(i => ({
-                            variantId: i.variantId,
-                            quantity: i.quantity,
-                            price: i.price
-                        }))
-                    }
-                }
-            });
-            
-            // Log Inventory Move (Optional but good for tracking)
-            await tx.inventoryLog.create({
-                data: {
-                    sku: 'himalaya-shilajit-resin',
-                    action: 'SALE',
-                    quantity: -totalJarsNeeded,
-                    user: 'System (Order)'
-                }
-            });
-
-            return newOrder;
-        });
-        
-        try {
-            await sendEmail(
-                customer.email, 
-                `Order Confirmation ${order.orderNumber}`, 
-                `Thank you for your purchase, ${customer.firstName}! Your order ${order.orderNumber} has been received.`
-            );
-        } catch(e) {
-            console.warn("Order email failed:", e);
-        }
-
-        res.json({ success: true, orderId: order.orderNumber });
-    } catch(e) {
-        console.error("Order Create Error:", e);
-        res.status(500).json({ error: e.message || 'Order creation failed' });
-    }
-});
-
-// --- PUBLIC ORDER TRACKING ---
-app.get('/api/orders/:id/track', async (req, res) => {
-    try {
-        const order = await prisma.order.findUnique({
-            where: { orderNumber: req.params.id },
-            select: { status: true, trackingNumber: true, carrier: true }
-        });
-        if (!order) return res.status(404).json({ error: 'Order not found' });
-        res.json(order);
-    } catch (e) { res.status(500).json({ error: e.message }); }
-});
-
+// --- ORDERS (Specific User) ---
 app.get('/api/orders/my-orders', authenticate, async (req, res) => {
     try {
         const orders = await prisma.order.findMany({
@@ -788,10 +189,74 @@ app.get('/api/orders/my-orders', authenticate, async (req, res) => {
         res.json(formatted);
     } catch(e) {
         console.error("[ORDERS] Fetch Error:", e);
-        res.status(500).json({ error: 'Failed to fetch orders. DB Sync Required: ' + e.message });
+        res.status(500).json({ error: 'Failed to fetch orders.' });
     }
 });
 
+// --- ORDER CREATION ---
+app.post('/api/orders', async (req, res) => {
+    const { customer, items, total, paymentId, userId } = req.body;
+    try {
+        const order = await prisma.order.create({
+            data: {
+                orderNumber: `HV-${Date.now()}`,
+                customerEmail: customer.email,
+                customerName: `${customer.firstName} ${customer.lastName}`,
+                shippingAddress: customer, 
+                total,
+                status: 'Paid', 
+                paymentId,
+                userId: userId ? userId : undefined,
+                items: {
+                    create: items.map(i => ({
+                        variantId: i.variantId,
+                        quantity: i.quantity,
+                        price: i.price
+                    }))
+                }
+            }
+        });
+        
+        try {
+            await sendEmail(
+                customer.email, 
+                `Order Confirmation ${order.orderNumber}`, 
+                `Thank you for your purchase, ${customer.firstName}! Your order ${order.orderNumber} has been received.`
+            );
+        } catch(e) { console.warn("Order email failed:", e); }
+
+        res.json({ success: true, orderId: order.orderNumber });
+    } catch(e) {
+        console.error("Order Create Error:", e);
+        res.status(500).json({ error: e.message || 'Order creation failed' });
+    }
+});
+
+// --- ADMIN ROUTES ---
+app.get('/api/admin/orders', requireAdmin, async (req, res) => {
+    try {
+        const orders = await prisma.order.findMany({
+            orderBy: { createdAt: 'desc' },
+            include: { items: true }
+        });
+        const formatted = orders.map(o => ({
+            id: o.orderNumber,
+            customer: o.customerName,
+            email: o.customerEmail,
+            date: new Date(o.createdAt).toLocaleDateString(),
+            total: o.total,
+            status: o.status,
+            items: o.items.length,
+            trackingNumber: o.trackingNumber,
+            carrier: o.carrier
+        }));
+        res.json(formatted);
+    } catch (e) {
+        res.status(500).json({ error: 'Failed to fetch orders' });
+    }
+});
+
+// --- STANDARD SERVER START ---
 if (require.main === module) {
     const PORT = process.env.PORT || 3000;
     app.listen(PORT, () => console.log(`Server running on ${PORT}`));

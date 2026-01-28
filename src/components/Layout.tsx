@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { ShoppingBag, Menu, X, ShieldCheck, Truck, Globe, Search, Instagram, Mail, User, LogOut, ChevronRight } from 'lucide-react';
@@ -17,7 +18,7 @@ const Logo = ({ light = false, loading = 'lazy' }: { light?: boolean, loading?: 
     <img 
         src={light ? "https://i.ibb.co/mr2hH8wK/logo-white.png" : "https://i.ibb.co/tMXQXvJn/logo-red.png"} 
         alt="Himalaya Vitality" 
-        className="h-10 md:h-12 w-auto object-contain transition-transform group-hover:scale-105"
+        className="h-9 md:h-12 w-auto object-contain transition-transform group-hover:scale-105"
         loading={loading}
         fetchPriority={loading === 'eager' ? 'high' : 'auto'}
         onError={(e) => {
@@ -26,9 +27,9 @@ const Logo = ({ light = false, loading = 'lazy' }: { light?: boolean, loading?: 
             e.currentTarget.nextElementSibling?.classList.remove('hidden');
         }}
     />
-    <div className="hidden flex-col justify-center">
-      <span className={`font-heading font-bold text-lg leading-none uppercase tracking-tight ${light ? 'text-white' : 'text-brand-dark'}`}>Himalaya</span>
-      <span className="font-sans text-[9px] font-bold text-brand-red tracking-[0.25em] uppercase leading-none mt-0.5">Vitality</span>
+    <div className="flex flex-col justify-center">
+      <span className={`font-heading font-bold text-base md:text-lg leading-none uppercase tracking-tight ${light ? 'text-white' : 'text-brand-dark'}`}>Himalaya</span>
+      <span className="font-sans text-[8px] md:text-[9px] font-bold text-brand-red tracking-[0.25em] uppercase leading-none mt-0.5">Vitality</span>
     </div>
   </div>
 );
@@ -50,7 +51,6 @@ export const Navbar = () => {
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
-  const [showProfileMenu, setShowProfileMenu] = useState(false);
   
   const location = useLocation();
   const isAdmin = location.pathname.startsWith('/admin') && location.pathname !== '/admin/login';
@@ -78,6 +78,11 @@ export const Navbar = () => {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
+  // Close mobile menu on route change
+  useEffect(() => {
+      setIsMobileMenuOpen(false);
+  }, [location.pathname]);
+
   // Command+K Listener
   useEffect(() => {
       const handleKeyDown = (e: KeyboardEvent) => {
@@ -92,8 +97,17 @@ export const Navbar = () => {
 
   if (isAdmin) return <GlobalLoader />;
 
-  // Determine if we are on a page where the header starts transparent (Home)
-  const isTransparentHeader = !scrolled && location.pathname === '/';
+  // Determine header style state
+  const isHome = location.pathname === '/';
+  // Transparent ONLY on Home and NOT scrolled
+  const isTransparent = isHome && !scrolled;
+
+  const navClass = isTransparent 
+      ? 'bg-transparent border-transparent' 
+      : 'bg-white/95 backdrop-blur-md border-gray-200 shadow-sm';
+  
+  const textClass = isTransparent ? 'text-white' : 'text-brand-dark';
+  const iconHoverClass = isTransparent ? 'hover:bg-white/10' : 'hover:bg-gray-100';
 
   return (
     <>
@@ -106,27 +120,22 @@ export const Navbar = () => {
 
       {/* Dynamic Top Bar */}
       {settings.showTopBar && (
-        <div className="bg-brand-dark text-white text-[10px] font-bold text-center py-2.5 px-4 tracking-widest uppercase relative z-[50] transition-all">
+        <div className="bg-brand-dark text-white text-[10px] font-bold text-center py-2.5 px-4 tracking-widest uppercase relative z-[50]">
           <span dangerouslySetInnerHTML={{ __html: settings.topBarMessage }} />
         </div>
       )}
       
-      {/* Transparent Sticky Nav */}
+      {/* Sticky Nav */}
       <nav 
-        className={`sticky top-0 z-40 transition-all duration-300 border-b ${
-          scrolled 
-            ? 'bg-white/90 backdrop-blur-md border-gray-200/50 shadow-sm' 
-            : 'bg-transparent border-transparent md:bg-gradient-to-b md:from-black/30 md:to-transparent'
-        }`}
+        className={`sticky top-0 z-40 transition-all duration-300 border-b ${navClass}`}
       >
-        <div className={`absolute inset-0 bg-white/90 backdrop-blur-md transition-opacity duration-300 md:hidden ${scrolled ? 'opacity-100' : 'opacity-0'}`}></div>
-
         <Container className="relative">
           <div className="flex justify-between items-center h-16 md:h-20">
+            
             {/* 1. Mobile Menu Trigger (Left) */}
             <button 
-              className={`md:hidden p-2 -ml-2 rounded-full transition-colors relative z-50 ${scrolled ? 'text-brand-dark' : 'text-white'}`}
-              onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+              className={`md:hidden p-2 -ml-2 rounded-full transition-colors relative z-50 ${textClass} ${iconHoverClass}`}
+              onClick={() => setIsMobileMenuOpen(true)}
               aria-label="Toggle Menu"
             >
               <Menu size={24} />
@@ -134,17 +143,15 @@ export const Navbar = () => {
 
             {/* 2. Logo */}
             <Link to="/" className="flex-shrink-0 relative z-40" aria-label="Home">
-                <div className={`transition-opacity duration-300 ${!scrolled && location.pathname === '/' ? 'hidden md:block' : 'block'}`}>
-                     <Logo light={isTransparentHeader} loading="eager" />
-                </div>
+                 <Logo light={isTransparent} loading="eager" />
             </Link>
 
             {/* 3. Desktop Navigation (Center) */}
             <div className="hidden md:flex items-center justify-center space-x-8 lg:space-x-12 absolute left-1/2 -translate-x-1/2">
-              <Link to="/product/himalaya-shilajit-resin" className={`text-xs lg:text-sm font-bold uppercase tracking-widest transition-colors nav-link ${scrolled ? 'text-brand-dark hover:text-brand-red' : 'text-white hover:text-brand-red drop-shadow-md'}`}>Shop</Link>
-              <Link to="/science" className={`text-xs lg:text-sm font-bold uppercase tracking-widest transition-colors nav-link ${scrolled ? 'text-brand-dark hover:text-brand-red' : 'text-white hover:text-brand-red drop-shadow-md'}`}>Science</Link>
-              <Link to="/about" className={`text-xs lg:text-sm font-bold uppercase tracking-widest transition-colors nav-link ${scrolled ? 'text-brand-dark hover:text-brand-red' : 'text-white hover:text-brand-red drop-shadow-md'}`}>Story</Link>
-              <Link to="/reviews" className={`text-xs lg:text-sm font-bold uppercase tracking-widest transition-colors nav-link ${scrolled ? 'text-brand-dark hover:text-brand-red' : 'text-white hover:text-brand-red drop-shadow-md'}`}>Reviews</Link>
+              <Link to="/product/himalaya-shilajit-resin" className={`text-xs lg:text-sm font-bold uppercase tracking-widest transition-colors nav-link ${isTransparent ? 'text-white hover:text-brand-gold-400 drop-shadow-md' : 'text-brand-dark hover:text-brand-red'}`}>Shop</Link>
+              <Link to="/science" className={`text-xs lg:text-sm font-bold uppercase tracking-widest transition-colors nav-link ${isTransparent ? 'text-white hover:text-brand-gold-400 drop-shadow-md' : 'text-brand-dark hover:text-brand-red'}`}>Science</Link>
+              <Link to="/about" className={`text-xs lg:text-sm font-bold uppercase tracking-widest transition-colors nav-link ${isTransparent ? 'text-white hover:text-brand-gold-400 drop-shadow-md' : 'text-brand-dark hover:text-brand-red'}`}>Story</Link>
+              <Link to="/reviews" className={`text-xs lg:text-sm font-bold uppercase tracking-widest transition-colors nav-link ${isTransparent ? 'text-white hover:text-brand-gold-400 drop-shadow-md' : 'text-brand-dark hover:text-brand-red'}`}>Reviews</Link>
             </div>
 
             {/* 4. Actions (Right) */}
@@ -152,16 +159,16 @@ export const Navbar = () => {
               {/* Search */}
               <button 
                 onClick={() => setIsSearchOpen(true)}
-                className={`p-2 rounded-full transition-colors group ${scrolled ? 'text-gray-600 hover:text-brand-dark hover:bg-gray-100' : 'text-white hover:bg-white/20'}`}
+                className={`p-2 rounded-full transition-colors group ${textClass} ${iconHoverClass}`}
                 aria-label="Search"
               >
                 <Search size={20} className="group-hover:scale-110 transition-transform" />
               </button>
 
               {/* Account (Desktop) */}
-              <div className="relative group">
-                <Link to={isAuthenticated ? '#' : '/login'} onClick={(e) => { if(isAuthenticated) { e.preventDefault(); setShowProfileMenu(!showProfileMenu); } }} aria-label="My Account">
-                    <button className={`p-2 rounded-full transition-colors group hidden md:block ${scrolled ? 'text-gray-600 hover:text-brand-dark hover:bg-gray-100' : 'text-white hover:bg-white/20'}`} aria-label="Profile">
+              <div className="hidden md:block relative group">
+                <Link to={isAuthenticated ? '/profile' : '/login'} aria-label="My Account">
+                    <button className={`p-2 rounded-full transition-colors group ${textClass} ${iconHoverClass}`} aria-label="Profile">
                         {user?.avatar ? (
                             <img src={user.avatar} alt="Profile" className="w-5 h-5 rounded-full" />
                         ) : (
@@ -169,24 +176,6 @@ export const Navbar = () => {
                         )}
                     </button>
                 </Link>
-                
-                {/* Desktop Dropdown */}
-                {isAuthenticated && showProfileMenu && (
-                    <div className="absolute right-0 top-12 w-48 bg-white rounded-xl shadow-xl border border-gray-100 py-2 animate-in fade-in slide-in-from-top-2 z-50">
-                        <div className="px-4 py-3 border-b border-gray-100">
-                            <p className="text-sm font-bold text-brand-dark truncate">{user?.name || 'User'}</p>
-                            <p className="text-xs text-gray-500 truncate">{user?.email}</p>
-                        </div>
-                        {user?.role === 'ADMIN' && (
-                            <Link to="/admin" onClick={() => setShowProfileMenu(false)} className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 hover:text-brand-red">Admin Dashboard</Link>
-                        )}
-                        <Link to="/profile" onClick={() => setShowProfileMenu(false)} className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 hover:text-brand-red">My Profile</Link>
-                        <Link to="/profile" onClick={() => setShowProfileMenu(false)} className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 hover:text-brand-red">Order History</Link>
-                        <button onClick={() => { logout(); setShowProfileMenu(false); }} className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 hover:text-brand-red flex items-center">
-                            <LogOut size={14} className="mr-2" /> Sign Out
-                        </button>
-                    </div>
-                )}
               </div>
 
               {/* Currency */}
@@ -195,7 +184,7 @@ export const Navbar = () => {
                   <select 
                     value={currency} 
                     onChange={(e) => setCurrency(e.target.value as CurrencyCode)}
-                    className={`appearance-none bg-transparent font-bold text-xs border-none focus:ring-0 cursor-pointer pr-3 py-1 outline-none ${scrolled ? 'text-brand-dark' : 'text-white'}`}
+                    className={`appearance-none bg-transparent font-bold text-xs border-none focus:ring-0 cursor-pointer pr-3 py-1 outline-none ${textClass}`}
                     aria-label="Select Currency"
                   >
                     {SUPPORTED_CURRENCIES.map((c) => (<option key={c.code} value={c.code} className="text-black">{c.code}</option>))}
@@ -205,7 +194,7 @@ export const Navbar = () => {
 
               {/* Cart */}
               <button 
-                  className={`p-2 rounded-full transition-colors relative group ${scrolled ? 'text-brand-dark hover:bg-gray-100' : 'text-white hover:bg-white/20'}`}
+                  className={`p-2 rounded-full transition-colors relative group ${textClass} ${iconHoverClass}`}
                   onClick={() => setIsCartOpen(true)}
                   aria-label="Cart"
               >
@@ -222,8 +211,8 @@ export const Navbar = () => {
 
         {/* Mobile Menu Overlay */}
         {isMobileMenuOpen && (
-          <div className="fixed inset-0 z-50 bg-white animate-in slide-in-from-left-full duration-300 flex flex-col">
-              <div className="flex justify-between items-center p-4 border-b border-gray-100">
+          <div className="fixed inset-0 z-50 bg-white animate-in slide-in-from-left-full duration-300 flex flex-col h-[100dvh]">
+              <div className="flex justify-between items-center p-4 border-b border-gray-100 h-16">
                   <Logo />
                   <button onClick={() => setIsMobileMenuOpen(false)} className="p-2 bg-gray-50 rounded-full hover:bg-gray-100 transition-colors" aria-label="Close menu">
                       <X size={24} className="text-gray-500"/>
@@ -238,9 +227,9 @@ export const Navbar = () => {
                                   <div className="w-10 h-10 bg-brand-red rounded-full flex items-center justify-center text-white font-bold">
                                       {user?.name?.charAt(0) || 'U'}
                                   </div>
-                                  <div>
-                                      <div className="font-bold text-brand-dark">{user?.name}</div>
-                                      <div className="text-xs text-gray-500">{user?.email}</div>
+                                  <div className="overflow-hidden">
+                                      <div className="font-bold text-brand-dark truncate">{user?.name}</div>
+                                      <div className="text-xs text-gray-500 truncate">{user?.email}</div>
                                   </div>
                               </div>
                               <Link to="/profile" onClick={() => setIsMobileMenuOpen(false)}>
@@ -254,38 +243,40 @@ export const Navbar = () => {
                           </Link>
                       )}
 
-                      {['Shop', 'Science', 'About', 'Reviews', 'Blog', 'Track Order', 'Contact'].map((item) => (
-                          <Link 
-                              key={item}
-                              to={item === 'Shop' ? '/product/himalaya-shilajit-resin' : item === 'Track Order' ? '/track' : `/${item.toLowerCase().replace(/ /g, '-')}`} 
-                              className="block text-3xl font-heading font-extrabold text-brand-dark hover:text-brand-red transition-colors" 
-                              onClick={() => setIsMobileMenuOpen(false)}
-                          >
-                              {item}
-                          </Link>
-                      ))}
+                      <div className="space-y-4">
+                        {['Shop', 'Science', 'About', 'Reviews', 'Blog', 'Track Order', 'Contact'].map((item) => (
+                            <Link 
+                                key={item}
+                                to={item === 'Shop' ? '/product/himalaya-shilajit-resin' : item === 'Track Order' ? '/track' : `/${item.toLowerCase().replace(/ /g, '-')}`} 
+                                className="block text-2xl font-heading font-extrabold text-brand-dark hover:text-brand-red transition-colors" 
+                                onClick={() => setIsMobileMenuOpen(false)}
+                            >
+                                {item}
+                            </Link>
+                        ))}
+                      </div>
                   </nav>
               </div>
 
-              <div className="p-6 bg-gray-50 border-t border-gray-100">
+              <div className="p-6 bg-gray-50 border-t border-gray-100 pb-10">
                   <div className="flex items-center justify-between text-sm font-bold text-gray-500 mb-6">
                       <span>Currency</span>
                       <select 
                           value={currency} 
                           onChange={(e) => setCurrency(e.target.value as CurrencyCode)}
-                          className="bg-transparent border-none font-bold text-brand-dark focus:ring-0 cursor-pointer"
+                          className="bg-transparent border-none font-bold text-brand-dark focus:ring-0 cursor-pointer p-0"
                           aria-label="Mobile Currency Select"
                       >
                           {SUPPORTED_CURRENCIES.map((c) => (<option key={c.code} value={c.code}>{c.code}</option>))}
                       </select>
                   </div>
                   
-                  <div className="grid grid-cols-2 gap-4 mb-6">
+                  <div className="grid grid-cols-2 gap-4 mb-2">
                        <Link to="/faq" className="text-xs text-gray-500 font-bold hover:text-brand-dark" onClick={() => setIsMobileMenuOpen(false)}>FAQ</Link>
-                       <Link to="/shipping-returns" className="text-xs text-gray-500 font-bold hover:text-brand-dark" onClick={() => setIsMobileMenuOpen(false)}>Shipping</Link>
+                       <Link to="/shipping-returns" className="text-xs text-gray-500 font-bold hover:text-brand-dark text-right" onClick={() => setIsMobileMenuOpen(false)}>Shipping</Link>
                   </div>
 
-                  <p className="text-xs text-gray-400 text-center">© {new Date().getFullYear()} Himalaya Vitality</p>
+                  <p className="text-xs text-gray-400 text-center mt-4">© {new Date().getFullYear()} Himalaya Vitality</p>
               </div>
           </div>
         )}
