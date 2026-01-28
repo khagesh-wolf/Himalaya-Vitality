@@ -29,7 +29,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [discount, setDiscount] = useState<DiscountDetails | null>(null);
 
-  // No localStorage logic here. Cart is reset on page refresh.
+  // Removed localStorage useEffects. Cart is now ephemeral.
 
   const addToCart = (product: Product, variant: ProductVariant, quantity: number) => {
     const fallbackImage = 'https://placehold.co/400x400/f3f4f6/111111?text=No+Image';

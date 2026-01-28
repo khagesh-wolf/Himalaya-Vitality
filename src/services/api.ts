@@ -8,8 +8,10 @@ const API_BASE = '/api';
 
 // --- SHARED UTILS ---
 const getAuthHeaders = () => {
-    // Use sessionStorage instead of localStorage for ephemeral auth
-    const token = sessionStorage.getItem('hv_token');
+    // Use sessionStorage or localStorage based on preference. 
+    // Using localStorage for token persistence across tabs is standard, 
+    // but we removed the "Mock Database" localStorage keys.
+    const token = localStorage.getItem('hv_token');
     return token ? { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' } : { 'Content-Type': 'application/json' };
 };
 
@@ -18,12 +20,14 @@ const handleResponse = async (res: Response) => {
     try {
         data = await res.json();
     } catch (e) {
+        // If response is not JSON (e.g. empty 200 OK)
         if (!res.ok) throw new Error(res.statusText);
         return { success: true };
     }
 
     if (!res.ok) {
         const error = new Error(data.message || data.error || 'API Error');
+        // Attach extra data for Auth flow (e.g. 403 Verification Required)
         (error as any).requiresVerification = data.requiresVerification;
         (error as any).email = data.email;
         throw error;
@@ -61,7 +65,8 @@ export const fetchReviews = async (): Promise<Review[]> => {
         const res = await fetch(`${API_BASE}/reviews`);
         return await handleResponse(res);
     } catch (e) {
-        return REVIEWS; // Fallback if API fails
+        console.warn("API Error fetching reviews, using fallback.");
+        return REVIEWS;
     }
 };
 
@@ -137,7 +142,6 @@ export const verifyEmail = async (email: string, otp: string) => {
 };
 
 export const googleAuthenticate = async (token: string) => {
-    // Note: Assuming backend has /auth/google implemented or we skip for now
     const res = await fetch(`${API_BASE}/auth/google`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -171,6 +175,7 @@ export const fetchAdminOrders = async () => {
 };
 
 export const updateOrderStatus = async (id: string, status: string) => {
+    // Note: Backend endpoint expects orderNumber as ID usually, check backend logic
     const res = await fetch(`${API_BASE}/admin/orders/${id}/status`, {
         method: 'PUT',
         headers: getAuthHeaders(),
