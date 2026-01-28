@@ -25,14 +25,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   useEffect(() => {
     const initAuth = async () => {
-      const token = localStorage.getItem('hv_token');
+      // Switched to sessionStorage
+      const token = sessionStorage.getItem('hv_token');
       if (token) {
         try {
           const userData = await fetchCurrentUser();
           setUser(userData);
         } catch (err) {
           console.error("Session expired or invalid");
-          localStorage.removeItem('hv_token');
+          sessionStorage.removeItem('hv_token');
         }
       }
       setIsLoading(false);
@@ -45,11 +46,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setError(null);
     try {
       const { token, user: userData } = await loginUser(data);
-      localStorage.setItem('hv_token', token);
+      sessionStorage.setItem('hv_token', token);
       setUser(userData);
     } catch (err: any) {
       setError(err.message || 'Login failed');
-      // Re-throw so page component can detect verification requirement
       throw err;
     } finally {
       setIsLoading(false);
@@ -61,9 +61,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setError(null);
     try {
       const result = await signupUser(data);
-      // Only set user if verification is NOT required immediately (which it is for email signup)
       if (result.token && result.user && result.user.isVerified) {
-          localStorage.setItem('hv_token', result.token);
+          sessionStorage.setItem('hv_token', result.token);
           setUser(result.user);
       }
       return result;
@@ -80,7 +79,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setError(null);
       try {
           const { token, user: userData } = await verifyEmailApi(email, otp);
-          localStorage.setItem('hv_token', token);
+          sessionStorage.setItem('hv_token', token);
           setUser(userData);
       } catch (err: any) {
           setError(err.message || 'Verification failed');
@@ -95,7 +94,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setError(null);
     try {
         const { token: appToken, user: userData } = await googleAuthenticate(token);
-        localStorage.setItem('hv_token', appToken);
+        sessionStorage.setItem('hv_token', appToken);
         setUser(userData);
     } catch (err: any) {
         setError(err.message || 'Social login failed');
@@ -106,11 +105,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const logout = () => {
-    localStorage.removeItem('hv_token');
+    sessionStorage.removeItem('hv_token');
     setUser(null);
   };
 
-  // User must be present AND verified (unless they are ADMIN, who are auto-verified)
   const isAuthenticated = !!user && (user.isVerified || user.role === 'ADMIN');
 
   return (

@@ -15,36 +15,24 @@ export const NewsletterModal = () => {
   useEffect(() => {
     if (!settings.enableNewsletter) return;
 
-    // 1. Check Global Subscription Status (Permanent)
-    const isSubscribed = localStorage.getItem('himalaya_subscribed') === 'true';
-    if (isSubscribed) return;
-
-    // 2. Check Session Dismissal (Until next visit/session)
+    // Use sessionStorage exclusively for tracking state in this session
     const isDismissed = sessionStorage.getItem('himalaya_newsletter_dismissed') === 'true';
     if (isDismissed) return;
 
-    // 3. Auto-show after 10 seconds
     const timer = setTimeout(() => {
-        // Double check status before showing
-        if (
-            localStorage.getItem('himalaya_subscribed') !== 'true' &&
-            sessionStorage.getItem('himalaya_newsletter_dismissed') !== 'true'
-        ) {
+        if (sessionStorage.getItem('himalaya_newsletter_dismissed') !== 'true') {
             setIsOpen(true);
         }
     }, 15000);
 
-    // 4. Exit Intent Logic (Enforcing 10s rule as requested)
     const handleMouseLeave = (e: MouseEvent) => {
       if (e.clientY <= 0) {
         const timeOnPage = Date.now() - mountedTime;
-        // Only show if user has been hanging on the website for more than 10 seconds
         if (timeOnPage < 15000) return;
 
         if (
-            localStorage.getItem('himalaya_subscribed') !== 'true' &&
             sessionStorage.getItem('himalaya_newsletter_dismissed') !== 'true' &&
-            !isOpen // Don't trigger if already open
+            !isOpen
         ) {
             setIsOpen(true);
         }
@@ -61,7 +49,6 @@ export const NewsletterModal = () => {
 
   const handleClose = () => {
     setIsOpen(false);
-    // Mark as dismissed for this session (Until next visit)
     sessionStorage.setItem('himalaya_newsletter_dismissed', 'true');
   };
 
@@ -70,17 +57,10 @@ export const NewsletterModal = () => {
     if(!email) return;
 
     try {
-        // Save to DB via API
         await subscribeToNewsletter(email, 'Popup');
-        
         setSubmitted(true);
-        
-        // Save to LocalStorage (Permanent suppression)
-        localStorage.setItem('himalaya_subscribed', 'true');
-        // Save to SessionStorage (Just in case logic relies on it)
         sessionStorage.setItem('himalaya_newsletter_dismissed', 'true');
         
-        // Close after delay
         setTimeout(() => {
             setIsOpen(false);
             setEmail('');
@@ -88,9 +68,8 @@ export const NewsletterModal = () => {
         }, 4000);
     } catch (error) {
         console.error("Subscription failed:", error);
-        // Still treat as success for UX if it's just a duplicate
         setSubmitted(true);
-        localStorage.setItem('himalaya_subscribed', 'true');
+        sessionStorage.setItem('himalaya_newsletter_dismissed', 'true');
         setTimeout(() => setIsOpen(false), 3000);
     }
   };
@@ -99,16 +78,12 @@ export const NewsletterModal = () => {
 
   return (
     <div className="fixed inset-0 z-[70] flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-label="Newsletter Subscription">
-      {/* Backdrop */}
       <div 
         className="absolute inset-0 bg-brand-dark/40 backdrop-blur-sm transition-opacity duration-500" 
         onClick={handleClose} 
       />
       
-      {/* Modal Content */}
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-3xl overflow-hidden relative z-10 flex flex-col md:flex-row animate-in fade-in zoom-in-95 duration-300">
-        
-        {/* Close Button */}
         <button 
           onClick={handleClose} 
           className="absolute top-4 right-4 z-20 p-2 bg-white/10 hover:bg-black/5 rounded-full backdrop-blur-md transition-colors text-gray-500 hover:text-brand-dark"
@@ -117,7 +92,6 @@ export const NewsletterModal = () => {
           <X size={20} />
         </button>
 
-        {/* Image Side */}
         <div className="hidden md:block w-2/5 relative">
            <LazyImage 
              src="https://images.unsplash.com/photo-1518241353330-0f7941c2d9b5?q=80&w=800&auto=format&fit=crop" 
@@ -131,7 +105,6 @@ export const NewsletterModal = () => {
            </div>
         </div>
 
-        {/* Content Side */}
         <div className="w-full md:w-3/5 p-8 md:p-10 flex flex-col justify-center bg-white">
           {!submitted ? (
             <>

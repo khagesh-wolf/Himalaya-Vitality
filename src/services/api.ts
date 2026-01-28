@@ -4,13 +4,11 @@ import { MAIN_PRODUCT, REVIEWS, BLOG_POSTS } from '../constants';
 import { DEFAULT_REGIONS } from '../utils';
 
 // Base URL for API
-// In dev: Vite proxies '/api' to localhost:3000
-// In prod: Vercel routes '/api' to serverless functions
 const API_BASE = '/api';
 
 // --- SHARED UTILS ---
 const getAuthHeaders = () => {
-    const token = localStorage.getItem('hv_token');
+    const token = sessionStorage.getItem('hv_token');
     return token ? { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' } : { 'Content-Type': 'application/json' };
 };
 
@@ -19,14 +17,12 @@ const handleResponse = async (res: Response) => {
     try {
         data = await res.json();
     } catch (e) {
-        // Handle empty responses or non-JSON errors
         if (!res.ok) throw new Error(res.statusText);
         return { success: true };
     }
 
     if (!res.ok) {
         const error = new Error(data.message || data.error || 'API Error');
-        // Pass specific flags for auth flow handling
         (error as any).requiresVerification = data.requiresVerification;
         (error as any).email = data.email;
         throw error;
@@ -38,10 +34,7 @@ const handleResponse = async (res: Response) => {
 export const fetchProduct = async (id: string): Promise<Product> => {
     try {
         const res = await fetch(`${API_BASE}/products/${id}`);
-        if (!res.ok) {
-            // Fallback for static pages if DB is cold, but prefers API
-            return MAIN_PRODUCT; 
-        }
+        if (!res.ok) return MAIN_PRODUCT; 
         return await res.json();
     } catch (e) {
         console.warn("API Error fetching product, using fallback constant.", e);
@@ -64,7 +57,6 @@ export const fetchReviews = async (): Promise<Review[]> => {
         const res = await fetch(`${API_BASE}/reviews`);
         return await handleResponse(res);
     } catch (e) {
-        // Fallback to constants if API fails (e.g., during build)
         return REVIEWS;
     }
 };
@@ -141,6 +133,9 @@ export const verifyEmail = async (email: string, otp: string) => {
 };
 
 export const googleAuthenticate = async (token: string) => {
+    // Note: Requires backend implementation for Google Verify
+    // For now, fallback to client-side or specific endpoint
+    // Assuming backend has /auth/google implemented or we skip for now
     const res = await fetch(`${API_BASE}/auth/google`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
