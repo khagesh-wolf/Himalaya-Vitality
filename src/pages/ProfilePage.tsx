@@ -121,34 +121,43 @@ export const ProfilePage = () => {
 
   const countries = regions.length > 0 ? regions : getDeliverableCountries();
 
+  const handleTabChange = (tab: 'orders' | 'settings') => {
+      setActiveTab(tab);
+      // On mobile, smooth scroll to content
+      if (window.innerWidth < 1024) {
+          const content = document.getElementById('profile-content');
+          content?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+  };
+
   return (
-    <div className="bg-gray-50 min-h-screen pt-12 pb-20">
+    <div className="bg-gray-50 min-h-screen pt-28 pb-20">
       <SEO title="My Account" />
       <Container>
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
             
             {/* Sidebar */}
             <div className="lg:col-span-1">
-                <Card className="p-6 border-none shadow-md sticky top-28">
+                <Card className="p-6 border-none shadow-md lg:sticky lg:top-28">
                     <div className="flex items-center gap-4 mb-8">
-                        <div className="w-16 h-16 bg-brand-dark text-white rounded-full flex items-center justify-center text-2xl font-heading font-bold">
+                        <div className="w-16 h-16 bg-brand-dark text-white rounded-full flex items-center justify-center text-2xl font-heading font-bold shrink-0">
                             {user?.name?.charAt(0) || 'U'}
                         </div>
-                        <div>
-                            <h2 className="font-bold text-brand-dark leading-tight">{user?.name}</h2>
-                            <p className="text-xs text-gray-500 truncate max-w-[150px]">{user?.email}</p>
+                        <div className="min-w-0">
+                            <h2 className="font-bold text-brand-dark leading-tight truncate">{user?.name}</h2>
+                            <p className="text-xs text-gray-500 truncate">{user?.email}</p>
                         </div>
                     </div>
 
                     <nav className="space-y-2">
                         <button 
-                            onClick={() => setActiveTab('orders')}
+                            onClick={() => handleTabChange('orders')}
                             className={`w-full flex items-center p-3 rounded-xl transition-all font-bold text-sm ${activeTab === 'orders' ? 'bg-brand-red text-white shadow-md' : 'text-gray-600 hover:bg-gray-100'}`}
                         >
                             <Package size={18} className="mr-3" /> My Orders
                         </button>
                         <button 
-                            onClick={() => setActiveTab('settings')}
+                            onClick={() => handleTabChange('settings')}
                             className={`w-full flex items-center p-3 rounded-xl transition-all font-bold text-sm ${activeTab === 'settings' ? 'bg-brand-red text-white shadow-md' : 'text-gray-600 hover:bg-gray-100'}`}
                         >
                             <UserIcon size={18} className="mr-3" /> Profile & Address
@@ -164,7 +173,7 @@ export const ProfilePage = () => {
             </div>
 
             {/* Main Content */}
-            <div className="lg:col-span-3">
+            <div className="lg:col-span-3" id="profile-content">
                 <Reveal>
                     {activeTab === 'orders' && (
                         <div className="space-y-6">
@@ -185,7 +194,7 @@ export const ProfilePage = () => {
                                 orders.map((order: any) => (
                                     <Card key={order.id} className="p-0 overflow-hidden border border-gray-200 shadow-sm hover:shadow-md transition-shadow">
                                         <div className="bg-gray-50 p-6 flex flex-wrap justify-between items-center gap-4 border-b border-gray-100">
-                                            <div className="flex gap-8">
+                                            <div className="flex flex-wrap gap-x-8 gap-y-2">
                                                 <div>
                                                     <span className="block text-xs font-bold text-gray-400 uppercase tracking-wide">Order Placed</span>
                                                     <span className="font-bold text-brand-dark text-sm">{order.date}</span>
@@ -211,20 +220,28 @@ export const ProfilePage = () => {
                                         </div>
                                         <div className="p-6">
                                             {order.itemsDetails?.map((item: any, idx: number) => (
-                                                <div key={idx} className="flex items-center gap-6 mb-4 last:mb-0">
-                                                    <div className="w-20 h-20 bg-gray-100 rounded-lg overflow-hidden border border-gray-200 shrink-0">
-                                                        <LazyImage src={item.image} alt={item.title} className="w-full h-full object-cover" />
+                                                <div key={idx} className="flex flex-col sm:flex-row items-start sm:items-center gap-6 mb-4 last:mb-0">
+                                                    <div className="flex items-center gap-4 w-full sm:w-auto">
+                                                        <div className="w-20 h-20 bg-gray-100 rounded-lg overflow-hidden border border-gray-200 shrink-0">
+                                                            <LazyImage src={item.image} alt={item.title} className="w-full h-full object-cover" />
+                                                        </div>
+                                                        <div className="sm:hidden flex-1">
+                                                            <h4 className="font-bold text-brand-dark mb-1">{item.title}</h4>
+                                                            <p className="text-sm text-gray-500">Qty: {item.quantity}</p>
+                                                        </div>
                                                     </div>
-                                                    <div className="flex-1">
+                                                    
+                                                    <div className="hidden sm:block flex-1">
                                                         <h4 className="font-bold text-brand-dark mb-1">{item.title}</h4>
                                                         <p className="text-sm text-gray-500">Qty: {item.quantity}</p>
                                                     </div>
-                                                    <div className="text-right flex flex-col gap-2">
-                                                        <Button size="sm" variant="outline-dark" onClick={() => navigate(`/product/${item.productId || 'himalaya-shilajit-resin'}`)}>
+                                                    
+                                                    <div className="flex gap-2 w-full sm:w-auto">
+                                                        <Button size="sm" variant="outline-dark" fullWidth className="sm:w-auto" onClick={() => navigate(`/product/${item.productId || 'himalaya-shilajit-resin'}`)}>
                                                             Buy Again
                                                         </Button>
                                                         {order.status === 'Delivered' && (
-                                                            <Button size="sm" onClick={() => handleOpenReview(item)}>
+                                                            <Button size="sm" fullWidth className="sm:w-auto" onClick={() => handleOpenReview(item)}>
                                                                 Write Review
                                                             </Button>
                                                         )}
@@ -341,7 +358,6 @@ export const ProfilePage = () => {
                                         type="button"
                                         onClick={() => setRating(star)}
                                         className="focus:outline-none transition-transform hover:scale-110"
-                                        aria-label={`Rate ${star} out of 5 stars`}
                                     >
                                         <Star 
                                             size={32} 

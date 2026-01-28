@@ -37,13 +37,13 @@ const BenefitCard = ({ icon: Icon, title, description }: { icon: any, title: str
 );
 
 const ComparisonRow = ({ feature, us, them }: { feature: string, us: string | boolean, them: string | boolean }) => (
-  <div className="grid grid-cols-3 gap-4 py-5 border-b border-gray-100 last:border-0 items-center hover:bg-gray-50 transition-colors px-2 rounded-lg">
-    <div className="font-bold text-xs md:text-sm text-gray-700">{feature}</div>
+  <div className="grid grid-cols-3 gap-2 sm:gap-4 py-4 sm:py-5 border-b border-gray-100 last:border-0 items-center hover:bg-gray-50 transition-colors px-2 rounded-lg">
+    <div className="font-bold text-xs sm:text-sm text-gray-700">{feature}</div>
     <div className="text-center font-bold text-brand-dark flex justify-center">
-        {us === true ? <CheckCircle2 size={20} className="text-green-600" /> : <span className="text-xs md:text-sm">{us}</span>}
+        {us === true ? <CheckCircle2 size={20} className="text-green-600" /> : <span className="text-xs sm:text-sm">{us}</span>}
     </div>
-    <div className="text-center text-gray-400 text-xs md:text-sm flex justify-center">
-        {them === false ? <XCircle size={20} className="text-gray-300" /> : <span className="text-xs md:text-sm">{them}</span>}
+    <div className="text-center text-gray-400 text-xs sm:text-sm flex justify-center">
+        {them === false ? <XCircle size={20} className="text-gray-300" /> : <span className="text-xs sm:text-sm">{them}</span>}
     </div>
   </div>
 );
@@ -69,7 +69,7 @@ export const HomePage = () => {
       />
 
       {/* --- HERO SECTION --- */}
-      <section className="relative min-h-screen w-full flex items-center justify-center overflow-hidden bg-black pb-20 pt-32 md:pt-40">
+      <section className="relative min-h-screen w-full flex items-center justify-center overflow-hidden bg-black pb-20 pt-28 md:pt-40">
         
         {/* Background Image with Zoom Animation */}
         <div className="absolute inset-0 z-0">
@@ -88,16 +88,16 @@ export const HomePage = () => {
         <Container className="relative z-10 text-center flex flex-col items-center">
              {/* Animated Badge */}
              <div className="animate-fade-in-up opacity-0" style={{ animationDelay: '100ms' }}>
-                 <div className="inline-block mb-8 md:mb-10 group cursor-default">
+                 <div className="inline-block mb-6 md:mb-10 group cursor-default">
                      <span className="inline-flex items-center gap-2 py-2 px-4 md:px-6 rounded-full border border-yellow-500/40 bg-black/40 backdrop-blur-xl text-[10px] md:text-xs font-bold uppercase tracking-[0.25em] text-yellow-400 shadow-[0_0_20px_rgba(250,204,21,0.15)] group-hover:border-yellow-500/70 group-hover:shadow-[0_0_25px_rgba(250,204,21,0.25)] transition-all duration-500">
-                        <Mountain size={14} className="text-yellow-400 mb-0.5" /> Authentic Nepali Shilajit (शिलाजित)
+                        <Mountain size={14} className="text-yellow-400 mb-0.5" /> Authentic Nepali Shilajit
                      </span>
                  </div>
              </div>
 
              {/* Main Headline */}
-             <div className="mb-8 md:mb-10 relative w-full">
-                <h1 className="font-heading text-5xl sm:text-6xl md:text-8xl lg:text-9xl font-extrabold leading-[0.9] text-white tracking-tighter drop-shadow-2xl">
+             <div className="mb-6 md:mb-10 relative w-full">
+                <h1 className="font-heading text-4xl sm:text-6xl md:text-8xl lg:text-9xl font-extrabold leading-[0.9] text-white tracking-tighter drop-shadow-2xl">
                     <span className="block mb-2 text-white drop-shadow-xl animate-fade-in-up opacity-0" style={{ animationDelay: '300ms' }}>
                         HIMALAYAN
                     </span>
@@ -108,7 +108,7 @@ export const HomePage = () => {
              </div>
 
              {/* Description */}
-             <p className="text-base sm:text-lg md:text-xl text-gray-200 mb-10 md:mb-12 font-medium max-w-xl md:max-w-2xl mx-auto drop-shadow-lg leading-relaxed animate-fade-in-up opacity-0 px-4" style={{ animationDelay: '1800ms' }}>
+             <p className="text-sm sm:text-lg md:text-xl text-gray-200 mb-8 md:mb-12 font-medium max-w-xl md:max-w-2xl mx-auto drop-shadow-lg leading-relaxed animate-fade-in-up opacity-0 px-4" style={{ animationDelay: '1800ms' }}>
                  Unleash your primal potential with the purest <span className="text-yellow-400 font-bold border-b border-yellow-400/50 pb-0.5">Gold Grade</span> resin. 
                  Scientifically known as <em>Asphaltum Punjabianum</em>, ethically sourced from the Ladakh range for peak performance.
              </p>
@@ -139,7 +139,7 @@ export const HomePage = () => {
                     <div className="w-12 h-12 md:w-14 md:h-14 rounded-full bg-white/5 backdrop-blur-md border border-white/10 flex items-center justify-center text-yellow-400 shadow-lg">
                         <Mountain size={20} className="text-yellow-400 md:w-6 md:h-6" />
                     </div>
-                    <span className="text-[10px] md:text-xs font-bold uppercase tracking-widest text-white/80">Authentic (शिलाजित)</span>
+                    <span className="text-[10px] md:text-xs font-bold uppercase tracking-widest text-white/80">Authentic</span>
                 </div>
                 <div className="flex flex-col items-center gap-2 md:gap-3 group animate-float" style={{ animationDelay: '3s' }}>
                     <div className="w-12 h-12 md:w-14 md:h-14 rounded-full bg-white/5 backdrop-blur-md border border-white/10 flex items-center justify-center text-yellow-400 shadow-lg">
@@ -223,13 +223,13 @@ export const HomePage = () => {
       </section>
 
       {/* --- COMPARISON SECTION (Dark Background) --- */}
-      <section className="py-20 md:py-24 bg-stone-900 text-white relative overflow-hidden">
+      <section className="py-16 md:py-24 bg-stone-900 text-white relative overflow-hidden">
         <Container className="relative z-10">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-16 items-center">
             <Reveal>
               <div>
                 <h2 className="font-heading text-3xl md:text-4xl font-extrabold mb-6 leading-tight">Not All Shilajit is Created Equal</h2>
-                <p className="text-gray-400 mb-8 leading-relaxed text-lg">
+                <p className="text-gray-400 mb-8 leading-relaxed text-base md:text-lg">
                     The market is flooded with low-quality, solvent-extracted powders. 
                     Himalaya Vitality is strictly Gold Grade resin, purified using traditional 
                     Surya Tapi (sun-drying) methods for 60-90 days to preserve the delicate bioactive compounds.
@@ -264,7 +264,7 @@ export const HomePage = () => {
                     <div className="absolute -top-4 left-1/2 -translate-x-1/2 bg-brand-gold-500 text-brand-dark font-bold px-4 py-1 rounded-full text-xs uppercase tracking-widest shadow-lg whitespace-nowrap">
                         Proven Superiority
                     </div>
-                    <div className="grid grid-cols-3 gap-4 mb-6 pb-6 border-b border-gray-100">
+                    <div className="grid grid-cols-3 gap-2 sm:gap-4 mb-6 pb-6 border-b border-gray-100">
                         <div></div>
                         <div className="text-center">
                             <div className="font-heading font-extrabold text-base md:text-lg text-brand-dark mb-1">Himalaya</div>
