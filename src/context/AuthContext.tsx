@@ -25,15 +25,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   useEffect(() => {
     const initAuth = async () => {
-      // Switched to sessionStorage
-      const token = sessionStorage.getItem('hv_token');
+      const token = localStorage.getItem('hv_token');
       if (token) {
         try {
           const userData = await fetchCurrentUser();
           setUser(userData);
         } catch (err) {
-          console.error("Session expired or invalid");
-          sessionStorage.removeItem('hv_token');
+          console.error("Session expired or invalid token.");
+          localStorage.removeItem('hv_token');
+          setUser(null);
         }
       }
       setIsLoading(false);
@@ -46,10 +46,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setError(null);
     try {
       const { token, user: userData } = await loginUser(data);
-      sessionStorage.setItem('hv_token', token);
-      setUser(userData);
+      if (token) {
+          localStorage.setItem('hv_token', token);
+          setUser(userData);
+      }
     } catch (err: any) {
       setError(err.message || 'Login failed');
+      // Rethrow so the UI can check for `err.requiresVerification`
       throw err;
     } finally {
       setIsLoading(false);
@@ -61,8 +64,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setError(null);
     try {
       const result = await signupUser(data);
-      if (result.token && result.user && result.user.isVerified) {
-          sessionStorage.setItem('hv_token', result.token);
+      if (result.token && result.user) {
+          localStorage.setItem('hv_token', result.token);
           setUser(result.user);
       }
       return result;
@@ -79,8 +82,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setError(null);
       try {
           const { token, user: userData } = await verifyEmailApi(email, otp);
-          sessionStorage.setItem('hv_token', token);
-          setUser(userData);
+          if (token) {
+              localStorage.setItem('hv_token', token);
+              setUser(userData);
+          }
       } catch (err: any) {
           setError(err.message || 'Verification failed');
           throw err;
@@ -94,8 +99,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setError(null);
     try {
         const { token: appToken, user: userData } = await googleAuthenticate(token);
-        sessionStorage.setItem('hv_token', appToken);
-        setUser(userData);
+        if (appToken) {
+            localStorage.setItem('hv_token', appToken);
+            setUser(userData);
+        }
     } catch (err: any) {
         setError(err.message || 'Social login failed');
         throw err;
@@ -105,16 +112,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const logout = () => {
-    sessionStorage.removeItem('hv_token');
+    localStorage.removeItem('hv_token');
     setUser(null);
   };
-
-  const isAuthenticated = !!user && (user.isVerified || user.role === 'ADMIN');
 
   return (
     <AuthContext.Provider value={{ 
       user, 
-      isAuthenticated, 
+      isAuthenticated: !!user, 
       isAdmin: user?.role === 'ADMIN',
       isLoading, 
       login, 

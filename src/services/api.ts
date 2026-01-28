@@ -3,55 +3,62 @@ import { Product, Review, Order, CartItem, User, RegionConfig } from '../types';
 import { MAIN_PRODUCT, REVIEWS, BLOG_POSTS } from '../constants';
 import { DEFAULT_REGIONS } from '../utils';
 
-// Base URL for API (Relative path uses Vite proxy in dev, or same domain in prod)
-const API_BASE = '/api';
+// --- CONFIGURATION ---
+// These keys come directly from your .env file
+const USE_MOCK = (import.meta as any).env.VITE_USE_MOCK === 'true'; 
+const API_URL = (import.meta as any).env.VITE_API_URL || '/api';
+
+console.log(`[API] Service Initialized. Mode: ${USE_MOCK ? 'MOCK' : 'LIVE'}. Endpoint: ${API_URL}`);
 
 // --- SHARED UTILS ---
 const getAuthHeaders = () => {
-    // Use sessionStorage or localStorage based on preference. 
-    // Using localStorage for token persistence across tabs is standard, 
-    // but we removed the "Mock Database" localStorage keys.
     const token = localStorage.getItem('hv_token');
-    return token ? { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' } : { 'Content-Type': 'application/json' };
+    return {
+        'Content-Type': 'application/json',
+        ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+    };
 };
 
 const handleResponse = async (res: Response) => {
+    const contentType = res.headers.get("content-type");
     let data;
-    try {
+    
+    if (contentType && contentType.indexOf("application/json") !== -1) {
         data = await res.json();
-    } catch (e) {
-        // If response is not JSON (e.g. empty 200 OK)
-        if (!res.ok) throw new Error(res.statusText);
-        return { success: true };
+    } else {
+        data = { message: res.statusText };
     }
 
     if (!res.ok) {
+        // Construct detailed error for frontend handling (e.g. AuthContext)
         const error = new Error(data.message || data.error || 'API Error');
-        // Attach extra data for Auth flow (e.g. 403 Verification Required)
-        (error as any).requiresVerification = data.requiresVerification;
+        (error as any).status = res.status;
+        (error as any).requiresVerification = data.requiresVerification; // Important for OTP flow
         (error as any).email = data.email;
         throw error;
     }
+    
     return data;
 };
 
-// --- 1. PRODUCTS ---
+// --- API IMPLEMENTATION ---
+
+// 1. PRODUCTS
 export const fetchProduct = async (id: string): Promise<Product> => {
+    if (USE_MOCK) return MAIN_PRODUCT;
     try {
-        const res = await fetch(`${API_BASE}/products/${id}`);
-        if (!res.ok) {
-            console.warn("Product not found in DB, using fallback.");
-            return MAIN_PRODUCT; 
-        }
+        const res = await fetch(`${API_URL}/products/${id}`);
+        if (!res.ok) throw new Error('Product fetch failed');
         return await res.json();
     } catch (e) {
-        console.warn("API Error fetching product, using fallback constant.", e);
+        console.warn("[API] Product fetch failed, falling back to static data for reliability.", e);
         return MAIN_PRODUCT;
     }
 };
 
 export const updateProduct = async (id: string, data: any) => {
-    const res = await fetch(`${API_BASE}/products/${id}`, {
+    if (USE_MOCK) return { success: true };
+    const res = await fetch(`${API_URL}/products/${id}`, {
         method: 'PUT',
         headers: getAuthHeaders(),
         body: JSON.stringify(data)
@@ -59,19 +66,20 @@ export const updateProduct = async (id: string, data: any) => {
     return handleResponse(res);
 };
 
-// --- 2. REVIEWS ---
+// 2. REVIEWS
 export const fetchReviews = async (): Promise<Review[]> => {
+    if (USE_MOCK) return REVIEWS;
     try {
-        const res = await fetch(`${API_BASE}/reviews`);
+        const res = await fetch(`${API_URL}/reviews`);
         return await handleResponse(res);
     } catch (e) {
-        console.warn("API Error fetching reviews, using fallback.");
         return REVIEWS;
     }
 };
 
 export const createReview = async (data: Partial<Review>) => {
-    const res = await fetch(`${API_BASE}/reviews`, {
+    if (USE_MOCK) return { success: true };
+    const res = await fetch(`${API_URL}/reviews`, {
         method: 'POST',
         headers: getAuthHeaders(),
         body: JSON.stringify(data)
@@ -79,9 +87,10 @@ export const createReview = async (data: Partial<Review>) => {
     return handleResponse(res);
 };
 
-// --- 3. ORDERS ---
+// 3. ORDERS
 export const createOrder = async (data: any) => {
-    const res = await fetch(`${API_BASE}/orders`, {
+    if (USE_MOCK) return { success: true, orderId: `MOCK-${Date.now()}` };
+    const res = await fetch(`${API_URL}/orders`, {
         method: 'POST',
         headers: getAuthHeaders(),
         body: JSON.stringify(data)
@@ -90,18 +99,22 @@ export const createOrder = async (data: any) => {
 };
 
 export const fetchUserOrders = async (): Promise<Order[]> => {
-    const res = await fetch(`${API_BASE}/orders/my-orders`, { headers: getAuthHeaders() });
+    if (USE_MOCK) return []; 
+    const res = await fetch(`${API_URL}/orders/my-orders`, { headers: getAuthHeaders() });
     return handleResponse(res);
 };
 
 export const trackOrder = async (orderId: string) => {
-    const res = await fetch(`${API_BASE}/orders/${orderId}/track`);
+    if (USE_MOCK) return { status: 'Processing', carrier: 'MockPost', trackingNumber: '123456' };
+    const res = await fetch(`${API_URL}/orders/${orderId}/track`);
     return handleResponse(res);
 };
 
-// --- 4. AUTH ---
+// 4. AUTH
 export const loginUser = async (data: any) => {
-    const res = await fetch(`${API_BASE}/auth/login`, {
+    if (USE_MOCK) return { token: 'mock-token', user: { id: '1', email: data.email, role: 'CUSTOMER', isVerified: true } };
+    
+    const res = await fetch(`${API_URL}/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data)
@@ -110,7 +123,9 @@ export const loginUser = async (data: any) => {
 };
 
 export const signupUser = async (data: any) => {
-    const res = await fetch(`${API_BASE}/auth/signup`, {
+    if (USE_MOCK) return { token: 'mock-token', user: { id: '1', email: data.email, role: 'CUSTOMER', isVerified: true } };
+    
+    const res = await fetch(`${API_URL}/auth/signup`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data)
@@ -119,12 +134,15 @@ export const signupUser = async (data: any) => {
 };
 
 export const fetchCurrentUser = async (): Promise<User> => {
-    const res = await fetch(`${API_BASE}/auth/me`, { headers: getAuthHeaders() });
+    if (USE_MOCK) return { id: '1', email: 'mock@user.com', name: 'Mock User', role: 'CUSTOMER', isVerified: true };
+    
+    const res = await fetch(`${API_URL}/auth/me`, { headers: getAuthHeaders() });
     return handleResponse(res);
 };
 
 export const updateUserProfile = async (data: Partial<User>) => {
-    const res = await fetch(`${API_BASE}/auth/profile`, {
+    if (USE_MOCK) return data;
+    const res = await fetch(`${API_URL}/auth/profile`, {
         method: 'PUT',
         headers: getAuthHeaders(),
         body: JSON.stringify(data)
@@ -133,7 +151,8 @@ export const updateUserProfile = async (data: Partial<User>) => {
 };
 
 export const verifyEmail = async (email: string, otp: string) => {
-    const res = await fetch(`${API_BASE}/auth/verify-email`, {
+    if (USE_MOCK) return { token: 'mock-token', user: { email, isVerified: true } };
+    const res = await fetch(`${API_URL}/auth/verify-email`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, otp })
@@ -142,7 +161,8 @@ export const verifyEmail = async (email: string, otp: string) => {
 };
 
 export const googleAuthenticate = async (token: string) => {
-    const res = await fetch(`${API_BASE}/auth/google`, {
+    if (USE_MOCK) return { token: 'mock-google', user: { email: 'google@test.com', isVerified: true } };
+    const res = await fetch(`${API_URL}/auth/google`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ token })
@@ -151,7 +171,8 @@ export const googleAuthenticate = async (token: string) => {
 };
 
 export const sendForgotPassword = async (email: string) => {
-    const res = await fetch(`${API_BASE}/auth/forgot-password`, {
+    if (USE_MOCK) return { success: true };
+    const res = await fetch(`${API_URL}/auth/forgot-password`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email })
@@ -160,7 +181,8 @@ export const sendForgotPassword = async (email: string) => {
 };
 
 export const resetPassword = async (data: any) => {
-    const res = await fetch(`${API_BASE}/auth/reset-password`, {
+    if (USE_MOCK) return { success: true };
+    const res = await fetch(`${API_URL}/auth/reset-password`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data)
@@ -168,15 +190,16 @@ export const resetPassword = async (data: any) => {
     return handleResponse(res);
 };
 
-// --- 5. ADMIN ---
+// 5. ADMIN
 export const fetchAdminOrders = async () => {
-    const res = await fetch(`${API_BASE}/admin/orders`, { headers: getAuthHeaders() });
+    if (USE_MOCK) return [];
+    const res = await fetch(`${API_URL}/admin/orders`, { headers: getAuthHeaders() });
     return handleResponse(res);
 };
 
 export const updateOrderStatus = async (id: string, status: string) => {
-    // Note: Backend endpoint expects orderNumber as ID usually, check backend logic
-    const res = await fetch(`${API_BASE}/admin/orders/${id}/status`, {
+    if (USE_MOCK) return { success: true };
+    const res = await fetch(`${API_URL}/admin/orders/${id}/status`, {
         method: 'PUT',
         headers: getAuthHeaders(),
         body: JSON.stringify({ status })
@@ -185,7 +208,8 @@ export const updateOrderStatus = async (id: string, status: string) => {
 };
 
 export const updateOrderTracking = async (id: string, data: any) => {
-    const res = await fetch(`${API_BASE}/admin/orders/${id}/tracking`, {
+    if (USE_MOCK) return { success: true };
+    const res = await fetch(`${API_URL}/admin/orders/${id}/tracking`, {
         method: 'PUT',
         headers: getAuthHeaders(),
         body: JSON.stringify(data)
@@ -194,26 +218,31 @@ export const updateOrderTracking = async (id: string, data: any) => {
 };
 
 export const fetchAdminStats = async (startDate?: Date, endDate?: Date) => {
+    if (USE_MOCK) return { totalRevenue: 1000, totalOrders: 10 };
+    
     const params = new URLSearchParams();
     if (startDate) params.append('startDate', startDate.toISOString());
     if (endDate) params.append('endDate', endDate.toISOString());
     
-    const res = await fetch(`${API_BASE}/admin/stats?${params.toString()}`, { headers: getAuthHeaders() });
+    const res = await fetch(`${API_URL}/admin/stats?${params.toString()}`, { headers: getAuthHeaders() });
     return handleResponse(res);
 };
 
 export const fetchInventoryLogs = async () => {
-    const res = await fetch(`${API_BASE}/admin/inventory-logs`, { headers: getAuthHeaders() });
+    if (USE_MOCK) return [];
+    const res = await fetch(`${API_URL}/admin/inventory-logs`, { headers: getAuthHeaders() });
     return handleResponse(res);
 };
 
 export const fetchSubscribers = async () => {
-    const res = await fetch(`${API_BASE}/admin/subscribers`, { headers: getAuthHeaders() });
+    if (USE_MOCK) return [];
+    const res = await fetch(`${API_URL}/admin/subscribers`, { headers: getAuthHeaders() });
     return handleResponse(res);
 };
 
 export const subscribeToNewsletter = async (email: string, source: string) => {
-    const res = await fetch(`${API_BASE}/newsletter/subscribe`, {
+    if (USE_MOCK) return { success: true };
+    const res = await fetch(`${API_URL}/newsletter/subscribe`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, source })
@@ -222,7 +251,8 @@ export const subscribeToNewsletter = async (email: string, source: string) => {
 };
 
 export const sendAdminNewsletter = async (subject: string, message: string) => {
-    const res = await fetch(`${API_BASE}/admin/newsletter/send`, {
+    if (USE_MOCK) return { sent: 0 };
+    const res = await fetch(`${API_URL}/admin/newsletter/send`, {
         method: 'POST',
         headers: getAuthHeaders(),
         body: JSON.stringify({ subject, message })
@@ -230,10 +260,11 @@ export const sendAdminNewsletter = async (subject: string, message: string) => {
     return handleResponse(res);
 };
 
-// --- 6. SHIPPING & DISCOUNTS ---
+// 6. SHIPPING & DISCOUNTS
 export const fetchShippingRegions = async () => {
+    if (USE_MOCK) return DEFAULT_REGIONS;
     try {
-        const res = await fetch(`${API_BASE}/shipping-regions`);
+        const res = await fetch(`${API_URL}/shipping-regions`);
         if (!res.ok) throw new Error();
         return await res.json();
     } catch {
@@ -242,7 +273,8 @@ export const fetchShippingRegions = async () => {
 };
 
 export const createShippingRegion = async (data: any) => {
-    const res = await fetch(`${API_BASE}/shipping-regions`, {
+    if (USE_MOCK) return data;
+    const res = await fetch(`${API_URL}/shipping-regions`, {
         method: 'POST',
         headers: getAuthHeaders(),
         body: JSON.stringify(data)
@@ -251,7 +283,8 @@ export const createShippingRegion = async (data: any) => {
 };
 
 export const updateShippingRegion = async (id: string, data: any) => {
-    const res = await fetch(`${API_BASE}/shipping-regions/${id}`, {
+    if (USE_MOCK) return data;
+    const res = await fetch(`${API_URL}/shipping-regions/${id}`, {
         method: 'PUT',
         headers: getAuthHeaders(),
         body: JSON.stringify(data)
@@ -260,7 +293,8 @@ export const updateShippingRegion = async (id: string, data: any) => {
 };
 
 export const deleteShippingRegion = async (id: string) => {
-    const res = await fetch(`${API_BASE}/shipping-regions/${id}`, {
+    if (USE_MOCK) return { success: true };
+    const res = await fetch(`${API_URL}/shipping-regions/${id}`, {
         method: 'DELETE',
         headers: getAuthHeaders()
     });
@@ -268,12 +302,14 @@ export const deleteShippingRegion = async (id: string) => {
 };
 
 export const fetchDiscounts = async () => {
-    const res = await fetch(`${API_BASE}/discounts`, { headers: getAuthHeaders() });
+    if (USE_MOCK) return [];
+    const res = await fetch(`${API_URL}/discounts`, { headers: getAuthHeaders() });
     return handleResponse(res);
 };
 
 export const createDiscount = async (data: any) => {
-    const res = await fetch(`${API_BASE}/discounts`, {
+    if (USE_MOCK) return data;
+    const res = await fetch(`${API_URL}/discounts`, {
         method: 'POST',
         headers: getAuthHeaders(),
         body: JSON.stringify(data)
@@ -282,7 +318,8 @@ export const createDiscount = async (data: any) => {
 };
 
 export const deleteDiscount = async (id: string) => {
-    const res = await fetch(`${API_BASE}/discounts/${id}`, {
+    if (USE_MOCK) return { success: true };
+    const res = await fetch(`${API_URL}/discounts/${id}`, {
         method: 'DELETE',
         headers: getAuthHeaders()
     });
@@ -290,7 +327,8 @@ export const deleteDiscount = async (id: string) => {
 };
 
 export const validateDiscount = async (code: string) => {
-    const res = await fetch(`${API_BASE}/discounts/validate`, {
+    if (USE_MOCK) return { code, value: 10, type: 'PERCENTAGE', active: true };
+    const res = await fetch(`${API_URL}/discounts/validate`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ code })
@@ -298,11 +336,13 @@ export const validateDiscount = async (code: string) => {
     return handleResponse(res);
 };
 
-// --- 7. BLOG & STRIPE ---
+// 7. BLOG & STRIPE
 export const fetchBlogPosts = () => Promise.resolve(BLOG_POSTS);
 
 export const createPaymentIntent = async (items: CartItem[], currency: string, total?: number) => {
-    const res = await fetch(`${API_BASE}/create-payment-intent`, {
+    if (USE_MOCK) throw new Error("Payment not available in Mock Mode");
+    
+    const res = await fetch(`${API_URL}/create-payment-intent`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ items, currency, total })

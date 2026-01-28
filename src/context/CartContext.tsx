@@ -1,5 +1,5 @@
 
-import React, { createContext, useContext, useState } from 'react';
+import React, { createContext, useContext, useState, useEffect } from 'react';
 import { CartItem, ProductVariant, Product } from '../types';
 import { validateDiscount } from '../services/api';
 
@@ -29,7 +29,22 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [discount, setDiscount] = useState<DiscountDetails | null>(null);
 
-  // Removed localStorage useEffects. Cart is now ephemeral.
+  // Load cart from local storage on mount (Cart persistence is fine on client)
+  useEffect(() => {
+    const savedCart = localStorage.getItem('himalaya_cart');
+    if (savedCart) {
+      try {
+        setCartItems(JSON.parse(savedCart));
+      } catch (e) {
+        console.error('Failed to parse cart', e);
+      }
+    }
+  }, []);
+
+  // Save to local storage on change
+  useEffect(() => {
+    localStorage.setItem('himalaya_cart', JSON.stringify(cartItems));
+  }, [cartItems]);
 
   const addToCart = (product: Product, variant: ProductVariant, quantity: number) => {
     const fallbackImage = 'https://placehold.co/400x400/f3f4f6/111111?text=No+Image';
@@ -70,12 +85,13 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const clearCart = () => {
     setCartItems([]);
     setDiscount(null);
+    localStorage.removeItem('himalaya_cart');
   };
 
   const applyDiscount = async (code: string): Promise<boolean> => {
     try {
         const validDiscount = await validateDiscount(code);
-        if (validDiscount) {
+        if (validDiscount && validDiscount.active) {
             setDiscount(validDiscount);
             return true;
         }
