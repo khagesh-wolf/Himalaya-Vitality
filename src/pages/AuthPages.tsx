@@ -42,7 +42,7 @@ export const LoginPage = () => {
         } catch (e: any) {
             // Check for verification flag
             if (e.requiresVerification) {
-                navigate('/verify-email', { state: { email: e.email } });
+                navigate('/verify-email', { state: { email: e.email, from } });
             }
         }
     };
@@ -148,14 +148,14 @@ export const SignupPage = () => {
 
         try {
             const result = await signup({ name, email, password });
-            // If API returns requiresVerification flag, redirect to verify page
+            // API returns requiresVerification: true for email signup
             if (result && result.requiresVerification) {
                 navigate('/verify-email', { state: { email, from: location.state?.from } });
             } else {
                 navigate('/profile');
             }
         } catch (e: any) {
-            // Error is handled in context but we ensure it clears old errors on new submit attempt
+            // Error is handled in context
         }
     };
 
@@ -292,11 +292,7 @@ export const VerifyEmailPage = () => {
                         {msg && <p className="text-red-500 text-sm font-bold">{msg}</p>}
                         <Button fullWidth size="lg">Verify Account</Button>
                     </form>
-                    
-                    <div className="bg-blue-50 text-blue-700 p-3 rounded-lg text-xs mt-6 flex items-start text-left">
-                        <Info size={16} className="mr-2 shrink-0 mt-0.5" />
-                        <span><strong>Demo Mode:</strong> Since we can't send real emails in this environment, please check your console logs or use the code <strong>123456</strong>.</span>
-                    </div>
+                    <p className="text-xs text-gray-400 mt-6">Check your spam folder if it doesn't arrive within 1 minute.</p>
                 </Card>
             </Container>
         </div>
@@ -366,7 +362,7 @@ export const ForgotPasswordPage = () => {
                         <form onSubmit={reset} className="space-y-4">
                             <div className="bg-blue-50 text-blue-700 p-3 rounded-lg text-xs mb-4 flex items-start">
                                 <Info size={16} className="mr-2 shrink-0 mt-0.5" />
-                                <span>Code sent to <strong>{email}</strong>. For demo, use any code.</span>
+                                <span>Code sent to <strong>{email}</strong>. Please check your spam folder.</span>
                             </div>
 
                             <input type="text" value={otp} onChange={e => setOtp(e.target.value)} placeholder="Enter 6-Digit Code" className="w-full p-4 border border-gray-200 rounded-xl text-center font-bold tracking-widest outline-none focus:ring-2 focus:ring-brand-red" />

@@ -1,22 +1,32 @@
 
-import { Product, Review, Order, CartItem, RegionConfig, User, Subscriber, InventoryLog } from '../types';
+import { Product, Review, Order, CartItem, User, Subscriber, RegionConfig } from '../types';
 import { MAIN_PRODUCT, REVIEWS, BLOG_POSTS } from '../constants';
 import { DEFAULT_REGIONS } from '../utils';
 
-// Base URL for Vercel Serverless Functions
-// In development, vite proxy handles '/api' -> 'http://localhost:3000/api'
-// In production, it points to the relative path '/api'
+// Base URL for API
+// In dev: Vite proxies '/api' to localhost:3000
+// In prod: Vercel routes '/api' to serverless functions
 const API_BASE = '/api';
 
+// --- SHARED UTILS ---
 const getAuthHeaders = () => {
     const token = localStorage.getItem('hv_token');
     return token ? { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' } : { 'Content-Type': 'application/json' };
 };
 
 const handleResponse = async (res: Response) => {
-    const data = await res.json();
+    let data;
+    try {
+        data = await res.json();
+    } catch (e) {
+        // Handle empty responses or non-JSON errors
+        if (!res.ok) throw new Error(res.statusText);
+        return { success: true };
+    }
+
     if (!res.ok) {
         const error = new Error(data.message || data.error || 'API Error');
+        // Pass specific flags for auth flow handling
         (error as any).requiresVerification = data.requiresVerification;
         (error as any).email = data.email;
         throw error;
@@ -24,14 +34,17 @@ const handleResponse = async (res: Response) => {
     return data;
 };
 
-// --- PRODUCTS ---
+// --- 1. PRODUCTS ---
 export const fetchProduct = async (id: string): Promise<Product> => {
     try {
         const res = await fetch(`${API_BASE}/products/${id}`);
-        if (!res.ok) throw new Error('Product not found');
+        if (!res.ok) {
+            // Fallback for static pages if DB is cold, but prefers API
+            return MAIN_PRODUCT; 
+        }
         return await res.json();
     } catch (e) {
-        console.warn("API unavailable, falling back to static product data");
+        console.warn("API Error fetching product, using fallback constant.", e);
         return MAIN_PRODUCT;
     }
 };
@@ -45,7 +58,47 @@ export const updateProduct = async (id: string, data: any) => {
     return handleResponse(res);
 };
 
-// --- AUTHENTICATION ---
+// --- 2. REVIEWS ---
+export const fetchReviews = async (): Promise<Review[]> => {
+    try {
+        const res = await fetch(`${API_BASE}/reviews`);
+        return await handleResponse(res);
+    } catch (e) {
+        // Fallback to constants if API fails (e.g., during build)
+        return REVIEWS;
+    }
+};
+
+export const createReview = async (data: Partial<Review>) => {
+    const res = await fetch(`${API_BASE}/reviews`, {
+        method: 'POST',
+        headers: getAuthHeaders(),
+        body: JSON.stringify(data)
+    });
+    return handleResponse(res);
+};
+
+// --- 3. ORDERS ---
+export const createOrder = async (data: any) => {
+    const res = await fetch(`${API_BASE}/orders`, {
+        method: 'POST',
+        headers: getAuthHeaders(),
+        body: JSON.stringify(data)
+    });
+    return handleResponse(res);
+};
+
+export const fetchUserOrders = async (): Promise<Order[]> => {
+    const res = await fetch(`${API_BASE}/orders/my-orders`, { headers: getAuthHeaders() });
+    return handleResponse(res);
+};
+
+export const trackOrder = async (orderId: string) => {
+    const res = await fetch(`${API_BASE}/orders/${orderId}/track`);
+    return handleResponse(res);
+};
+
+// --- 4. AUTH ---
 export const loginUser = async (data: any) => {
     const res = await fetch(`${API_BASE}/auth/login`, {
         method: 'POST',
@@ -64,19 +117,8 @@ export const signupUser = async (data: any) => {
     return handleResponse(res);
 };
 
-export const verifyEmail = async (email: string, otp: string) => {
-    const res = await fetch(`${API_BASE}/auth/verify-email`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, otp })
-    });
-    return handleResponse(res);
-};
-
 export const fetchCurrentUser = async (): Promise<User> => {
-    const res = await fetch(`${API_BASE}/auth/me`, {
-        headers: getAuthHeaders()
-    });
+    const res = await fetch(`${API_BASE}/auth/me`, { headers: getAuthHeaders() });
     return handleResponse(res);
 };
 
@@ -85,6 +127,15 @@ export const updateUserProfile = async (data: Partial<User>) => {
         method: 'PUT',
         headers: getAuthHeaders(),
         body: JSON.stringify(data)
+    });
+    return handleResponse(res);
+};
+
+export const verifyEmail = async (email: string, otp: string) => {
+    const res = await fetch(`${API_BASE}/auth/verify-email`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, otp })
     });
     return handleResponse(res);
 };
@@ -99,35 +150,26 @@ export const googleAuthenticate = async (token: string) => {
 };
 
 export const sendForgotPassword = async (email: string) => {
-    // Implement endpoint in backend if needed, mock for now or throw
-    return { message: 'If account exists, email sent.' };
+    const res = await fetch(`${API_BASE}/auth/forgot-password`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email })
+    });
+    return handleResponse(res);
 };
 
 export const resetPassword = async (data: any) => {
-    return { success: true };
-};
-
-// --- ORDERS ---
-export const createOrder = async (data: any) => {
-    const res = await fetch(`${API_BASE}/orders`, {
+    const res = await fetch(`${API_BASE}/auth/reset-password`, {
         method: 'POST',
-        headers: getAuthHeaders(),
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data)
     });
     return handleResponse(res);
 };
 
-export const fetchUserOrders = async (): Promise<Order[]> => {
-    const res = await fetch(`${API_BASE}/orders/my-orders`, {
-        headers: getAuthHeaders()
-    });
-    return handleResponse(res);
-};
-
+// --- 5. ADMIN ---
 export const fetchAdminOrders = async () => {
-    const res = await fetch(`${API_BASE}/admin/orders`, {
-        headers: getAuthHeaders()
-    });
+    const res = await fetch(`${API_BASE}/admin/orders`, { headers: getAuthHeaders() });
     return handleResponse(res);
 };
 
@@ -149,61 +191,30 @@ export const updateOrderTracking = async (id: string, data: any) => {
     return handleResponse(res);
 };
 
-export const trackOrder = async (orderId: string) => {
-    const res = await fetch(`${API_BASE}/orders/${orderId}/track`);
-    return handleResponse(res);
-};
-
-export const createPaymentIntent = async (items: CartItem[], currency: string, total?: number) => {
-    const res = await fetch(`${API_BASE}/create-payment-intent`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ items, currency, total })
-    });
-    return handleResponse(res);
-};
-
-// --- REVIEWS ---
-export const fetchReviews = async (): Promise<Review[]> => {
-    // Fallback to static if backend endpoint not ready
-    return REVIEWS; 
-};
-
-export const createReview = async (data: Partial<Review>) => {
-    // Placeholder for backend implementation
-    return { success: true };
-};
-
-// --- ADMIN STATS ---
 export const fetchAdminStats = async (startDate?: Date, endDate?: Date) => {
     const params = new URLSearchParams();
     if (startDate) params.append('startDate', startDate.toISOString());
     if (endDate) params.append('endDate', endDate.toISOString());
     
-    const res = await fetch(`${API_BASE}/admin/stats?${params.toString()}`, {
-        headers: getAuthHeaders()
-    });
+    const res = await fetch(`${API_BASE}/admin/stats?${params.toString()}`, { headers: getAuthHeaders() });
     return handleResponse(res);
 };
 
 export const fetchInventoryLogs = async () => {
-    // Mock for now, requires backend table
-    return [] as InventoryLog[];
+    const res = await fetch(`${API_BASE}/admin/inventory-logs`, { headers: getAuthHeaders() });
+    return handleResponse(res);
 };
 
-// --- NEWSLETTER ---
+export const fetchSubscribers = async () => {
+    const res = await fetch(`${API_BASE}/admin/subscribers`, { headers: getAuthHeaders() });
+    return handleResponse(res);
+};
+
 export const subscribeToNewsletter = async (email: string, source: string) => {
     const res = await fetch(`${API_BASE}/newsletter/subscribe`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, source })
-    });
-    return handleResponse(res);
-};
-
-export const fetchSubscribers = async () => {
-    const res = await fetch(`${API_BASE}/admin/subscribers`, {
-        headers: getAuthHeaders()
     });
     return handleResponse(res);
 };
@@ -217,11 +228,11 @@ export const sendAdminNewsletter = async (subject: string, message: string) => {
     return handleResponse(res);
 };
 
-// --- SHIPPING & DISCOUNTS ---
+// --- 6. SHIPPING & DISCOUNTS ---
 export const fetchShippingRegions = async () => {
     try {
         const res = await fetch(`${API_BASE}/shipping-regions`);
-        if(!res.ok) throw new Error();
+        if (!res.ok) throw new Error();
         return await res.json();
     } catch {
         return DEFAULT_REGIONS;
@@ -255,9 +266,7 @@ export const deleteShippingRegion = async (id: string) => {
 };
 
 export const fetchDiscounts = async () => {
-    const res = await fetch(`${API_BASE}/discounts`, {
-        headers: getAuthHeaders()
-    });
+    const res = await fetch(`${API_BASE}/discounts`, { headers: getAuthHeaders() });
     return handleResponse(res);
 };
 
@@ -287,4 +296,14 @@ export const validateDiscount = async (code: string) => {
     return handleResponse(res);
 };
 
+// --- 7. BLOG & STRIPE ---
 export const fetchBlogPosts = () => Promise.resolve(BLOG_POSTS);
+
+export const createPaymentIntent = async (items: CartItem[], currency: string, total?: number) => {
+    const res = await fetch(`${API_BASE}/create-payment-intent`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ items, currency, total })
+    });
+    return handleResponse(res);
+};

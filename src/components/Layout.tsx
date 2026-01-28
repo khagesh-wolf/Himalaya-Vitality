@@ -15,20 +15,40 @@ import { SearchModal } from './SearchModal';
 
 const Logo = ({ light = false, loading = 'lazy' }: { light?: boolean, loading?: 'lazy' | 'eager' }) => (
   <div className="flex items-center gap-2 group">
-    <img 
-        src={light ? "https://i.ibb.co/mr2hH8wK/logo-white.png" : "https://i.ibb.co/tMXQXvJn/logo-red.png"} 
-        alt="Himalaya Vitality" 
-        className="h-9 md:h-12 w-auto object-contain transition-transform group-hover:scale-105"
-        loading={loading}
-        fetchPriority={loading === 'eager' ? 'high' : 'auto'}
-        onError={(e) => {
-            // Fallback if image fails (safe guard)
-            e.currentTarget.style.display = 'none';
-            e.currentTarget.nextElementSibling?.classList.remove('hidden');
-        }}
-    />
+    {/* Logic: If 'light' (Transparent Desktop Header) is true, we show Red/Dark logo on Mobile (White BG) and White logo on Desktop (Dark BG). 
+        If 'light' is false (Scrolled/Inner), we always show Red/Dark logo. */}
+    
+    {light ? (
+        <>
+            {/* Mobile: Dark Logo */}
+            <img 
+                src="https://i.ibb.co/tMXQXvJn/logo-red.png" 
+                alt="Himalaya Vitality" 
+                className="h-9 md:h-12 w-auto object-contain transition-transform group-hover:scale-105 md:hidden"
+                loading={loading}
+                fetchPriority={loading === 'eager' ? 'high' : 'auto'}
+            />
+            {/* Desktop: White Logo */}
+            <img 
+                src="https://i.ibb.co/mr2hH8wK/logo-white.png" 
+                alt="Himalaya Vitality" 
+                className="h-9 md:h-12 w-auto object-contain transition-transform group-hover:scale-105 hidden md:block"
+                loading={loading}
+                fetchPriority={loading === 'eager' ? 'high' : 'auto'}
+            />
+        </>
+    ) : (
+        <img 
+            src="https://i.ibb.co/tMXQXvJn/logo-red.png" 
+            alt="Himalaya Vitality" 
+            className="h-9 md:h-12 w-auto object-contain transition-transform group-hover:scale-105"
+            loading={loading}
+            fetchPriority={loading === 'eager' ? 'high' : 'auto'}
+        />
+    )}
+
     <div className="flex flex-col justify-center">
-      <span className={`font-heading font-bold text-base md:text-lg leading-none uppercase tracking-tight ${light ? 'text-white' : 'text-brand-dark'}`}>Himalaya</span>
+      <span className={`font-heading font-bold text-base md:text-lg leading-none uppercase tracking-tight ${light ? 'text-brand-dark md:text-white' : 'text-brand-dark'}`}>Himalaya</span>
       <span className="font-sans text-[8px] md:text-[9px] font-bold text-brand-red tracking-[0.25em] uppercase leading-none mt-0.5">Vitality</span>
     </div>
   </div>
@@ -99,15 +119,23 @@ export const Navbar = () => {
 
   // Determine header style state
   const isHome = location.pathname === '/';
-  // Transparent ONLY on Home and NOT scrolled
-  const isTransparent = isHome && !scrolled;
+  // "Home Top" state: On Homepage and NOT scrolled.
+  // We want transparent header ONLY on Desktop in this state.
+  // On Mobile, we always want a solid white header for better visibility/UX.
+  const isHomeTop = isHome && !scrolled;
 
-  const navClass = isTransparent 
-      ? 'bg-transparent border-transparent' 
+  // Classes for the Nav container
+  // Mobile: Always bg-white. Desktop: bg-transparent if isHomeTop, else bg-white.
+  const navClass = isHomeTop 
+      ? 'bg-white border-gray-200 md:bg-transparent md:border-transparent' 
       : 'bg-white/95 backdrop-blur-md border-gray-200 shadow-sm';
   
-  const textClass = isTransparent ? 'text-white' : 'text-brand-dark';
-  const iconHoverClass = isTransparent ? 'hover:bg-white/10' : 'hover:bg-gray-100';
+  // Classes for text color
+  // Mobile: Always brand-dark. Desktop: white if isHomeTop, else brand-dark.
+  const textClass = isHomeTop ? 'text-brand-dark md:text-white' : 'text-brand-dark';
+  
+  // Classes for hover backgrounds
+  const iconHoverClass = isHomeTop ? 'hover:bg-gray-100 md:hover:bg-white/10' : 'hover:bg-gray-100';
 
   return (
     <>
@@ -117,13 +145,6 @@ export const Navbar = () => {
       
       {isCartOpen && <CartDrawer onClose={() => setIsCartOpen(false)} />}
       {isSearchOpen && <SearchModal onClose={() => setIsSearchOpen(false)} />}
-
-      {/* Dynamic Top Bar */}
-      {settings.showTopBar && (
-        <div className="bg-brand-dark text-white text-[10px] font-bold text-center py-2.5 px-4 tracking-widest uppercase relative z-[50]">
-          <span dangerouslySetInnerHTML={{ __html: settings.topBarMessage }} />
-        </div>
-      )}
       
       {/* Sticky Nav */}
       <nav 
@@ -143,15 +164,15 @@ export const Navbar = () => {
 
             {/* 2. Logo */}
             <Link to="/" className="flex-shrink-0 relative z-40" aria-label="Home">
-                 <Logo light={isTransparent} loading="eager" />
+                 <Logo light={isHomeTop} loading="eager" />
             </Link>
 
             {/* 3. Desktop Navigation (Center) */}
             <div className="hidden md:flex items-center justify-center space-x-8 lg:space-x-12 absolute left-1/2 -translate-x-1/2">
-              <Link to="/product/himalaya-shilajit-resin" className={`text-xs lg:text-sm font-bold uppercase tracking-widest transition-colors nav-link ${isTransparent ? 'text-white hover:text-brand-gold-400 drop-shadow-md' : 'text-brand-dark hover:text-brand-red'}`}>Shop</Link>
-              <Link to="/science" className={`text-xs lg:text-sm font-bold uppercase tracking-widest transition-colors nav-link ${isTransparent ? 'text-white hover:text-brand-gold-400 drop-shadow-md' : 'text-brand-dark hover:text-brand-red'}`}>Science</Link>
-              <Link to="/about" className={`text-xs lg:text-sm font-bold uppercase tracking-widest transition-colors nav-link ${isTransparent ? 'text-white hover:text-brand-gold-400 drop-shadow-md' : 'text-brand-dark hover:text-brand-red'}`}>Story</Link>
-              <Link to="/reviews" className={`text-xs lg:text-sm font-bold uppercase tracking-widest transition-colors nav-link ${isTransparent ? 'text-white hover:text-brand-gold-400 drop-shadow-md' : 'text-brand-dark hover:text-brand-red'}`}>Reviews</Link>
+              <Link to="/product/himalaya-shilajit-resin" className={`text-xs lg:text-sm font-bold uppercase tracking-widest transition-colors nav-link ${isHomeTop ? 'text-white hover:text-brand-gold-400 drop-shadow-md' : 'text-brand-dark hover:text-brand-red'}`}>Shop</Link>
+              <Link to="/science" className={`text-xs lg:text-sm font-bold uppercase tracking-widest transition-colors nav-link ${isHomeTop ? 'text-white hover:text-brand-gold-400 drop-shadow-md' : 'text-brand-dark hover:text-brand-red'}`}>Science</Link>
+              <Link to="/about" className={`text-xs lg:text-sm font-bold uppercase tracking-widest transition-colors nav-link ${isHomeTop ? 'text-white hover:text-brand-gold-400 drop-shadow-md' : 'text-brand-dark hover:text-brand-red'}`}>Story</Link>
+              <Link to="/reviews" className={`text-xs lg:text-sm font-bold uppercase tracking-widest transition-colors nav-link ${isHomeTop ? 'text-white hover:text-brand-gold-400 drop-shadow-md' : 'text-brand-dark hover:text-brand-red'}`}>Reviews</Link>
             </div>
 
             {/* 4. Actions (Right) */}
@@ -213,7 +234,8 @@ export const Navbar = () => {
         {isMobileMenuOpen && (
           <div className="fixed inset-0 z-50 bg-white animate-in slide-in-from-left-full duration-300 flex flex-col h-[100dvh]">
               <div className="flex justify-between items-center p-4 border-b border-gray-100 h-16">
-                  <Logo />
+                  {/* Force dark logo inside menu */}
+                  <Logo light={false} />
                   <button onClick={() => setIsMobileMenuOpen(false)} className="p-2 bg-gray-50 rounded-full hover:bg-gray-100 transition-colors" aria-label="Close menu">
                       <X size={24} className="text-gray-500"/>
                   </button>
@@ -339,33 +361,34 @@ export const Footer = () => {
           {/* Shop Column */}
           <div>
             <h4 className="font-heading font-bold mb-6 text-white text-lg tracking-wide">Shop</h4>
-            <ul className="space-y-4 text-sm text-gray-400 font-medium">
+            <ul className="space-y-4 font-medium">
               <FooterLink to="/product/himalaya-shilajit-resin">Premium Resin</FooterLink>
               <FooterLink to="/reviews">Reviews</FooterLink>
-              <FooterLink to="/shop">All Bundles</FooterLink>
+              <FooterLink to="/track">Track Order</FooterLink>
             </ul>
           </div>
 
           {/* Learn Column */}
           <div>
             <h4 className="font-heading font-bold mb-6 text-white text-lg tracking-wide">Learn</h4>
-            <ul className="space-y-4 text-sm text-gray-400 font-medium">
+            <ul className="space-y-4 font-medium">
               <FooterLink to="/science">The Science</FooterLink>
-              <FooterLink to="/how-to-use">Daily Ritual</FooterLink>
+              <FooterLink to="/how-to-use">How To Use</FooterLink>
               <FooterLink to="/about">Our Story</FooterLink>
-              <FooterLink to="/blog">Vitality Journal</FooterLink>
+              <FooterLink to="/blog">Journal</FooterLink>
+              <FooterLink to="/faq">FAQ</FooterLink>
+              <FooterLink to="/contact">Contact</FooterLink>
             </ul>
           </div>
 
-          {/* Support Column */}
+          {/* Promise Column */}
           <div>
-            <h4 className="font-heading font-bold mb-6 text-white text-lg tracking-wide">Support</h4>
-            <ul className="space-y-4 text-sm text-gray-400 font-medium">
-              <FooterLink to="/track">Track Order</FooterLink>
-              <FooterLink to="/shipping-returns">Shipping & Returns</FooterLink>
-              <FooterLink to="/faq">FAQs</FooterLink>
-              <FooterLink to="/contact">Contact Us</FooterLink>
-            </ul>
+            <h4 className="font-heading font-bold mb-6 text-white text-lg tracking-wide">Our Promise</h4>
+            <div className="flex flex-col space-y-4">
+              <div className="flex items-start space-x-3 bg-white/5 p-3 rounded-lg"><ShieldCheck className="text-brand-red shrink-0" size={20} /><span className="text-sm text-gray-400">3rd Party Lab Tested</span></div>
+              <div className="flex items-start space-x-3 bg-white/5 p-3 rounded-lg"><Globe className="text-brand-red shrink-0" size={20} /><span className="text-sm text-gray-400">Ethically Sourced</span></div>
+              <div className="flex items-start space-x-3 bg-white/5 p-3 rounded-lg"><Truck className="text-brand-red shrink-0" size={20} /><span className="text-sm text-gray-400">Fast Global Shipping</span></div>
+            </div>
           </div>
         </div>
 
@@ -376,6 +399,7 @@ export const Footer = () => {
           <div className="flex flex-wrap justify-center gap-4 md:gap-8">
              <Link to="/privacy" className="hover:text-white transition-colors">Privacy Policy</Link>
              <Link to="/terms" className="hover:text-white transition-colors">Terms of Service</Link>
+             <Link to="/shipping-returns" className="hover:text-white transition-colors">Shipping & Returns</Link>
              <Link to="/sitemap" className="hover:text-white transition-colors">Sitemap</Link>
              <Link to="/admin" className="hover:text-brand-red transition-colors">Admin</Link>
              
