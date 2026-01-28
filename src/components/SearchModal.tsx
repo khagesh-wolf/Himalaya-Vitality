@@ -3,7 +3,9 @@ import React, { useState, useEffect, useRef } from 'react';
 import Fuse from 'fuse.js';
 import { Search, X, ArrowRight, Package, FileText, HelpCircle, TrendingUp } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { MAIN_PRODUCT, BLOG_POSTS, FAQ_DATA } from '../constants';
+import { useQuery } from '@tanstack/react-query';
+import { fetchProduct, fetchBlogPosts } from '../services/api';
+import { FAQ_DATA, MAIN_PRODUCT } from '../constants'; // Fallback for static FAQs for now
 
 interface SearchResult {
   type: 'Product' | 'Blog' | 'FAQ';
@@ -18,13 +20,26 @@ export const SearchModal = ({ onClose }: { onClose: () => void }) => {
   const navigate = useNavigate();
   const inputRef = useRef<HTMLInputElement>(null);
 
+  // Fetch Real Data for Indexing
+  const { data: product } = useQuery({ 
+      queryKey: ['product', 'himalaya-shilajit-resin'], 
+      queryFn: () => fetchProduct('himalaya-shilajit-resin'),
+      initialData: MAIN_PRODUCT
+  });
+
+  const { data: blogPosts = [] } = useQuery({
+      queryKey: ['blog-posts'],
+      queryFn: fetchBlogPosts,
+      initialData: []
+  });
+
   useEffect(() => {
     inputRef.current?.focus();
     
-    // Index Data
+    // Index Data (Dynamic)
     const data = [
-      { type: 'Product', title: MAIN_PRODUCT.title, url: `/product/${MAIN_PRODUCT.id}`, snippet: 'Premium Himalayan Shilajit Resin' },
-      ...BLOG_POSTS.map(post => ({ type: 'Blog', title: post.title, url: `/blog/${post.slug}`, snippet: post.excerpt })),
+      { type: 'Product', title: product.title, url: `/product/${product.id}`, snippet: 'Premium Himalayan Shilajit Resin' },
+      ...blogPosts.map((post: any) => ({ type: 'Blog', title: post.title, url: `/blog/${post.slug}`, snippet: post.excerpt })),
       ...FAQ_DATA.map(faq => ({ type: 'FAQ', title: faq.question, url: '/faq', snippet: faq.answer }))
     ];
 
@@ -39,7 +54,7 @@ export const SearchModal = ({ onClose }: { onClose: () => void }) => {
     } else {
       setResults([]);
     }
-  }, [query]);
+  }, [query, product, blogPosts]);
 
   const handleNavigate = (url: string) => {
     navigate(url);
@@ -117,7 +132,7 @@ export const SearchModal = ({ onClose }: { onClose: () => void }) => {
             <div className="py-8 px-5">
                 <div className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-3">Trending Now</div>
                 <div className="space-y-2">
-                    <button onClick={() => handleNavigate(`/product/${MAIN_PRODUCT.id}`)} className="flex items-center w-full p-2 hover:bg-gray-50 rounded-lg text-sm text-gray-600 font-medium transition-colors">
+                    <button onClick={() => handleNavigate(`/product/${product.id}`)} className="flex items-center w-full p-2 hover:bg-gray-50 rounded-lg text-sm text-gray-600 font-medium transition-colors">
                         <TrendingUp size={16} className="mr-3 text-brand-red" /> Athlete Grade Shilajit
                     </button>
                     <button onClick={() => handleNavigate('/science')} className="flex items-center w-full p-2 hover:bg-gray-50 rounded-lg text-sm text-gray-600 font-medium transition-colors">

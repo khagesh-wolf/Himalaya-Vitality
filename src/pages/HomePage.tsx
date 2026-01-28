@@ -1,10 +1,13 @@
 
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { Check, Star, ArrowRight, ShieldCheck, Zap, Activity, Award, Droplet, Mountain, CheckCircle2, XCircle, Truck, Globe, Lock, Instagram } from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
+import { CheckCircle2, XCircle, ArrowRight, Zap, Activity, ShieldCheck, Award, Mountain, Droplet, Globe, Lock, Instagram, Star, Truck } from 'lucide-react';
 import { Button, Container, LazyImage, Reveal } from '../components/UI';
-import { MAIN_PRODUCT, REVIEWS } from '../constants';
 import { SEO } from '../components/SEO';
+import { fetchProduct, fetchReviews } from '../services/api';
+import { Product, Review } from '../types';
+import { MAIN_PRODUCT as FALLBACK_PRODUCT } from '../constants'; // Only used as initial placeholder
 
 // Animated Letter Component
 const AnimatedLetters = ({ text, delayStart = 0, className = "" }: { text: string, delayStart?: number, className?: string }) => {
@@ -49,11 +52,24 @@ const ComparisonRow = ({ feature, us, them }: { feature: string, us: string | bo
 );
 
 export const HomePage = () => {
-  // Use hardcoded reviews
-  const reviews = REVIEWS.slice(0, 3);
+  // 1. Fetch Real Product Data
+  const { data: product } = useQuery<Product>({
+    queryKey: ['product', 'himalaya-shilajit-resin'],
+    queryFn: () => fetchProduct('himalaya-shilajit-resin'),
+    initialData: FALLBACK_PRODUCT // Instant load with static, then updates
+  });
+
+  // 2. Fetch Real Reviews
+  const { data: reviewsData = [] } = useQuery<Review[]>({
+    queryKey: ['reviews'],
+    queryFn: fetchReviews
+  });
+
+  // Use top 3 reviews
+  const reviews = reviewsData.slice(0, 3);
 
   // Simulated Instagram Feed (Using product images for visual consistency)
-  const instagramPosts = MAIN_PRODUCT.images.slice(0, 4).map((img, i) => ({
+  const instagramPosts = product.images.slice(0, 4).map((img, i) => ({
     id: `insta-${i}`,
     image: img,
     link: 'https://www.instagram.com/himalaya_vitality/',
@@ -115,7 +131,7 @@ export const HomePage = () => {
 
              {/* CTA Buttons */}
              <div className="flex flex-col sm:flex-row gap-4 sm:gap-6 w-full sm:w-auto px-4 animate-fade-in-up opacity-0" style={{ animationDelay: '2000ms' }}>
-                 <Link to="/product/himalaya-shilajit-resin" className="group relative w-full sm:w-auto">
+                 <Link to={`/product/${product.id}`} className="group relative w-full sm:w-auto">
                      <Button size="lg" className="relative h-14 md:h-16 px-8 md:px-12 text-lg bg-brand-red hover:bg-red-600 text-white border-none w-full sm:w-auto font-heading font-bold tracking-wide shadow-2xl flex items-center justify-center gap-3 overflow-hidden transform group-hover:-translate-y-0.5 transition-all">
                          <span className="relative z-10 flex items-center gap-2">Shop The Resin <ArrowRight size={20} className="group-hover:translate-x-1 transition-transform" /></span>
                      </Button>
@@ -286,7 +302,7 @@ export const HomePage = () => {
                     </div>
 
                     <div className="mt-8 pt-6 border-t border-gray-100 text-center">
-                        <Link to="/product/himalaya-shilajit-resin">
+                        <Link to={`/product/${product.id}`}>
                             <Button fullWidth className="bg-brand-dark text-white hover:bg-black shadow-xl group">
                                 Experience The Difference <ArrowRight size={16} className="ml-2 group-hover:translate-x-1 transition-transform" />
                             </Button>
@@ -343,7 +359,7 @@ export const HomePage = () => {
                                 <Star size={16} fill="currentColor" strokeWidth={0} />
                                 <Star size={16} fill="currentColor" strokeWidth={0} />
                             </div>
-                            <span>4.9 Average Rating</span>
+                            <span>{product.rating || 4.9} Average Rating</span>
                         </div>
                     </div>
                     <Link to="/reviews" className="flex items-center font-bold text-brand-red hover:text-brand-dark transition-colors group">
@@ -354,7 +370,7 @@ export const HomePage = () => {
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
                 {reviews.map((review, i) => (
-                    <Reveal key={review.id} delay={i * 150} className="h-full">
+                    <Reveal key={review.id || i} delay={i * 150} className="h-full">
                         <div className="bg-white p-8 rounded-3xl border border-gray-200 shadow-sm hover:shadow-xl transition-all duration-300 relative group h-full flex flex-col">
                             <div className="flex text-brand-gold-500 mb-6">
                                 {[...Array(5)].map((_, i) => <Star key={i} size={16} fill="currentColor" strokeWidth={0} />)}
@@ -431,7 +447,7 @@ export const HomePage = () => {
                     <Reveal>
                         <div className="relative aspect-square max-w-sm mx-auto">
                             <div className="absolute inset-0 bg-brand-gold-500/20 rounded-full blur-3xl animate-pulse-fast"></div>
-                            <LazyImage src={MAIN_PRODUCT.images[0]} alt="Himalaya Shilajit Jar" className="relative z-10 w-full h-full object-contain drop-shadow-[0_20px_50px_rgba(0,0,0,0.5)] transform hover:scale-105 transition-transform duration-700" />
+                            <LazyImage src={product.images[0]} alt="Himalaya Shilajit Jar" className="relative z-10 w-full h-full object-contain drop-shadow-[0_20px_50px_rgba(0,0,0,0.5)] transform hover:scale-105 transition-transform duration-700" />
                         </div>
                     </Reveal>
                 </div>
@@ -448,7 +464,7 @@ export const HomePage = () => {
                         </p>
                         
                         <div className="flex flex-col sm:flex-row gap-4 justify-center md:justify-start">
-                            <Link to="/product/himalaya-shilajit-resin">
+                            <Link to={`/product/${product.id}`}>
                                 <Button size="lg" className="h-16 px-12 text-lg bg-brand-gold-500 hover:bg-brand-gold-400 text-brand-dark font-extrabold shadow-[0_0_30px_rgba(234,179,8,0.3)] border-none w-full sm:w-auto">
                                     Get Started
                                 </Button>

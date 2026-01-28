@@ -1,12 +1,12 @@
 
 import { Product, Review, Order, CartItem, User, RegionConfig } from '../types';
-import { MAIN_PRODUCT, BLOG_POSTS } from '../constants';
 
 // --- CONFIGURATION ---
 // STRICTLY use the environment variable. Default to /api for local proxy if not set.
+// This forces the app to look for a running server.
 const API_URL = (import.meta as any).env.VITE_API_URL || '/api';
 
-console.log(`[API] Connecting to Real Backend at: ${API_URL}`);
+console.log(`%c[API] Initialized. Connecting to: ${API_URL}`, 'color: #00ff00; font-weight: bold; background: #111; padding: 4px;');
 
 // --- SHARED UTILS ---
 const getAuthHeaders = () => {
@@ -47,7 +47,7 @@ export const fetchProduct = async (id: string): Promise<Product> => {
         const res = await fetch(`${API_URL}/products/${id}`);
         return await handleResponse(res);
     } catch (e) {
-        console.error("[API] Failed to fetch product. Ensure backend is running.", e);
+        console.error(`[API] Failed to fetch product ${id}. Is the backend running?`, e);
         throw e;
     }
 };
@@ -290,7 +290,12 @@ export const validateDiscount = async (code: string) => {
 };
 
 // 7. BLOG & STRIPE
-export const fetchBlogPosts = () => Promise.resolve(BLOG_POSTS);
+export const fetchBlogPosts = async () => {
+    // We can update this to fetch from DB if you create a blog table, 
+    // but typically blogs are static or headless CMS.
+    // For now, we keep the constant or you can add an endpoint.
+    return import('../constants').then(m => m.BLOG_POSTS);
+};
 
 export const createPaymentIntent = async (items: CartItem[], currency: string, total?: number) => {
     const res = await fetch(`${API_URL}/create-payment-intent`, {
