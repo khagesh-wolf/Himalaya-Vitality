@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { ShoppingBag, Menu, X, ShieldCheck, Truck, Globe, Search, Instagram, Mail, User, LogOut } from 'lucide-react';
+import { ShoppingBag, Menu, X, ShieldCheck, Truck, Globe, Search, Instagram, Mail, User, LogOut, ChevronRight, Facebook, Twitter } from 'lucide-react';
 import { Container, Button } from './UI';
 import { useCurrency, CurrencyCode, SUPPORTED_CURRENCIES } from '../context/CurrencyContext';
 import { useCart } from '../context/CartContext';
@@ -32,6 +32,17 @@ const Logo = ({ light = false, loading = 'lazy' }: { light?: boolean, loading?: 
       <span className="font-sans text-[9px] font-bold text-brand-red tracking-[0.25em] uppercase leading-none mt-0.5">Vitality</span>
     </div>
   </div>
+);
+
+const FooterLink = ({ to, children }: { to: string, children: React.ReactNode }) => (
+  <li>
+      <Link to={to} className="group flex items-center text-sm text-gray-400 hover:text-white transition-colors duration-200">
+          <span className="w-0 overflow-hidden group-hover:w-3 transition-all duration-300 opacity-0 group-hover:opacity-100 text-brand-red mr-0 group-hover:mr-1">
+              <ChevronRight size={12} />
+          </span>
+          {children}
+      </Link>
+  </li>
 );
 
 export const Navbar = () => {
@@ -315,83 +326,94 @@ export const Footer = () => {
   if (isAdmin) return <footer className="bg-white border-t border-gray-200 py-4 mt-auto"><Container><div className="flex justify-center items-center text-[10px] text-gray-400 font-medium"><span className="mr-1">System Version 1.2.0 • </span><a href="https://khagesh.com.np" id="dev-credit" className="hover:text-brand-red">Developed by Khagesh</a></div></Container></footer>;
 
   return (
-    <footer className="bg-brand-dark text-white pt-16 md:pt-20 pb-10 border-t-4 border-brand-red">
-      <Container>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12 mb-16">
-          {/* Brand Column */}
-          <div className="col-span-1">
-             <div className="mb-6 w-32"><Logo light={true} /></div>
-             <p className="text-gray-400 text-sm leading-relaxed mb-6 font-medium">
-                Himalaya Vitality™ delivers the purest Shilajit resin, ethically sourced from the Dolpa region of Nepal at 18,000ft. Unleash your primal potential.
-             </p>
-             <div className="flex gap-4">
-                 <a href="https://www.instagram.com/himalaya_vitality/" target="_blank" rel="noopener noreferrer" aria-label="Visit our Instagram" className="w-10 h-10 bg-white/10 rounded-full flex items-center justify-center hover:bg-brand-red transition-colors cursor-pointer text-white">
-                    <Instagram size={18}/>
-                 </a>
-                 <a href="mailto:support@himalayavitality.com" aria-label="Email Support" className="w-10 h-10 bg-white/10 rounded-full flex items-center justify-center hover:bg-brand-red transition-colors cursor-pointer text-white">
-                    <Mail size={18}/>
-                 </a>
-             </div>
-          </div>
-          
-          {/* Shop Column */}
-          <div>
-            <h4 className="font-heading font-bold mb-6 text-white text-lg tracking-wide">Shop</h4>
-            <ul className="space-y-4 text-sm text-gray-400 font-medium">
-              <li><Link to="/product/himalaya-shilajit-resin" className="hover:text-brand-red transition-colors block py-1">Premium Resin</Link></li>
-              <li><Link to="/reviews" className="hover:text-brand-red transition-colors block py-1">Reviews</Link></li>
-              <li><Link to="/track" className="hover:text-brand-red transition-colors block py-1">Track Order</Link></li>
-            </ul>
-          </div>
-
-          {/* Learn Column */}
-          <div>
-            <h4 className="font-heading font-bold mb-6 text-white text-lg tracking-wide">Learn</h4>
-            <ul className="space-y-4 text-sm text-gray-400 font-medium">
-              <li><Link to="/science" className="hover:text-brand-red transition-colors block py-1">The Science</Link></li>
-              <li><Link to="/how-to-use" className="hover:text-brand-red transition-colors block py-1">How To Use</Link></li>
-              <li><Link to="/about" className="hover:text-brand-red transition-colors block py-1">Our Story</Link></li>
-              <li><Link to="/blog" className="hover:text-brand-red transition-colors block py-1">Journal</Link></li>
-              <li><Link to="/faq" className="hover:text-brand-red transition-colors block py-1">FAQ</Link></li>
-              <li><Link to="/contact" className="hover:text-brand-red transition-colors block py-1">Contact</Link></li>
-            </ul>
-          </div>
-
-          {/* Promise Column */}
-          <div>
-            <h4 className="font-heading font-bold mb-6 text-white text-lg tracking-wide">Our Promise</h4>
-            <div className="flex flex-col space-y-4">
-              <div className="flex items-start space-x-3 bg-white/5 p-3 rounded-lg"><ShieldCheck className="text-brand-red shrink-0" size={20} /><span className="text-sm text-gray-400">3rd Party Lab Tested</span></div>
-              <div className="flex items-start space-x-3 bg-white/5 p-3 rounded-lg"><Globe className="text-brand-red shrink-0" size={20} /><span className="text-sm text-gray-400">Ethically Sourced</span></div>
-              <div className="flex items-start space-x-3 bg-white/5 p-3 rounded-lg"><Truck className="text-brand-red shrink-0" size={20} /><span className="text-sm text-gray-400">Fast Global Shipping</span></div>
+    <footer className="bg-brand-dark text-white border-t-4 border-brand-red">
+      <div className="pt-20 pb-12">
+        <Container>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12 lg:gap-16">
+            {/* Column 1: Brand Info */}
+            <div className="space-y-6">
+                <div className="w-40"><Logo light={true} /></div>
+                <p className="text-gray-400 text-sm leading-relaxed max-w-sm">
+                    Ethically sourced from the Dolpa region of Nepal at 18,000ft. 
+                    Himalaya Vitality™ delivers pure, gold-grade Shilajit to optimize your biological performance.
+                </p>
+                <div className="flex items-center gap-4">
+                    <a href="https://instagram.com/himalaya_vitality" target="_blank" rel="noopener noreferrer" className="w-10 h-10 bg-white/5 hover:bg-brand-red rounded-full flex items-center justify-center transition-all duration-300 text-gray-400 hover:text-white" aria-label="Instagram">
+                        <Instagram size={18} />
+                    </a>
+                    <a href="https://facebook.com/himalaya_vitality" target="_blank" rel="noopener noreferrer" className="w-10 h-10 bg-white/5 hover:bg-blue-600 rounded-full flex items-center justify-center transition-all duration-300 text-gray-400 hover:text-white" aria-label="Facebook">
+                        <Facebook size={18} />
+                    </a>
+                    <a href="mailto:support@himalayavitality.com" className="w-10 h-10 bg-white/5 hover:bg-green-600 rounded-full flex items-center justify-center transition-all duration-300 text-gray-400 hover:text-white" aria-label="Email">
+                        <Mail size={18} />
+                    </a>
+                </div>
             </div>
-          </div>
-        </div>
 
-        {/* Footer Bottom */}
-        <div className="border-t border-white/10 pt-8 flex flex-col md:flex-row justify-between items-center text-xs text-gray-400 font-medium gap-4">
-          <p className="text-center md:text-left">&copy; {new Date().getFullYear()} Himalaya Vitality. All rights reserved.</p>
-          
-          <div className="flex flex-wrap justify-center gap-4 md:gap-8">
-             <Link to="/privacy" className="hover:text-white transition-colors">Privacy Policy</Link>
-             <Link to="/terms" className="hover:text-white transition-colors">Terms of Service</Link>
-             <Link to="/shipping-returns" className="hover:text-white transition-colors">Shipping & Returns</Link>
-             <Link to="/sitemap" className="hover:text-white transition-colors">Sitemap</Link>
-             <Link to="/admin" className="hover:text-brand-red transition-colors">Admin</Link>
-             
-             {/* Protected Developer Credit */}
-             <a 
-                href="https://khagesh.com.np" 
-                id="dev-credit" 
-                target="_blank" 
-                rel="noopener noreferrer" 
-                className="text-gray-500 hover:text-brand-red transition-colors flex items-center gap-1 opacity-100"
-             >
-                Developed by Khagesh
-             </a>
-          </div>
-        </div>
-      </Container>
+            {/* Column 2: Shop */}
+            <div>
+                <h4 className="font-heading font-bold text-lg mb-6 flex items-center text-white">Shop</h4>
+                <ul className="space-y-3">
+                    <FooterLink to="/product/himalaya-shilajit-resin">Premium Resin</FooterLink>
+                    <FooterLink to="/shop">Bundles & Offers</FooterLink>
+                    <FooterLink to="/reviews">Customer Reviews</FooterLink>
+                </ul>
+            </div>
+
+            {/* Column 3: Learn */}
+            <div>
+                <h4 className="font-heading font-bold text-lg mb-6 flex items-center text-white">Learn</h4>
+                <ul className="space-y-3">
+                    <FooterLink to="/science">The Science</FooterLink>
+                    <FooterLink to="/how-to-use">Daily Ritual</FooterLink>
+                    <FooterLink to="/about">Our Story</FooterLink>
+                    <FooterLink to="/blog">Vitality Journal</FooterLink>
+                </ul>
+            </div>
+
+            {/* Column 4: Support */}
+            <div>
+                <h4 className="font-heading font-bold text-lg mb-6 flex items-center text-white">Support</h4>
+                <ul className="space-y-3">
+                    <FooterLink to="/track">Track Order</FooterLink>
+                    <FooterLink to="/shipping-returns">Shipping & Returns</FooterLink>
+                    <FooterLink to="/faq">FAQs</FooterLink>
+                    <FooterLink to="/contact">Contact Us</FooterLink>
+                </ul>
+            </div>
+            </div>
+        </Container>
+      </div>
+
+      {/* Footer Bottom */}
+      <div className="border-t border-white/5 bg-black/20">
+        <Container>
+            <div className="py-6 flex flex-col md:flex-row justify-between items-center gap-4 text-xs font-medium text-gray-500">
+                <p>&copy; {new Date().getFullYear()} Himalaya Vitality. All rights reserved.</p>
+                
+                <div className="flex flex-wrap justify-center items-center gap-6">
+                    <Link to="/privacy" className="hover:text-white transition-colors">Privacy Policy</Link>
+                    <Link to="/terms" className="hover:text-white transition-colors">Terms of Service</Link>
+                    <Link to="/sitemap" className="hover:text-white transition-colors">Sitemap</Link>
+                    {/* Admin Link - Redirects to /login if not auth */}
+                    <Link to="/admin" className="hover:text-brand-red transition-colors">Admin</Link>
+                    
+                    <div className="w-px h-3 bg-gray-700 hidden md:block"></div>
+                    
+                    {/* Protected Developer Credit */}
+                    <a 
+                        href="https://khagesh.com.np" 
+                        id="dev-credit" 
+                        target="_blank" 
+                        rel="noopener noreferrer" 
+                        className="flex items-center gap-1 hover:text-brand-red transition-colors opacity-80 hover:opacity-100"
+                    >
+                        Developed by Khagesh
+                    </a>
+                </div>
+            </div>
+        </Container>
+      </div>
     </footer>
   );
 };
