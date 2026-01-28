@@ -948,8 +948,7 @@ export const AdminDashboard = () => {
   // Strict Security Check: Must be Authenticated AND Admin
   useEffect(() => {
     if (!isAuthenticated) {
-        // Redirect to main login page instead of dedicated admin login
-        navigate('/login');
+        navigate('/login', { state: { from: '/admin' } }); // Redirect to main login
     } else if (user?.role !== 'ADMIN') {
         // Logged in user trying to access admin? Redirect them.
         navigate('/'); 
