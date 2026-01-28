@@ -241,7 +241,7 @@ export const HomePage = () => {
                             <Mountain size={24} className="text-white" />
                         </div>
                         <div>
-                            <h4 className="font-bold text-lg md:text-xl mb-1 text-white group-hover:text-brand-red transition-colors">High Altitude Sourcing</h4>
+                            <h3 className="font-bold text-lg md:text-xl mb-1 text-white group-hover:text-brand-red transition-colors">High Altitude Sourcing</h3>
                             <p className="text-sm text-gray-400">Harvested exclusively above 18,000ft in the Himalayas.</p>
                         </div>
                     </div>
@@ -250,7 +250,7 @@ export const HomePage = () => {
                             <Droplet size={24} className="text-white" />
                         </div>
                         <div>
-                            <h4 className="font-bold text-lg md:text-xl mb-1 text-white group-hover:text-brand-red transition-colors">Pure Resin Form</h4>
+                            <h3 className="font-bold text-lg md:text-xl mb-1 text-white group-hover:text-brand-red transition-colors">Pure Resin Form</h3>
                             <p className="text-sm text-gray-400">Never dried into powder. Kept in its potent, living state.</p>
                         </div>
                     </div>
@@ -359,7 +359,7 @@ export const HomePage = () => {
                             <div className="flex text-brand-gold-500 mb-6">
                                 {[...Array(5)].map((_, i) => <Star key={i} size={16} fill="currentColor" strokeWidth={0} />)}
                             </div>
-                            <h4 className="font-bold text-lg text-brand-dark mb-3 leading-tight">"{review.title}"</h4>
+                            <h3 className="font-bold text-lg text-brand-dark mb-3 leading-tight">"{review.title}"</h3>
                             <p className="text-sm text-gray-600 leading-relaxed mb-6 line-clamp-4 relative z-10 flex-grow">{review.content}</p>
                             <div className="flex items-center justify-between pt-6 border-t border-gray-100 mt-auto">
                                 <span className="font-bold text-sm text-brand-dark">{review.author}</span>
