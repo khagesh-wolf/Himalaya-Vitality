@@ -40,7 +40,8 @@ const authenticate = (req, res, next) => {
 
 const requireAdmin = (req, res, next) => {
     authenticate(req, res, () => {
-        if (req.user && req.user.role === 'ADMIN') {
+        // Case-insensitive check for ADMIN role
+        if (req.user && (req.user.role === 'ADMIN' || req.user.role === 'admin')) {
             next();
         } else {
             res.status(403).json({ message: 'Admin access required' });
@@ -154,7 +155,7 @@ app.put('/api/products/:id', requireAdmin, async (req, res) => {
     } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-// Shipping Regions
+// Shipping Regions - PUBLIC GET
 app.get('/api/shipping-regions', async (req, res) => {
     try {
         const regions = await prisma.shippingRegion.findMany({ orderBy: { name: 'asc' } });
@@ -162,6 +163,7 @@ app.get('/api/shipping-regions', async (req, res) => {
     } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+// Shipping Regions - ADMIN ONLY WRITE
 app.post('/api/shipping-regions', requireAdmin, async (req, res) => {
     try {
         const region = await prisma.shippingRegion.create({ data: req.body });

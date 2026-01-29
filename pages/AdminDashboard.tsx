@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { 
@@ -9,7 +8,6 @@ import {
   Save, Mail, Truck, DollarSign, Percent, ArrowUpRight, ArrowDownRight, Download, History, Menu, Send, Box, Calendar, Globe, Plus, Pencil
 } from 'lucide-react';
 import { Card, Button, Badge } from '../components/UI';
-import { MAIN_PRODUCT } from '../constants';
 import { Order, ProductVariant, Product, RegionConfig } from '../types';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
@@ -344,25 +342,27 @@ const ProductsView = () => {
     const queryClient = useQueryClient();
     const { data: product } = useQuery({ 
         queryKey: ['admin-product'], 
-        queryFn: () => fetchProduct('himalaya-shilajit-resin'),
-        initialData: MAIN_PRODUCT 
+        queryFn: () => fetchProduct('himalaya-shilajit-resin')
     });
     
     // Local state for editing prices/stock only
-    const [editProduct, setEditProduct] = useState<AdminProduct>(product as AdminProduct);
+    const [editProduct, setEditProduct] = useState<AdminProduct | null>(null);
     const [isSaving, setIsSaving] = useState(false);
 
-    useEffect(() => { setEditProduct(product as AdminProduct) }, [product]);
+    useEffect(() => { 
+        if (product) setEditProduct(product as AdminProduct); 
+    }, [product]);
 
-    const handleVariantChange = (id: string, field: keyof AdminVariant, value: any) => {
+    const handleVariantChange = (id: string, field: string, value: string) => {
+        if (!editProduct) return;
         const updatedVariants = editProduct.variants.map(v => 
             v.id === id ? { ...v, [field]: value } : v
         );
-        setEditProduct({ ...editProduct, variants: updatedVariants });
+        setEditProduct({ ...editProduct, variants: updatedVariants as any });
     };
 
     const mutation = useMutation({
-        mutationFn: (data: any) => updateProduct(editProduct.id, data),
+        mutationFn: (data: any) => updateProduct(editProduct!.id, data),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['admin-product'] });
             setIsSaving(false);
@@ -375,9 +375,19 @@ const ProductsView = () => {
     });
 
     const saveChanges = () => {
+        if (!editProduct) return;
         setIsSaving(true);
-        mutation.mutate({ variants: editProduct.variants });
+        // Ensure values are numbers before sending
+        const cleanVariants = editProduct.variants.map(v => ({
+            ...v,
+            price: parseFloat(v.price.toString()),
+            compareAtPrice: parseFloat(v.compareAtPrice.toString()),
+            stock: parseInt(v.stock.toString())
+        }));
+        mutation.mutate({ variants: cleanVariants });
     };
+
+    if (!editProduct) return <div>Loading...</div>;
 
     return (
         <div className="space-y-8">
@@ -404,7 +414,7 @@ const ProductsView = () => {
                                         <input 
                                             type="number" 
                                             value={variant.price} 
-                                            onChange={(e) => handleVariantChange(variant.id, 'price', Number(e.target.value))}
+                                            onChange={(e) => handleVariantChange(variant.id, 'price', e.target.value)}
                                             className="w-24 p-2 border border-gray-200 rounded focus:border-brand-red outline-none font-bold"
                                         />
                                     </td>
@@ -412,16 +422,16 @@ const ProductsView = () => {
                                         <input 
                                             type="number" 
                                             value={variant.compareAtPrice} 
-                                            onChange={(e) => handleVariantChange(variant.id, 'compareAtPrice', Number(e.target.value))}
+                                            onChange={(e) => handleVariantChange(variant.id, 'compareAtPrice', e.target.value)}
                                             className="w-24 p-2 border border-gray-200 rounded focus:border-brand-red outline-none text-gray-500"
                                         />
                                     </td>
                                     <td className="p-4">
                                         <input 
                                             type="number" 
-                                            value={variant.stock || 0} 
-                                            onChange={(e) => handleVariantChange(variant.id, 'stock', Number(e.target.value))}
-                                            className={`w-20 p-2 border rounded focus:border-brand-red outline-none ${variant.stock < 10 ? 'border-red-300 bg-red-50' : 'border-gray-200'}`}
+                                            value={variant.stock} 
+                                            onChange={(e) => handleVariantChange(variant.id, 'stock', e.target.value)}
+                                            className={`w-20 p-2 border rounded focus:border-brand-red outline-none ${Number(variant.stock) < 10 ? 'border-red-300 bg-red-50' : 'border-gray-200'}`}
                                         />
                                     </td>
                                 </tr>
@@ -486,6 +496,7 @@ const DiscountsView = () => {
                                     value={newCode.value}
                                     onChange={(e) => setNewCode({...newCode, value: Number(e.target.value)})}
                                     className="w-full p-3 border border-gray-200 rounded-lg outline-none focus:border-brand-red" 
+                                    onFocus={(e) => e.target.select()}
                                 />
                             </div>
                             <div className="flex-1">
@@ -547,13 +558,13 @@ const ShippingView = () => {
     const queryClient = useQueryClient();
     const { data: regions = [], isLoading } = useQuery({ queryKey: ['shipping-regions'], queryFn: fetchShippingRegions });
     
-    // Form State
+    // Form State (using strings for number inputs to prevent NaN)
     const [editingId, setEditingId] = useState<string | null>(null);
     const [formData, setFormData] = useState({
         code: '',
         name: '',
-        shippingCost: 0,
-        taxRate: 0,
+        shippingCost: '',
+        taxRate: '',
         eta: ''
     });
 
@@ -562,6 +573,9 @@ const ShippingView = () => {
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['shipping-regions'] });
             resetForm();
+        },
+        onError: (err: any) => {
+            alert("Failed to create region. Ensure you are logged in as Admin.");
         }
     });
 
@@ -580,7 +594,7 @@ const ShippingView = () => {
 
     const resetForm = () => {
         setEditingId(null);
-        setFormData({ code: '', name: '', shippingCost: 0, taxRate: 0, eta: '' });
+        setFormData({ code: '', name: '', shippingCost: '', taxRate: '', eta: '' });
     };
 
     const handleEdit = (region: RegionConfig) => {
@@ -588,18 +602,24 @@ const ShippingView = () => {
         setFormData({
             code: region.code,
             name: region.name,
-            shippingCost: region.shippingCost,
-            taxRate: region.taxRate,
+            shippingCost: region.shippingCost.toString(),
+            taxRate: region.taxRate.toString(),
             eta: region.eta
         });
     };
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
+        const payload = {
+            ...formData,
+            shippingCost: parseFloat(formData.shippingCost || '0'),
+            taxRate: parseFloat(formData.taxRate || '0')
+        };
+
         if (editingId) {
-            updateMutation.mutate({ id: editingId, data: formData });
+            updateMutation.mutate({ id: editingId, data: payload });
         } else {
-            createMutation.mutate(formData);
+            createMutation.mutate(payload);
         }
     };
 
@@ -641,9 +661,10 @@ const ShippingView = () => {
                                     type="number"
                                     step="0.01"
                                     value={formData.shippingCost}
-                                    onChange={(e) => setFormData({...formData, shippingCost: parseFloat(e.target.value)})}
+                                    onChange={(e) => setFormData({...formData, shippingCost: e.target.value})}
                                     className="w-full p-2 border border-gray-200 rounded-lg outline-none focus:border-brand-red" 
                                     required
+                                    onFocus={(e) => e.target.select()}
                                 />
                             </div>
                             <div>
@@ -652,9 +673,10 @@ const ShippingView = () => {
                                     type="number"
                                     step="0.01"
                                     value={formData.taxRate}
-                                    onChange={(e) => setFormData({...formData, taxRate: parseFloat(e.target.value)})}
+                                    onChange={(e) => setFormData({...formData, taxRate: e.target.value})}
                                     className="w-full p-2 border border-gray-200 rounded-lg outline-none focus:border-brand-red" 
                                     required
+                                    onFocus={(e) => e.target.select()}
                                 />
                             </div>
                         </div>
