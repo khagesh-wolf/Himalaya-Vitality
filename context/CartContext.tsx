@@ -1,11 +1,11 @@
-
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { CartItem, ProductVariant, Product, BundleType } from '../types';
 import { validateDiscount } from '../services/api';
 
 interface DiscountDetails {
   code: string;
-  amount: number; // Percentage off or Fixed Amount
+  amount?: number; // Legacy support
+  value?: number;  // Correct API field
   type: 'PERCENTAGE' | 'FIXED';
 }
 
@@ -109,11 +109,15 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
   
   const calculateTotal = () => {
     if (!discount) return cartSubtotal;
+    
+    // Safety check for value properties
+    const val = Number(discount.value) || Number(discount.amount) || 0;
+    
     if (discount.type === 'PERCENTAGE') {
-      return cartSubtotal * ((100 - discount.amount) / 100);
+      return cartSubtotal * ((100 - val) / 100);
     }
     // Fixed amount
-    return Math.max(0, cartSubtotal - discount.amount);
+    return Math.max(0, cartSubtotal - val);
   };
 
   const cartTotal = calculateTotal();

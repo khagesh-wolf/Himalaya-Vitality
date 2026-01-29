@@ -57,8 +57,11 @@ const MobileOrderSummary = ({
     onRemoveDiscount
 }: any) => {
     const [isOpen, setIsOpen] = useState(false);
-    // Helper to get value safely
-    const discountVal = appliedDiscount ? (appliedDiscount.value ?? appliedDiscount.amount ?? 0) : 0;
+    
+    // Safely parse discount value
+    const discountVal = appliedDiscount 
+        ? (Number(appliedDiscount.value) || Number(appliedDiscount.amount) || 0) 
+        : 0;
 
     return (
         <div className="lg:hidden border-b border-gray-200 bg-gray-50">
@@ -447,8 +450,10 @@ export const CheckoutPage = () => {
     };
 
     // Calculate Dynamic Values
-    // Note: API returns 'value' but CartContext historically used 'amount'. Safely checking both.
-    const discountVal = activeDiscount ? (activeDiscount.value ?? activeDiscount.amount ?? 0) : 0;
+    // Safe casting to Number to prevent NaN
+    const discountVal = activeDiscount 
+        ? (Number(activeDiscount.value) || Number(activeDiscount.amount) || 0) 
+        : 0;
 
     const discountAmount = activeDiscount 
         ? (activeDiscount.type === 'PERCENTAGE' 
@@ -485,7 +490,7 @@ export const CheckoutPage = () => {
             
             // Fallback costs if region logic fails (though DB should handle this)
             let cost = region ? region.shippingCost : 29.95;
-            let taxRate = region ? region.taxRate : 0;
+            let taxRate = region ? (Number(region.taxRate) || 0) : 0;
             
             // Logic: Free shipping if 2+ items or if logic dictates (e.g. Australia)
             if (itemCount >= 2 || (region && region.shippingCost === 0)) {
