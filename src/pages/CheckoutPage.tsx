@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Link, useSearchParams, useNavigate } from 'react-router-dom';
 import { ShieldCheck, Lock, ArrowLeft, Loader2, AlertCircle, CheckCircle, Package, UserCircle, ShoppingCart, ChevronDown, ChevronUp, CreditCard } from 'lucide-react';
@@ -325,17 +324,6 @@ const AddressStep = ({
                     Continue to Payment
                 </Button>
             </div>
-            
-            {/* Express Checkout Visual */}
-            <div className="relative flex py-2 items-center">
-                <div className="flex-grow border-t border-gray-200"></div>
-                <span className="flex-shrink-0 mx-4 text-gray-400 text-xs uppercase font-bold tracking-widest">Express Checkout</span>
-                <div className="flex-grow border-t border-gray-200"></div>
-            </div>
-            <div className="flex gap-2">
-                <div className="flex-1 bg-[#FFC439] h-10 rounded-lg flex items-center justify-center cursor-not-allowed opacity-50"><span className="text-[#003087] font-bold italic font-sans text-sm">PayPal</span></div>
-                <div className="flex-1 bg-black h-10 rounded-lg flex items-center justify-center cursor-not-allowed opacity-50 text-white font-bold text-sm"> Pay</div>
-            </div>
         </form>
     );
 };
@@ -401,7 +389,7 @@ export const CheckoutPage = () => {
         
         try {
             // 1. Calculate Shipping using Fetched Data
-            const region = regions.find(r => r.code === data.country) || regions.find(r => r.code === 'OTHER');
+            const region = regions.find((r: RegionConfig) => r.code === data.country) || regions.find((r: RegionConfig) => r.code === 'OTHER');
             
             // Fallback costs if region logic fails (though DB should handle this)
             let cost = region ? region.shippingCost : 29.95;
