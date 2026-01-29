@@ -19,34 +19,25 @@ export const saveDeliverableCountries = (regions: RegionConfig[]) => {
   localStorage.setItem('himalaya_regions', JSON.stringify(regions));
 };
 
-export const calculateShipping = (
-    regions: RegionConfig[], 
-    countryCode: string, 
-    subtotal: number, 
-    itemCount: number
-): { cost: number, tax: number, eta: string } => {
-    // Default to AU if no match found immediately, or Other, or the first available region
-    const region = regions.find(r => r.code === countryCode) || regions.find(r => r.code === 'OTHER') || regions[0] || DEFAULT_REGIONS[0];
-    
-    let cost = region.shippingCost;
-    let eta = region.eta;
-    
-    // Calculate Tax Amount
-    const tax = subtotal * (region.taxRate / 100);
-
-    // Business Logic: Free shipping ONLY if purchasing 2+ items OR if it's Australia
-    if (itemCount >= 2 || region.code === 'AU') {
-      cost = 0;
-    }
-
-    return { cost, tax, eta };
-};
-
 export const simulateShipping = (countryCode: string, subtotal: number, itemCount: number): Promise<{ cost: number, tax: number, eta: string }> => {
   return new Promise((resolve) => {
     setTimeout(() => {
       const regions = getDeliverableCountries();
-      resolve(calculateShipping(regions, countryCode, subtotal, itemCount));
+      // Default to AU if no match found immediately, or Other
+      const region = regions.find(r => r.code === countryCode) || regions.find(r => r.code === 'OTHER') || DEFAULT_REGIONS[0];
+      
+      let cost = region.shippingCost;
+      let eta = region.eta;
+      
+      // Calculate Tax Amount
+      const tax = subtotal * (region.taxRate / 100);
+
+      // Business Logic: Free shipping ONLY if purchasing 3+ items OR if it's Australia
+      if (itemCount >= 2 || region.code === 'AU') {
+        cost = 0;
+      }
+
+      resolve({ cost, tax, eta });
     }, 300); // Simulate network delay
   });
 };

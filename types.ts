@@ -13,7 +13,6 @@ export interface User {
   name?: string;
   role: UserRole;
   avatar?: string;
-  isVerified?: boolean;
   // Address Profile Fields
   firstName?: string;
   lastName?: string;
@@ -45,7 +44,6 @@ export interface Product {
   features: string[];
   variants: ProductVariant[];
   images: string[];
-  totalStock?: number;
 }
 
 export interface CartItem {
@@ -79,10 +77,7 @@ export interface Order {
   total: number;
   status: 'Pending' | 'Paid' | 'Fulfilled' | 'Delivered';
   items: number;
-  itemsSummary?: string;
   itemsDetails?: any[]; // For detailed view
-  trackingNumber?: string;
-  carrier?: string;
 }
 
 export interface Discount {

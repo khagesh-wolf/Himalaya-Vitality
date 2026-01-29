@@ -7,8 +7,8 @@ import { Product, BundleType, Review, Order, BlogPost } from './types';
 
 export const MAIN_PRODUCT: Product = {
   id: 'himalaya-shilajit-resin',
-  title: 'Pure Himalayan Shilajit Resin (शिलाजित)',
-  description: 'A natural substance ranging in color from pale brown to blackish-brown that exudes from rocks in the Himalayas. Known as "Silajit" or "Shilajit" in Nepali and scientifically as Asphaltum Punjabianum. Formed for centuries from compressed plant materials under high pressure and temperature. Our premium resin is sourced from the pristine landscapes of Nepal (Dolpa region). It is soft, sticky, and viscous with an earthy, pungent smell and a bitter, astringent taste.',
+  title: 'Pure Himalayan Shilajit Resin',
+  description: 'A natural substance ranging in color from pale brown to blackish-brown that exudes from rocks in the Himalayas. Formed for centuries from compressed plant materials under high pressure and temperature. Our premium resin is sourced from the pristine landscapes of Nepal. It is soft, sticky, and viscous with an earthy, pungent smell and a bitter, astringent taste.',
   rating: 4.9,
   reviewCount: 24,
   features: [
@@ -146,7 +146,7 @@ export const BLOG_POSTS: BlogPost[] = [
     id: '1',
     slug: 'benefits-of-shilajit',
     title: '5 Science-Backed Benefits of Shilajit',
-    excerpt: 'Discover why this ancient resin (known as "Conqueror of Mountains") is revered in Ayurvedic medicine and how it can optimize your modern lifestyle.',
+    excerpt: 'Discover why this ancient resin is known as the "Destroyer of Weakness" in Ayurvedic medicine and how it can optimize your modern lifestyle.',
     content: `<p>Shilajit has been used for centuries in Ayurveda...</p>`,
     author: 'Dr. A. Sharma',
     date: 'Oct 12, 2023',

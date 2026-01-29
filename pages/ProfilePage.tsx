@@ -7,7 +7,7 @@ import { Package, User as UserIcon, LogOut, MapPin, Save, CreditCard, ChevronRig
 import { Container, Button, Card, Reveal, LazyImage } from '../components/UI';
 import { useAuth } from '../context/AuthContext';
 import { useCurrency } from '../context/CurrencyContext';
-import { fetchUserOrders, updateUserProfile, createReview, fetchShippingRegions } from '../services/api';
+import { fetchUserOrders, updateUserProfile, createReview } from '../services/api';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { SEO } from '../components/SEO';
 import { getDeliverableCountries } from '../utils';
@@ -52,11 +52,6 @@ export const ProfilePage = () => {
       queryKey: ['my-orders'],
       queryFn: fetchUserOrders,
       enabled: !!user
-  });
-
-  const { data: regions = [] } = useQuery({
-      queryKey: ['shipping-regions'],
-      queryFn: fetchShippingRegions
   });
 
   const updateMutation = useMutation({
@@ -119,7 +114,7 @@ export const ProfilePage = () => {
       });
   };
 
-  const countries = regions.length > 0 ? regions : getDeliverableCountries();
+  const countries = getDeliverableCountries();
 
   return (
     <div className="bg-gray-50 min-h-screen pt-12 pb-20">

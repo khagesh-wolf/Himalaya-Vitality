@@ -13,14 +13,12 @@ import { useSettings } from '../context/SettingsContext';
 import { CartDrawer } from './CartDrawer';
 import { SearchModal } from './SearchModal';
 
-const Logo = ({ light = false, loading = 'lazy' }: { light?: boolean, loading?: 'lazy' | 'eager' }) => (
+const Logo = ({ light = false }: { light?: boolean }) => (
   <div className="flex items-center gap-2 group">
     <img 
         src={light ? "https://i.ibb.co/mr2hH8wK/logo-white.png" : "https://i.ibb.co/tMXQXvJn/logo-red.png"} 
         alt="Himalaya Vitality" 
         className="h-10 md:h-12 w-auto object-contain transition-transform group-hover:scale-105"
-        loading={loading}
-        fetchPriority={loading === 'eager' ? 'high' : 'auto'}
         onError={(e) => {
             // Fallback if image fails (safe guard)
             e.currentTarget.style.display = 'none';
@@ -124,7 +122,7 @@ export const Navbar = () => {
             {/* 2. Logo */}
             <Link to="/" className="flex-shrink-0 relative z-40">
                 <div className={`transition-opacity duration-300 ${!scrolled && location.pathname === '/' ? 'hidden md:block' : 'block'}`}>
-                     <Logo light={isTransparentHeader} loading="eager" />
+                     <Logo light={isTransparentHeader} />
                 </div>
             </Link>
 

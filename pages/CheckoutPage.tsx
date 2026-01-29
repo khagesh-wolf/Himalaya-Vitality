@@ -1,5 +1,4 @@
 
-
 import React, { useState, useEffect } from 'react';
 import { Link, useSearchParams, useNavigate } from 'react-router-dom';
 import { ShieldCheck, Lock, ArrowLeft, Loader2, AlertCircle, CheckCircle, Package, UserCircle, ShoppingCart, ChevronDown, ChevronUp, CreditCard } from 'lucide-react';
@@ -8,12 +7,11 @@ import { MAIN_PRODUCT } from '../constants';
 import { useCurrency } from '../context/CurrencyContext';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
-import { CartItem, RegionConfig } from '../types';
+import { CartItem } from '../types';
 import { useLoading } from '../context/LoadingContext';
-import { calculateShipping, getDeliverableCountries } from '../utils';
-import { createPaymentIntent, createOrder, fetchShippingRegions } from '../services/api';
+import { getDeliverableCountries, simulateShipping } from '../utils';
+import { createPaymentIntent, createOrder } from '../services/api';
 import { trackPurchase } from '../services/analytics'; // Analytics
-import { useQuery } from '@tanstack/react-query';
 
 // Stripe Imports
 import { loadStripe } from '@stripe/stripe-js';
@@ -25,9 +23,8 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 
 // --- CONFIGURATION ---
-const STRIPE_PUBLIC_KEY = (import.meta as any).env?.VITE_STRIPE_PUBLIC_KEY;
-// Load stripe only if key exists, otherwise null
-const stripePromise = STRIPE_PUBLIC_KEY ? loadStripe(STRIPE_PUBLIC_KEY) : null;
+const STRIPE_PUBLIC_KEY = (import.meta as any).env?.VITE_STRIPE_PUBLIC_KEY || 'pk_test_TYooMQauvdEDq54NiTphI7jx'; 
+const stripePromise = loadStripe(STRIPE_PUBLIC_KEY);
 
 // --- ZOD SCHEMAS ---
 const addressSchema = z.object({
@@ -66,14 +63,14 @@ const MobileOrderSummary = ({
             <Container>
                 <button 
                     onClick={() => setIsOpen(!isOpen)}
-                    className="w-full py-4 flex items-center justify-center space-x-2 text-brand-dark"
+                    className="w-full py-4 flex items-center justify-between text-brand-dark"
                 >
                     <div className="flex items-center text-sm font-bold text-brand-dark">
                         <ShoppingCart size={16} className="mr-2 text-gray-500" />
                         <span>{isOpen ? 'Hide' : 'Show'} Order Summary</span>
                         {isOpen ? <ChevronUp size={16} className="ml-2 text-gray-400" /> : <ChevronDown size={16} className="ml-2 text-gray-400" />}
                     </div>
-                    <span className="font-heading font-extrabold text-lg text-brand-dark ml-auto">{formatPrice(total)}</span>
+                    <span className="font-heading font-extrabold text-lg text-brand-dark">{formatPrice(total)}</span>
                 </button>
 
                 {isOpen && (
@@ -114,7 +111,7 @@ const MobileOrderSummary = ({
     );
 };
 
-// --- COMPONENT: PAYMENT STEP (STRIPE) ---
+// --- COMPONENT: PAYMENT STEP ---
 const PaymentStep = ({ 
     items, 
     total, 
@@ -134,15 +131,6 @@ const PaymentStep = ({
     const { user } = useAuth();
     const [message, setMessage] = useState<string | null>(null);
     const [isReady, setIsReady] = useState(false);
-    const [loadError, setLoadError] = useState(false);
-
-    useEffect(() => {
-        // Fallback timeout if PaymentElement fails to load without triggering an error
-        const timer = setTimeout(() => {
-            if (!isReady) setLoadError(true);
-        }, 8000);
-        return () => clearTimeout(timer);
-    }, [isReady]);
 
     const handlePaymentSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -165,7 +153,7 @@ const PaymentStep = ({
             const { error, paymentIntent } = await stripe.confirmPayment({
                 elements,
                 confirmParams: {
-                    return_url: `${window.location.origin}/#/order-confirmation`, 
+                    return_url: `${window.location.origin}/order-confirmation`, 
                     payment_method_data: {
                         billing_details: {
                             name: `${customerData.firstName} ${customerData.lastName}`,
@@ -225,23 +213,8 @@ const PaymentStep = ({
                 </div>
             )}
 
-            {loadError && !isReady && (
-                <div className="bg-red-50 text-red-600 p-4 rounded-lg flex items-start gap-2 text-sm border border-red-100 mb-6">
-                    <AlertCircle size={16} className="mt-0.5 shrink-0" />
-                    <div>
-                        <strong>Payment System Error</strong>
-                        <p className="mt-1">Unable to load secure payment interface. This may be due to a configuration mismatch between the server keys.</p>
-                    </div>
-                </div>
-            )}
-
             <form onSubmit={handlePaymentSubmit} className="space-y-6">
-                <div className="p-4 border border-gray-200 rounded-xl bg-white shadow-sm min-h-[150px] relative">
-                    {!isReady && !loadError && (
-                        <div className="absolute inset-0 flex items-center justify-center bg-white z-10 rounded-xl">
-                            <Loader2 className="animate-spin text-gray-300" size={32} />
-                        </div>
-                    )}
+                <div className="p-4 border border-gray-200 rounded-xl bg-white shadow-sm">
                     <PaymentElement onReady={() => setIsReady(true)} />
                 </div>
                 
@@ -251,10 +224,10 @@ const PaymentStep = ({
                 
                 <div className="flex flex-col items-center gap-3 text-gray-400 text-xs font-medium">
                     <div className="flex gap-2 opacity-60 grayscale">
-                        {/* Simple CSS representation of cards */}
-                        <div className="h-6 w-9 bg-gray-200 rounded flex items-center justify-center font-bold text-[8px] border border-gray-300">VISA</div>
-                        <div className="h-6 w-9 bg-gray-200 rounded flex items-center justify-center font-bold text-[8px] border border-gray-300">MC</div>
-                        <div className="h-6 w-9 bg-gray-200 rounded flex items-center justify-center font-bold text-[8px] border border-gray-300">AMEX</div>
+                        {/* Simple CSS representation of cards or SVGs would go here */}
+                        <div className="h-6 w-9 bg-gray-200 rounded flex items-center justify-center font-bold text-[8px]">VISA</div>
+                        <div className="h-6 w-9 bg-gray-200 rounded flex items-center justify-center font-bold text-[8px]">MC</div>
+                        <div className="h-6 w-9 bg-gray-200 rounded flex items-center justify-center font-bold text-[8px]">AMEX</div>
                     </div>
                     <div className="flex items-center gap-1.5">
                         <ShieldCheck size={14} />
@@ -269,12 +242,10 @@ const PaymentStep = ({
 // --- COMPONENT: ADDRESS FORM ---
 const AddressStep = ({ 
     initialData, 
-    onSubmit,
-    regions 
+    onSubmit 
 }: { 
     initialData: Partial<CheckoutFormData>, 
-    onSubmit: (data: CheckoutFormData) => void,
-    regions: RegionConfig[]
+    onSubmit: (data: CheckoutFormData) => void 
 }) => {
     const { register, handleSubmit, formState: { errors } } = useForm<CheckoutFormData>({
         resolver: zodResolver(addressSchema),
@@ -323,7 +294,7 @@ const AddressStep = ({
                 <div className="space-y-1">
                     <label className="text-xs font-bold text-gray-500 uppercase">Country</label>
                     <select {...register('country')} autoComplete="country" className="w-full p-3 bg-gray-50 border border-gray-200 rounded-lg outline-none focus:border-brand-red">
-                        {regions.map(c => <option key={c.id} value={c.code}>{c.name}</option>)}
+                        {getDeliverableCountries().map(c => <option key={c.id} value={c.code}>{c.name}</option>)}
                     </select>
                 </div>
                 <div className="space-y-1">
@@ -342,6 +313,17 @@ const AddressStep = ({
                 <Button type="submit" fullWidth size="lg" className="shadow-xl shadow-brand-red/20 h-14 text-lg">
                     Continue to Payment
                 </Button>
+            </div>
+            
+            {/* Express Checkout Visual */}
+            <div className="relative flex py-2 items-center">
+                <div className="flex-grow border-t border-gray-200"></div>
+                <span className="flex-shrink-0 mx-4 text-gray-400 text-xs uppercase font-bold tracking-widest">Express Checkout</span>
+                <div className="flex-grow border-t border-gray-200"></div>
+            </div>
+            <div className="flex gap-2">
+                <div className="flex-1 bg-[#FFC439] h-10 rounded-lg flex items-center justify-center cursor-not-allowed opacity-50"><span className="text-[#003087] font-bold italic font-sans text-sm">PayPal</span></div>
+                <div className="flex-1 bg-black h-10 rounded-lg flex items-center justify-center cursor-not-allowed opacity-50 text-white font-bold text-sm"> Pay</div>
             </div>
         </form>
     );
@@ -379,15 +361,6 @@ export const CheckoutPage = () => {
     const [clientSecret, setClientSecret] = useState<string>('');
     const [customerData, setCustomerData] = useState<CheckoutFormData | null>(null);
 
-    // Fetch Regions
-    const { data: regions = [] } = useQuery({ 
-        queryKey: ['shipping-regions'], 
-        queryFn: fetchShippingRegions,
-        staleTime: 1000 * 60 * 5 // 5 minutes
-    });
-
-    const activeRegions = regions.length > 0 ? regions : getDeliverableCountries();
-
     // Prepare User Data for Form
     const userData = user ? {
         email: user.email,
@@ -410,22 +383,20 @@ export const CheckoutPage = () => {
         setIsLoading(true, 'Calculating Shipping & Taxes...');
         
         try {
-            // 1. Calculate Shipping based on selected address and fetched regions
-            const shipping = calculateShipping(activeRegions, data.country, baseSubtotal, itemCount);
+            // 1. Calculate Shipping based on address
+            const shipping = await simulateShipping(data.country, baseSubtotal, itemCount);
             setShippingData({ cost: shipping.cost, tax: shipping.tax });
             
             // 2. Create/Update Payment Intent with FINAL Total
             const finalTotal = baseSubtotal + shipping.cost + shipping.tax;
-            const { clientSecret } = await createPaymentIntent(checkoutItems, 'USD', finalTotal); 
+            const { clientSecret, mockSecret } = await createPaymentIntent(checkoutItems, 'USD', finalTotal); 
             
-            if (!clientSecret) throw new Error("Failed to initialize payment");
-
-            setClientSecret(clientSecret);
+            setClientSecret(clientSecret || mockSecret || '');
             setStep(2);
             window.scrollTo({ top: 0, behavior: 'smooth' });
-        } catch (error: any) {
+        } catch (error) {
             console.error("Checkout init failed", error);
-            alert("Payment Initialization Failed: " + (error.message || "Unknown error"));
+            alert("Could not initialize payment. Please try again.");
         } finally {
             setIsLoading(false);
         }
@@ -435,23 +406,9 @@ export const CheckoutPage = () => {
 
     const handleSuccess = (orderId: string) => {
         clearCart();
-        // Redirect to Order Confirmation instead of Profile to prevent auth redirection issues
-        navigate(`/order-confirmation?orderId=${orderId}`);
+        alert(`Order ${orderId} placed successfully! Check your email.`);
+        navigate('/profile');
     };
-
-    if (!stripePromise && step === 2) {
-        return (
-            <div className="min-h-screen flex items-center justify-center text-center p-4">
-                <div className="max-w-md bg-white p-8 rounded-xl shadow-lg border-t-4 border-red-500">
-                    <h2 className="font-bold text-xl mb-2 text-brand-dark">Configuration Error</h2>
-                    <p className="text-gray-600 mb-4">
-                        Stripe Public Key is missing in environment variables. Payments cannot be processed.
-                    </p>
-                    <Link to="/"><Button variant="outline-dark">Return Home</Button></Link>
-                </div>
-            </div>
-        );
-    }
 
     return (
         <div className="min-h-screen bg-gray-50 pb-20">
@@ -528,7 +485,7 @@ export const CheckoutPage = () => {
                             </div>
 
                             {step === 1 ? (
-                                <AddressStep initialData={userData} onSubmit={handleAddressSubmit} regions={activeRegions} />
+                                <AddressStep initialData={userData} onSubmit={handleAddressSubmit} />
                             ) : (
                                 clientSecret && customerData && (
                                     <Elements options={{ 

@@ -7,50 +7,30 @@ interface SEOProps {
   description?: string;
   image?: string;
   type?: 'website' | 'product' | 'article';
-  keywords?: string[];
 }
 
 export const SEO: React.FC<SEOProps> = ({ 
   title, 
   description, 
-  image = 'https://i.ibb.co/zTB7Fx9m/Whats-App-Image-2026-01-26-at-7-08-18-PM.jpg', 
-  type = 'website',
-  keywords = []
+  image = 'https://images.unsplash.com/photo-1540747913346-19e32dc3e97e?q=80&w=1200&auto=format&fit=crop', 
+  type = 'website' 
 }) => {
   const location = useLocation();
-  // Ensure we use the actual production domain
+  // In production, this would be the actual domain
   const siteUrl = 'https://himalayavitality.com';
-  const canonicalUrl = `${siteUrl}${location.pathname === '/' ? '' : location.pathname}`;
+  const canonicalUrl = `${siteUrl}${location.pathname}`;
   const fullTitle = `${title} | Himalaya Vitality`;
-  
-  // Default keywords for every page (SEO Boosting)
-  const defaultKeywords = [
-    "Himalaya Vitality", 
-    "Shilajit Resin", 
-    "Pure Shilajit", 
-    "शिलाजित", // Nepali
-    "Silajit", 
-    "Asphaltum Punjabianum", // Scientific
-    "Fulvic Acid", 
-    "Natural Testosterone Booster", 
-    "Ayurvedic Supplement", 
-    "Nepal Shilajit"
-  ];
-  
-  const combinedKeywords = [...defaultKeywords, ...keywords].join(', ');
 
   const orgSchema = {
     "@context": "https://schema.org",
     "@type": "Organization",
     "name": "Himalaya Vitality",
-    "alternateName": ["Himalaya Shilajit", "शिलाजित", "Himalaya Vitality Australia"],
     "url": siteUrl,
     "logo": "https://i.ibb.co/tMXQXvJn/logo-red.png",
     "sameAs": [
-        "https://instagram.com/himalaya_vitality",
+        "https://instagram.com/himalayavitality",
         "https://facebook.com/himalayavitality"
-    ],
-    "description": "Providers of Gold Grade, lab-tested Himalayan Shilajit resin sourced from 18,000ft."
+    ]
   };
 
   // Generate Breadcrumb Schema automatically based on route
@@ -102,7 +82,6 @@ export const SEO: React.FC<SEOProps> = ({
 
     // Standard Meta
     if (description) updateMeta('description', description);
-    updateMeta('keywords', combinedKeywords);
     updateLink('canonical', canonicalUrl);
 
     // Open Graph / Facebook
@@ -112,16 +91,15 @@ export const SEO: React.FC<SEOProps> = ({
     if (description) updateMeta('og:description', description, 'property');
     updateMeta('og:image', image, 'property');
     updateMeta('og:site_name', 'Himalaya Vitality', 'property');
-    updateMeta('og:locale', 'en_US', 'property');
 
-    // Twitter Card
+    // Twitter
     updateMeta('twitter:card', 'summary_large_image');
     updateMeta('twitter:url', canonicalUrl);
     updateMeta('twitter:title', fullTitle);
     if (description) updateMeta('twitter:description', description);
     updateMeta('twitter:image', image);
 
-  }, [title, description, image, type, canonicalUrl, fullTitle, combinedKeywords]);
+  }, [title, description, image, type, canonicalUrl, fullTitle]);
 
   return (
     <>

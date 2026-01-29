@@ -136,8 +136,6 @@ export const ProductPage = () => {
                     alt={product.title} 
                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" 
                     sizes="(max-width: 1024px) 100vw, 60vw"
-                    loading="eager"
-                    fetchPriority="high"
                 />
                 <div className="absolute top-6 left-6 flex gap-2">
                     <div className="bg-white/90 backdrop-blur px-4 py-2 rounded-full text-xs font-bold text-brand-dark shadow-sm border border-gray-100">

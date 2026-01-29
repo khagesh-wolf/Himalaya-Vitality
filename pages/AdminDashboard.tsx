@@ -30,7 +30,7 @@ type AdminView = 'DASHBOARD' | 'ORDERS' | 'DISCOUNTS' | 'PRODUCTS' | 'SUBSCRIBER
 interface AdminVariant extends ProductVariant {
   stock: number;
 }
-type AdminProduct = Omit<Product, 'variants'> & { variants: AdminVariant[], totalStock?: number };
+type AdminProduct = Omit<Product, 'variants'> & { variants: AdminVariant[] };
 
 const SidebarItem = ({ icon: Icon, label, active, onClick }: { icon: any, label: string, active: boolean, onClick: () => void }) => (
   <div 
@@ -213,12 +213,6 @@ const OrdersView = () => {
         });
     };
 
-    const getTrackingUrl = (carrierName: string, number: string) => {
-        if (carrierName === 'DHL Express') return `https://www.dhl.com/global-en/home/tracking/tracking-express.html?submit=1&tracking-id=${number}`;
-        if (carrierName === 'FedEx') return `https://www.fedex.com/fedextrack/?trknbr=${number}`;
-        return `https://auspost.com.au/mypost/track/details/${number}`;
-    };
-
     const filtered = filter === 'All' ? orders : orders.filter((o: any) => o.status === filter);
 
     return (
@@ -237,7 +231,6 @@ const OrdersView = () => {
                         <tr className="bg-gray-50 text-gray-500 text-xs uppercase tracking-wider">
                             <th className="p-4 font-bold">Order ID</th>
                             <th className="p-4 font-bold">Customer</th>
-                            <th className="p-4 font-bold">Items</th>
                             <th className="p-4 font-bold">Total</th>
                             <th className="p-4 font-bold">Status</th>
                             <th className="p-4 font-bold">Fulfillment</th>
@@ -250,9 +243,6 @@ const OrdersView = () => {
                                 <td className="p-4">
                                     <div className="font-bold text-brand-dark">{order.customer}</div>
                                     <div className="text-xs text-gray-400">{order.email}</div>
-                                </td>
-                                <td className="p-4 text-xs font-medium text-gray-600 max-w-[200px] truncate" title={order.itemsSummary}>
-                                    {order.itemsSummary || `${order.items} Items`}
                                 </td>
                                 <td className="p-4 font-bold">{formatPrice(order.total)}</td>
                                 <td className="p-4">
@@ -274,14 +264,7 @@ const OrdersView = () => {
                                     {order.trackingNumber ? (
                                         <div className="text-xs">
                                             <div className="font-bold text-brand-dark">{order.carrier}</div>
-                                            <a 
-                                                href={getTrackingUrl(order.carrier, order.trackingNumber)} 
-                                                target="_blank" 
-                                                rel="noopener noreferrer" 
-                                                className="text-brand-red hover:underline"
-                                            >
-                                                {order.trackingNumber}
-                                            </a>
+                                            <a href="#" className="text-brand-red hover:underline">{order.trackingNumber}</a>
                                             <button onClick={() => handleFulfill(order)} className="ml-2 text-gray-400 hover:text-brand-dark underline">Edit</button>
                                         </div>
                                     ) : (
@@ -356,7 +339,7 @@ const OrdersView = () => {
     );
 };
 
-// --- 3. Products View (Master Stock) ---
+// --- 3. Products View (Simplified) ---
 const ProductsView = () => {
     const queryClient = useQueryClient();
     const { data: product } = useQuery({ 
@@ -365,7 +348,7 @@ const ProductsView = () => {
         initialData: MAIN_PRODUCT 
     });
     
-    // Local state
+    // Local state for editing prices/stock only
     const [editProduct, setEditProduct] = useState<AdminProduct>(product as AdminProduct);
     const [isSaving, setIsSaving] = useState(false);
 
@@ -378,19 +361,12 @@ const ProductsView = () => {
         setEditProduct({ ...editProduct, variants: updatedVariants });
     };
 
-    const handleMasterStockChange = (value: number) => {
-        setEditProduct(prev => ({
-            ...prev,
-            totalStock: value
-        }));
-    };
-
     const mutation = useMutation({
         mutationFn: (data: any) => updateProduct(editProduct.id, data),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['admin-product'] });
             setIsSaving(false);
-            alert("Inventory updated successfully!");
+            alert("Pricing and Inventory updated successfully!");
         },
         onError: (err) => {
             setIsSaving(false);
@@ -400,39 +376,14 @@ const ProductsView = () => {
 
     const saveChanges = () => {
         setIsSaving(true);
-        // We calculate virtual stock for UI only, but DB handles it dynamically.
-        // We only send totalStock and prices to backend.
-        mutation.mutate({ 
-            variants: editProduct.variants,
-            totalStock: editProduct.totalStock
-        });
+        mutation.mutate({ variants: editProduct.variants });
     };
 
     return (
         <div className="space-y-8">
-            <Card className="p-6 shadow-sm border border-brand-red/20 bg-red-50/30">
-                <div className="flex flex-col md:flex-row justify-between items-center gap-6">
-                    <div>
-                        <h3 className="font-heading font-bold text-lg text-brand-dark mb-1">Master Inventory (Physical Jars)</h3>
-                        <p className="text-xs text-gray-500">Update this number when you restock. Bundle stock is calculated automatically.</p>
-                    </div>
-                    <div className="flex items-center gap-4">
-                        <div className="text-right">
-                            <span className="block text-[10px] font-bold uppercase tracking-widest text-gray-400">Current Stock</span>
-                            <input 
-                                type="number" 
-                                value={editProduct.totalStock || 0}
-                                onChange={(e) => handleMasterStockChange(Number(e.target.value))}
-                                className="w-32 p-3 text-2xl font-bold text-center border-2 border-brand-red/30 rounded-xl focus:border-brand-red outline-none bg-white shadow-sm"
-                            />
-                        </div>
-                    </div>
-                </div>
-            </Card>
-
             <Card className="p-0 overflow-hidden shadow-sm">
                 <div className="p-6 border-b border-gray-100 flex justify-between items-center">
-                    <h3 className="font-heading font-bold text-lg text-brand-dark">Bundle Pricing & Availability</h3>
+                    <h3 className="font-heading font-bold text-lg text-brand-dark">Pricing & Inventory</h3>
                     <Badge color="bg-green-500">Live on Store</Badge>
                 </div>
                 <div className="overflow-x-auto">
@@ -442,47 +393,39 @@ const ProductsView = () => {
                                 <th className="p-4">Variant Name</th>
                                 <th className="p-4">Price ($)</th>
                                 <th className="p-4">Compare At ($)</th>
-                                <th className="p-4">Calculated Stock</th>
+                                <th className="p-4">Stock Level</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-100 text-sm">
-                            {editProduct.variants?.map(variant => {
-                                // Calculate display stock dynamically based on edited master stock
-                                let multiplier = 1;
-                                if (variant.type === 'DOUBLE') multiplier = 2;
-                                if (variant.type === 'TRIPLE') multiplier = 3;
-                                const calculatedStock = Math.floor((editProduct.totalStock || 0) / multiplier);
-
-                                return (
-                                    <tr key={variant.id}>
-                                        <td className="p-4 font-bold text-brand-dark">{variant.name}</td>
-                                        <td className="p-4">
-                                            <input 
-                                                type="number" 
-                                                value={variant.price} 
-                                                onChange={(e) => handleVariantChange(variant.id, 'price', Number(e.target.value))}
-                                                className="w-24 p-2 border border-gray-200 rounded focus:border-brand-red outline-none font-bold"
-                                            />
-                                        </td>
-                                        <td className="p-4">
-                                            <input 
-                                                type="number" 
-                                                value={variant.compareAtPrice} 
-                                                onChange={(e) => handleVariantChange(variant.id, 'compareAtPrice', Number(e.target.value))}
-                                                className="w-24 p-2 border border-gray-200 rounded focus:border-brand-red outline-none text-gray-500"
-                                            />
-                                        </td>
-                                        <td className="p-4">
-                                            <div className="flex items-center gap-2">
-                                                <div className={`px-3 py-1 rounded text-xs font-bold ${calculatedStock > 0 ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
-                                                    {calculatedStock} Available
-                                                </div>
-                                                <span className="text-[10px] text-gray-400">(Auto)</span>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                );
-                            })}
+                            {editProduct.variants?.map(variant => (
+                                <tr key={variant.id}>
+                                    <td className="p-4 font-bold text-brand-dark">{variant.name}</td>
+                                    <td className="p-4">
+                                        <input 
+                                            type="number" 
+                                            value={variant.price} 
+                                            onChange={(e) => handleVariantChange(variant.id, 'price', Number(e.target.value))}
+                                            className="w-24 p-2 border border-gray-200 rounded focus:border-brand-red outline-none font-bold"
+                                        />
+                                    </td>
+                                    <td className="p-4">
+                                        <input 
+                                            type="number" 
+                                            value={variant.compareAtPrice} 
+                                            onChange={(e) => handleVariantChange(variant.id, 'compareAtPrice', Number(e.target.value))}
+                                            className="w-24 p-2 border border-gray-200 rounded focus:border-brand-red outline-none text-gray-500"
+                                        />
+                                    </td>
+                                    <td className="p-4">
+                                        <input 
+                                            type="number" 
+                                            value={variant.stock || 0} 
+                                            onChange={(e) => handleVariantChange(variant.id, 'stock', Number(e.target.value))}
+                                            className={`w-20 p-2 border rounded focus:border-brand-red outline-none ${variant.stock < 10 ? 'border-red-300 bg-red-50' : 'border-gray-200'}`}
+                                        />
+                                    </td>
+                                </tr>
+                            ))}
                         </tbody>
                     </table>
                 </div>
@@ -490,7 +433,7 @@ const ProductsView = () => {
 
             <div className="fixed bottom-6 right-6 z-30">
                 <Button onClick={saveChanges} size="lg" className="shadow-2xl shadow-brand-red/40 animate-in fade-in slide-in-from-bottom-4">
-                    {isSaving ? 'Saving...' : <><Save size={20} className="mr-2"/> Update Inventory</>}
+                    {isSaving ? 'Saving...' : <><Save size={20} className="mr-2"/> Update Prices</>}
                 </Button>
             </div>
         </div>
