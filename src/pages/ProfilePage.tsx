@@ -295,7 +295,7 @@ export const ProfilePage = () => {
                                                 {countries.length > 0 ? (
                                                     countries.map((c: any) => <option key={c.id} value={c.code}>{c.name}</option>)
                                                 ) : (
-                                                    <option value="AU">Australia</option>
+                                                    <option value="">Loading Regions...</option>
                                                 )}
                                             </select>
                                         </div>

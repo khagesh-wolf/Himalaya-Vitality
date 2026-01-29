@@ -10,7 +10,7 @@ import { useAuth } from '../context/AuthContext';
 import { CartItem, RegionConfig } from '../types';
 import { useLoading } from '../context/LoadingContext';
 import { createPaymentIntent, createOrder, fetchShippingRegions } from '../services/api';
-import { trackPurchase } from '../services/analytics'; // Analytics
+import { trackPurchase } from '../services/analytics';
 import { useQuery } from '@tanstack/react-query';
 
 // Stripe Imports
@@ -224,6 +224,7 @@ const PaymentStep = ({
                 
                 <div className="flex flex-col items-center gap-3 text-gray-400 text-xs font-medium">
                     <div className="flex gap-2 opacity-60 grayscale">
+                        {/* Simple CSS representation of cards or SVGs would go here */}
                         <div className="h-6 w-9 bg-gray-200 rounded flex items-center justify-center font-bold text-[8px]">VISA</div>
                         <div className="h-6 w-9 bg-gray-200 rounded flex items-center justify-center font-bold text-[8px]">MC</div>
                         <div className="h-6 w-9 bg-gray-200 rounded flex items-center justify-center font-bold text-[8px]">AMEX</div>
@@ -248,9 +249,12 @@ const AddressStep = ({
     regions: RegionConfig[],
     onSubmit: (data: CheckoutFormData) => void 
 }) => {
+    // Default to the first available region if 'AU' isn't in the list
+    const defaultCountry = regions.length > 0 ? (regions.find(r => r.code === 'AU') ? 'AU' : regions[0].code) : '';
+
     const { register, handleSubmit, formState: { errors } } = useForm<CheckoutFormData>({
         resolver: zodResolver(addressSchema),
-        defaultValues: { country: 'AU', ...initialData }
+        defaultValues: { country: defaultCountry, ...initialData }
     });
 
     return (
@@ -298,7 +302,7 @@ const AddressStep = ({
                         {regions.length > 0 ? (
                             regions.map(c => <option key={c.id} value={c.code}>{c.name}</option>)
                         ) : (
-                            <option value="AU">Australia</option>
+                            <option value="">Loading Regions...</option>
                         )}
                     </select>
                 </div>
@@ -397,6 +401,7 @@ export const CheckoutPage = () => {
             // 1. Calculate Shipping based on fetched regions
             const region = regions.find(r => r.code === data.country) || regions.find(r => r.code === 'OTHER');
             
+            // Default to configured region cost, or fallback to $25 if data missing
             let cost = region ? region.shippingCost : 25.00;
             let taxRate = region ? region.taxRate : 0;
             
