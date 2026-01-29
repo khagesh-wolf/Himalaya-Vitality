@@ -3,7 +3,7 @@
 
 ## 1. The Schema (Copy this to prisma/schema.prisma)
 
-This schema is configured to handle the "Direct URL" requirement for Neon/Supabase and matches your frontend data structure exactly, including Admin Panel features, User Profile fields, Blog Posts, and Order Tracking.
+This schema is configured to handle the "Direct URL" requirement for Neon/Supabase and matches your frontend data structure exactly, including Admin Panel features, User Profile fields, Blog Posts, Shipping Configuration, and Order Tracking.
 
 ```prisma
 generator client {
@@ -36,7 +36,7 @@ model User {
 
   // Security & Verification
   isVerified Boolean  @default(false)
-  otp        String?  // One Time Password
+  otp        String?  // One Time Password for Email Verification or Password Reset
   otpExpires DateTime?
 
   createdAt DateTime @default(now())
