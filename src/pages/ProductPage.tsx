@@ -4,7 +4,7 @@ import { useNavigate, useSearchParams, useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { Star, Check, ShieldCheck, Truck, Clock, Lock, Award, Filter, ArrowRight } from 'lucide-react';
 import { Button, Container, LazyImage, Reveal } from '../components/UI';
-import { BundleType, Product } from '../types';
+import { BundleType, Product, Review } from '../types';
 import { useCurrency } from '../context/CurrencyContext';
 import { useCart } from '../context/CartContext';
 import { useLoading } from '../context/LoadingContext';
@@ -12,7 +12,6 @@ import { SEO } from '../components/SEO';
 import { Breadcrumbs } from '../components/Breadcrumbs';
 import { fetchProduct, fetchReviews } from '../services/api';
 import { ProductPageSkeleton } from '../components/Skeletons';
-import { REVIEWS } from '../constants'; 
 import { trackViewItem, trackAddToCart } from '../services/analytics'; 
 
 export const ProductPage = () => {
@@ -25,14 +24,18 @@ export const ProductPage = () => {
   const { addToCart } = useCart();
   const { setIsLoading } = useLoading();
 
-  // Fetch product from API (DB) to ensure prices are up to date
-  const { data: product, isLoading } = useQuery<Product>({
+  // Fetch product from API - Strict
+  const { data: product, isLoading: isProductLoading } = useQuery<Product>({
       queryKey: ['product', productId || 'himalaya-shilajit-resin'],
       queryFn: () => fetchProduct(productId || 'himalaya-shilajit-resin')
   });
 
-  // Use hardcoded reviews for now as they are static
-  const reviews = REVIEWS;
+  // Fetch Reviews from API - Strict
+  const { data: reviews = [] } = useQuery<Review[]>({
+      queryKey: ['reviews'],
+      queryFn: fetchReviews,
+      initialData: []
+  });
 
   const initialBundle = (bundleParam && Object.values(BundleType).includes(bundleParam as BundleType))
     ? (bundleParam as BundleType)
@@ -40,12 +43,10 @@ export const ProductPage = () => {
 
   const [selectedBundle, setSelectedBundle] = useState<BundleType>(initialBundle);
   const [showStickyBar, setShowStickyBar] = useState(false);
-  
-  // Review Filtering State
   const [reviewFilter, setReviewFilter] = useState<'All' | 'Athlete'>('All');
   const [visibleReviews, setVisibleReviews] = useState(3);
   
-  // Safe access to variants
+  // Safe access to variants if product exists
   const currentVariant = product?.variants.find(v => v.type === selectedBundle) || product?.variants[0];
 
   useEffect(() => {
@@ -110,7 +111,7 @@ export const ProductPage = () => {
   const displayedReviews = filteredReviews.slice(0, visibleReviews);
   const hasMoreReviews = visibleReviews < filteredReviews.length;
 
-  if (isLoading || !product || !currentVariant) return <ProductPageSkeleton />;
+  if (isProductLoading || !product || !currentVariant) return <ProductPageSkeleton />;
 
   return (
     <div className="bg-[#FAFAFA] pt-28 md:pt-32 pb-16">

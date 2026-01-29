@@ -1,48 +1,59 @@
 
 import React, { useState } from 'react';
-import { Star, Check, ArrowLeft, Filter, Loader2, ThumbsUp } from 'lucide-react';
+import { Star, Check, ArrowLeft, Filter, Loader2, ThumbsUp, AlertCircle } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { Container, Button, Card, Reveal } from '../components/UI';
 import { fetchReviews, fetchProduct } from '../services/api';
 import { SEO } from '../components/SEO';
-import { MAIN_PRODUCT as FALLBACK_PRODUCT } from '../constants';
 
 export const ReviewsPage = () => {
   const [filter, setFilter] = useState<'All' | 'Athlete'>('All');
   const [visibleCount, setVisibleCount] = useState(5);
   
   // 1. Fetch Product for Title/ID (Dynamic)
-  const { data: product } = useQuery({
+  const { data: product, isLoading: isProductLoading } = useQuery({
     queryKey: ['product', 'himalaya-shilajit-resin'],
     queryFn: () => fetchProduct('himalaya-shilajit-resin'),
-    initialData: FALLBACK_PRODUCT
   });
 
   // 2. Fetch Real Reviews
-  const { data: reviews = [], isLoading } = useQuery({
+  const { data: reviews = [], isLoading: isReviewsLoading, error } = useQuery({
     queryKey: ['reviews'],
     queryFn: fetchReviews,
-    initialData: []
   });
   
+  if (isProductLoading || isReviewsLoading) {
+      return <div className="min-h-screen flex items-center justify-center bg-gray-50"><Loader2 className="animate-spin text-brand-red w-12 h-12" /></div>;
+  }
+
+  if (error || !product) {
+      return (
+          <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50 text-center">
+              <AlertCircle size={32} className="text-red-500 mb-2"/>
+              <p className="font-bold text-brand-dark">Failed to load reviews.</p>
+              <Button onClick={() => window.location.reload()} className="mt-4">Retry</Button>
+          </div>
+      );
+  }
+
   const totalReviews = reviews.length;
   // Calculate average rating dynamically
   const averageRating = totalReviews > 0 
-    ? (reviews.reduce((acc, r) => acc + r.rating, 0) / totalReviews).toFixed(1) 
+    ? (reviews.reduce((acc: any, r: any) => acc + r.rating, 0) / totalReviews).toFixed(1) 
     : 5.0;
 
   const stars = [5, 4, 3, 2, 1];
   
   // Calculate distribution dynamically
   const distribution = stars.map(star => {
-      const count = reviews.filter(r => Math.round(r.rating) === star).length;
+      const count = reviews.filter((r: any) => Math.round(r.rating) === star).length;
       return totalReviews > 0 ? Math.round((count / totalReviews) * 100) : 0;
   });
 
   const displayedReviews = filter === 'All' 
     ? reviews 
-    : reviews.filter(r => r.tags?.includes('Athlete') || r.tags?.includes('Endurance'));
+    : reviews.filter((r: any) => r.tags?.includes('Athlete') || r.tags?.includes('Endurance'));
 
   const visibleReviews = displayedReviews.slice(0, visibleCount);
 
@@ -124,80 +135,76 @@ export const ReviewsPage = () => {
                     </div>
                 </Reveal>
 
-                {isLoading ? (
-                    <div className="flex justify-center py-20"><Loader2 className="animate-spin text-brand-red" size={40} /></div>
-                ) : (
-                    <div className="space-y-6">
-                        {displayedReviews.length === 0 ? (
-                            <div className="text-center py-16 bg-white rounded-3xl border border-dashed border-gray-200">
-                                <p className="text-gray-500 font-medium">No reviews found for this filter.</p>
-                                <button onClick={() => setFilter('All')} className="text-brand-red font-bold text-sm mt-3 hover:underline">View All Reviews</button>
-                            </div>
-                        ) : (
-                            <>
-                                {visibleReviews.map((review, idx) => (
-                                    <Reveal key={`${review.id}-${idx}`} delay={idx * 50}>
-                                        <div className="bg-white p-8 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-shadow group">
-                                            <div className="flex justify-between items-start mb-6">
-                                                <div className="flex items-center gap-3">
-                                                    <div className="w-10 h-10 bg-gradient-to-br from-gray-100 to-gray-200 rounded-full flex items-center justify-center font-bold text-sm text-gray-600 shadow-inner">
-                                                        {review.author?.charAt(0) || 'U'}
-                                                    </div>
-                                                    <div>
-                                                        <div className="font-bold text-brand-dark text-sm flex items-center gap-2">
-                                                            {review.author}
-                                                            {review.verified && (
-                                                                <span className="text-[10px] font-bold text-green-600 uppercase tracking-wider bg-green-50 px-2 py-0.5 rounded-full flex items-center border border-green-100">
-                                                                    <Check size={10} className="mr-1" strokeWidth={3} /> Verified
-                                                                </span>
-                                                            )}
-                                                        </div>
-                                                        <div className="text-xs text-gray-400 mt-0.5">{review.date}</div>
-                                                    </div>
+                <div className="space-y-6">
+                    {displayedReviews.length === 0 ? (
+                        <div className="text-center py-16 bg-white rounded-3xl border border-dashed border-gray-200">
+                            <p className="text-gray-500 font-medium">No reviews found for this filter.</p>
+                            <button onClick={() => setFilter('All')} className="text-brand-red font-bold text-sm mt-3 hover:underline">View All Reviews</button>
+                        </div>
+                    ) : (
+                        <>
+                            {visibleReviews.map((review: any, idx: number) => (
+                                <Reveal key={`${review.id}-${idx}`} delay={idx * 50}>
+                                    <div className="bg-white p-8 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-shadow group">
+                                        <div className="flex justify-between items-start mb-6">
+                                            <div className="flex items-center gap-3">
+                                                <div className="w-10 h-10 bg-gradient-to-br from-gray-100 to-gray-200 rounded-full flex items-center justify-center font-bold text-sm text-gray-600 shadow-inner">
+                                                    {review.author?.charAt(0) || 'U'}
                                                 </div>
-                                                <div className="flex text-brand-gold-500">
-                                                    {[...Array(5)].map((_, i) => (
-                                                        <Star key={i} size={14} fill={i < review.rating ? "currentColor" : "none"} className={i < review.rating ? "" : "text-gray-300"} strokeWidth={0} />
-                                                    ))}
+                                                <div>
+                                                    <div className="font-bold text-brand-dark text-sm flex items-center gap-2">
+                                                        {review.author}
+                                                        {review.verified && (
+                                                            <span className="text-[10px] font-bold text-green-600 uppercase tracking-wider bg-green-50 px-2 py-0.5 rounded-full flex items-center border border-green-100">
+                                                                <Check size={10} className="mr-1" strokeWidth={3} /> Verified
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                    <div className="text-xs text-gray-400 mt-0.5">{review.date}</div>
                                                 </div>
                                             </div>
-                                            
-                                            <div className="mb-4">
-                                                <h3 className="font-heading font-bold text-lg text-brand-dark mb-2 flex items-center gap-2">
-                                                    {review.title}
-                                                    {review.tags?.includes('Athlete') && (
-                                                        <span className="bg-brand-dark text-white text-[10px] font-bold px-2 py-0.5 rounded uppercase tracking-wider">Athlete</span>
-                                                    )}
-                                                </h3>
-                                                <p className="text-gray-600 text-sm leading-relaxed relative pl-4 border-l-2 border-brand-red/20 italic">
-                                                    "{review.content}"
-                                                </p>
-                                            </div>
-
-                                            <div className="flex items-center gap-4 mt-6">
-                                                <button className="text-xs font-bold text-gray-400 hover:text-brand-dark flex items-center gap-1 transition-colors">
-                                                    <ThumbsUp size={14} /> Helpful
-                                                </button>
+                                            <div className="flex text-brand-gold-500">
+                                                {[...Array(5)].map((_, i) => (
+                                                    <Star key={i} size={14} fill={i < review.rating ? "currentColor" : "none"} className={i < review.rating ? "" : "text-gray-300"} strokeWidth={0} />
+                                                ))}
                                             </div>
                                         </div>
-                                    </Reveal>
-                                ))}
+                                        
+                                        <div className="mb-4">
+                                            <h3 className="font-heading font-bold text-lg text-brand-dark mb-2 flex items-center gap-2">
+                                                {review.title}
+                                                {review.tags?.includes('Athlete') && (
+                                                    <span className="bg-brand-dark text-white text-[10px] font-bold px-2 py-0.5 rounded uppercase tracking-wider">Athlete</span>
+                                                )}
+                                            </h3>
+                                            <p className="text-gray-600 text-sm leading-relaxed relative pl-4 border-l-2 border-brand-red/20 italic">
+                                                "{review.content}"
+                                            </p>
+                                        </div>
 
-                                {visibleCount < displayedReviews.length && (
-                                    <div className="text-center pt-8">
-                                        <Button 
-                                            variant="outline-dark" 
-                                            onClick={handleLoadMore}
-                                            className="min-w-[200px]"
-                                        >
-                                            Load More Reviews
-                                        </Button>
+                                        <div className="flex items-center gap-4 mt-6">
+                                            <button className="text-xs font-bold text-gray-400 hover:text-brand-dark flex items-center gap-1 transition-colors">
+                                                <ThumbsUp size={14} /> Helpful
+                                            </button>
+                                        </div>
                                     </div>
-                                )}
-                            </>
-                        )}
-                    </div>
-                )}
+                                </Reveal>
+                            ))}
+
+                            {visibleCount < displayedReviews.length && (
+                                <div className="text-center pt-8">
+                                    <Button 
+                                        variant="outline-dark" 
+                                        onClick={handleLoadMore}
+                                        className="min-w-[200px]"
+                                    >
+                                        Load More Reviews
+                                    </Button>
+                                </div>
+                            )}
+                        </>
+                    )}
+                </div>
             </div>
         </div>
       </Container>

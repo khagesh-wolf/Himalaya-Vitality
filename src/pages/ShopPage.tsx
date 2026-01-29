@@ -4,20 +4,19 @@ import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { Container, Button, Card, LazyImage, Reveal } from '../components/UI';
 import { useCurrency } from '../context/CurrencyContext';
-import { Check, ArrowRight, TrendingUp, Zap, Activity, Brain } from 'lucide-react';
+import { Check, ArrowRight, TrendingUp, Zap, Activity, Brain, Loader2 } from 'lucide-react';
 import { SEO } from '../components/SEO';
 import { BundleType, Product } from '../types';
 import { fetchProduct } from '../services/api';
-import { MAIN_PRODUCT as FALLBACK_PRODUCT } from '../constants';
 
 export const ShopPage = () => {
   const { formatPrice } = useCurrency();
   const [activeFilter, setActiveFilter] = useState<'All' | 'Energy' | 'Recovery' | 'Focus'>('All');
 
-  const { data: product, isLoading } = useQuery<Product>({
+  // Fetch from DB, removed fallback
+  const { data: product, isLoading, error } = useQuery<Product>({
     queryKey: ['product', 'himalaya-shilajit-resin'],
-    queryFn: () => fetchProduct('himalaya-shilajit-resin'),
-    initialData: FALLBACK_PRODUCT
+    queryFn: () => fetchProduct('himalaya-shilajit-resin')
   });
 
   const filters = [
@@ -26,6 +25,24 @@ export const ShopPage = () => {
     { id: 'Recovery', label: 'Recovery', icon: Activity },
     { id: 'Focus', label: 'Focus', icon: Brain },
   ];
+
+  if (isLoading) {
+      return (
+          <div className="min-h-screen flex items-center justify-center bg-gray-50">
+              <Loader2 className="animate-spin text-brand-red w-10 h-10" />
+          </div>
+      );
+  }
+
+  if (error || !product) {
+      return (
+          <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50 p-4 text-center">
+              <h1 className="text-xl font-bold text-brand-dark mb-2">Product Unavailable</h1>
+              <p className="text-gray-500">We couldn't load the shop inventory.</p>
+              <Button onClick={() => window.location.reload()} className="mt-4">Try Again</Button>
+          </div>
+      );
+  }
 
   return (
     <div className="bg-gray-50 py-20 min-h-screen">

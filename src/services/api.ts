@@ -1,15 +1,14 @@
 
-import { Product, Review, Order, CartItem, User, RegionConfig } from '../types';
+import { Product, Review, Order, CartItem, User, RegionConfig, Discount, BlogPost, Subscriber, InventoryLog } from '../types';
 
 // --- CONFIGURATION ---
-// STRICTLY use the environment variable. Default to /api for local proxy if not set.
-// This forces the app to look for a running server.
+// Defaults to /api to work with the Vite proxy configured in vite.config.js
 const API_URL = (import.meta as any).env.VITE_API_URL || '/api';
 
-console.log(`%c[API] Initialized. Connecting to: ${API_URL}`, 'color: #00ff00; font-weight: bold; background: #111; padding: 4px;');
+console.log(`[API] Service initialized. Endpoint: ${API_URL}`);
 
 // --- SHARED UTILS ---
-const getAuthHeaders = () => {
+const getHeaders = () => {
     const token = localStorage.getItem('hv_token');
     return {
         'Content-Type': 'application/json',
@@ -21,16 +20,21 @@ const handleResponse = async (res: Response) => {
     const contentType = res.headers.get("content-type");
     let data;
     
-    // Try to parse JSON, fallback to text if necessary
-    if (contentType && contentType.indexOf("application/json") !== -1) {
-        data = await res.json();
-    } else {
-        data = { message: res.statusText };
+    try {
+        if (contentType && contentType.includes("application/json")) {
+            data = await res.json();
+        } else {
+            // For 204 No Content or non-JSON responses
+            data = { message: res.statusText };
+        }
+    } catch (e) {
+        data = { message: 'Invalid JSON response from server' };
     }
 
     if (!res.ok) {
-        const error = new Error(data.message || data.error || 'API Error');
+        const error = new Error(data.message || data.error || `API Error: ${res.status}`);
         (error as any).status = res.status;
+        (error as any).data = data;
         (error as any).requiresVerification = data.requiresVerification;
         (error as any).email = data.email;
         throw error;
@@ -43,19 +47,14 @@ const handleResponse = async (res: Response) => {
 
 // 1. PRODUCTS
 export const fetchProduct = async (id: string): Promise<Product> => {
-    try {
-        const res = await fetch(`${API_URL}/products/${id}`);
-        return await handleResponse(res);
-    } catch (e) {
-        console.error(`[API] Failed to fetch product ${id}. Is the backend running?`, e);
-        throw e;
-    }
+    const res = await fetch(`${API_URL}/products/${id}`);
+    return handleResponse(res);
 };
 
 export const updateProduct = async (id: string, data: any) => {
     const res = await fetch(`${API_URL}/products/${id}`, {
         method: 'PUT',
-        headers: getAuthHeaders(),
+        headers: getHeaders(),
         body: JSON.stringify(data)
     });
     return handleResponse(res);
@@ -64,13 +63,13 @@ export const updateProduct = async (id: string, data: any) => {
 // 2. REVIEWS
 export const fetchReviews = async (): Promise<Review[]> => {
     const res = await fetch(`${API_URL}/reviews`);
-    return await handleResponse(res);
+    return handleResponse(res);
 };
 
 export const createReview = async (data: Partial<Review>) => {
     const res = await fetch(`${API_URL}/reviews`, {
         method: 'POST',
-        headers: getAuthHeaders(),
+        headers: getHeaders(),
         body: JSON.stringify(data)
     });
     return handleResponse(res);
@@ -80,14 +79,14 @@ export const createReview = async (data: Partial<Review>) => {
 export const createOrder = async (data: any) => {
     const res = await fetch(`${API_URL}/orders`, {
         method: 'POST',
-        headers: getAuthHeaders(),
+        headers: getHeaders(),
         body: JSON.stringify(data)
     });
     return handleResponse(res);
 };
 
 export const fetchUserOrders = async (): Promise<Order[]> => {
-    const res = await fetch(`${API_URL}/orders/my-orders`, { headers: getAuthHeaders() });
+    const res = await fetch(`${API_URL}/orders/my-orders`, { headers: getHeaders() });
     return handleResponse(res);
 };
 
@@ -116,14 +115,14 @@ export const signupUser = async (data: any) => {
 };
 
 export const fetchCurrentUser = async (): Promise<User> => {
-    const res = await fetch(`${API_URL}/auth/me`, { headers: getAuthHeaders() });
+    const res = await fetch(`${API_URL}/auth/me`, { headers: getHeaders() });
     return handleResponse(res);
 };
 
 export const updateUserProfile = async (data: Partial<User>) => {
     const res = await fetch(`${API_URL}/auth/profile`, {
         method: 'PUT',
-        headers: getAuthHeaders(),
+        headers: getHeaders(),
         body: JSON.stringify(data)
     });
     return handleResponse(res);
@@ -167,14 +166,14 @@ export const resetPassword = async (data: any) => {
 
 // 5. ADMIN
 export const fetchAdminOrders = async () => {
-    const res = await fetch(`${API_URL}/admin/orders`, { headers: getAuthHeaders() });
+    const res = await fetch(`${API_URL}/admin/orders`, { headers: getHeaders() });
     return handleResponse(res);
 };
 
 export const updateOrderStatus = async (id: string, status: string) => {
     const res = await fetch(`${API_URL}/admin/orders/${id}/status`, {
         method: 'PUT',
-        headers: getAuthHeaders(),
+        headers: getHeaders(),
         body: JSON.stringify({ status })
     });
     return handleResponse(res);
@@ -183,7 +182,7 @@ export const updateOrderStatus = async (id: string, status: string) => {
 export const updateOrderTracking = async (id: string, data: any) => {
     const res = await fetch(`${API_URL}/admin/orders/${id}/tracking`, {
         method: 'PUT',
-        headers: getAuthHeaders(),
+        headers: getHeaders(),
         body: JSON.stringify(data)
     });
     return handleResponse(res);
@@ -194,17 +193,17 @@ export const fetchAdminStats = async (startDate?: Date, endDate?: Date) => {
     if (startDate) params.append('startDate', startDate.toISOString());
     if (endDate) params.append('endDate', endDate.toISOString());
     
-    const res = await fetch(`${API_URL}/admin/stats?${params.toString()}`, { headers: getAuthHeaders() });
+    const res = await fetch(`${API_URL}/admin/stats?${params.toString()}`, { headers: getHeaders() });
     return handleResponse(res);
 };
 
-export const fetchInventoryLogs = async () => {
-    const res = await fetch(`${API_URL}/admin/inventory-logs`, { headers: getAuthHeaders() });
+export const fetchInventoryLogs = async (): Promise<InventoryLog[]> => {
+    const res = await fetch(`${API_URL}/admin/inventory-logs`, { headers: getHeaders() });
     return handleResponse(res);
 };
 
-export const fetchSubscribers = async () => {
-    const res = await fetch(`${API_URL}/admin/subscribers`, { headers: getAuthHeaders() });
+export const fetchSubscribers = async (): Promise<Subscriber[]> => {
+    const res = await fetch(`${API_URL}/admin/subscribers`, { headers: getHeaders() });
     return handleResponse(res);
 };
 
@@ -220,22 +219,22 @@ export const subscribeToNewsletter = async (email: string, source: string) => {
 export const sendAdminNewsletter = async (subject: string, message: string) => {
     const res = await fetch(`${API_URL}/admin/newsletter/send`, {
         method: 'POST',
-        headers: getAuthHeaders(),
+        headers: getHeaders(),
         body: JSON.stringify({ subject, message })
     });
     return handleResponse(res);
 };
 
 // 6. SHIPPING & DISCOUNTS
-export const fetchShippingRegions = async () => {
+export const fetchShippingRegions = async (): Promise<RegionConfig[]> => {
     const res = await fetch(`${API_URL}/shipping-regions`);
-    return await handleResponse(res);
+    return handleResponse(res);
 };
 
 export const createShippingRegion = async (data: any) => {
     const res = await fetch(`${API_URL}/shipping-regions`, {
         method: 'POST',
-        headers: getAuthHeaders(),
+        headers: getHeaders(),
         body: JSON.stringify(data)
     });
     return handleResponse(res);
@@ -244,7 +243,7 @@ export const createShippingRegion = async (data: any) => {
 export const updateShippingRegion = async (id: string, data: any) => {
     const res = await fetch(`${API_URL}/shipping-regions/${id}`, {
         method: 'PUT',
-        headers: getAuthHeaders(),
+        headers: getHeaders(),
         body: JSON.stringify(data)
     });
     return handleResponse(res);
@@ -253,20 +252,20 @@ export const updateShippingRegion = async (id: string, data: any) => {
 export const deleteShippingRegion = async (id: string) => {
     const res = await fetch(`${API_URL}/shipping-regions/${id}`, {
         method: 'DELETE',
-        headers: getAuthHeaders()
+        headers: getHeaders()
     });
     return handleResponse(res);
 };
 
-export const fetchDiscounts = async () => {
-    const res = await fetch(`${API_URL}/discounts`, { headers: getAuthHeaders() });
+export const fetchDiscounts = async (): Promise<Discount[]> => {
+    const res = await fetch(`${API_URL}/discounts`, { headers: getHeaders() });
     return handleResponse(res);
 };
 
 export const createDiscount = async (data: any) => {
     const res = await fetch(`${API_URL}/discounts`, {
         method: 'POST',
-        headers: getAuthHeaders(),
+        headers: getHeaders(),
         body: JSON.stringify(data)
     });
     return handleResponse(res);
@@ -275,7 +274,7 @@ export const createDiscount = async (data: any) => {
 export const deleteDiscount = async (id: string) => {
     const res = await fetch(`${API_URL}/discounts/${id}`, {
         method: 'DELETE',
-        headers: getAuthHeaders()
+        headers: getHeaders()
     });
     return handleResponse(res);
 };
@@ -290,11 +289,14 @@ export const validateDiscount = async (code: string) => {
 };
 
 // 7. BLOG & STRIPE
-export const fetchBlogPosts = async () => {
-    // We can update this to fetch from DB if you create a blog table, 
-    // but typically blogs are static or headless CMS.
-    // For now, we keep the constant or you can add an endpoint.
+export const fetchBlogPosts = async (): Promise<BlogPost[]> => {
+    // If you haven't migrated Blog to DB yet, we can keep the constant fallback specifically for blog posts 
+    // to avoid breaking the UI, but Product/Auth/Order logic is now STRICTLY API.
     return import('../constants').then(m => m.BLOG_POSTS);
+    
+    // Uncomment when blog API is ready:
+    // const res = await fetch(`${API_URL}/blog`);
+    // return handleResponse(res);
 };
 
 export const createPaymentIntent = async (items: CartItem[], currency: string, total?: number) => {

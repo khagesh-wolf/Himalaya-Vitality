@@ -2,12 +2,11 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { CheckCircle2, XCircle, ArrowRight, Zap, Activity, ShieldCheck, Award, Mountain, Droplet, Globe, Lock, Instagram, Star, Truck } from 'lucide-react';
+import { CheckCircle2, XCircle, ArrowRight, Zap, Activity, ShieldCheck, Award, Mountain, Droplet, Globe, Lock, Instagram, Star, Truck, Loader2 } from 'lucide-react';
 import { Button, Container, LazyImage, Reveal } from '../components/UI';
 import { SEO } from '../components/SEO';
 import { fetchProduct, fetchReviews } from '../services/api';
 import { Product, Review } from '../types';
-import { MAIN_PRODUCT as FALLBACK_PRODUCT } from '../constants'; // Only used as initial placeholder
 
 // Animated Letter Component
 const AnimatedLetters = ({ text, delayStart = 0, className = "" }: { text: string, delayStart?: number, className?: string }) => {
@@ -52,11 +51,11 @@ const ComparisonRow = ({ feature, us, them }: { feature: string, us: string | bo
 );
 
 export const HomePage = () => {
-  // 1. Fetch Real Product Data
-  const { data: product } = useQuery<Product>({
+  // 1. Fetch Real Product Data from DB - No Fallback
+  const { data: product, isLoading, error } = useQuery<Product>({
     queryKey: ['product', 'himalaya-shilajit-resin'],
     queryFn: () => fetchProduct('himalaya-shilajit-resin'),
-    initialData: FALLBACK_PRODUCT // Instant load with static, then updates
+    retry: 1
   });
 
   // 2. Fetch Real Reviews
@@ -67,6 +66,24 @@ export const HomePage = () => {
 
   // Use top 3 reviews
   const reviews = reviewsData.slice(0, 3);
+
+  if (isLoading) {
+      return (
+          <div className="min-h-screen flex items-center justify-center bg-white">
+              <Loader2 className="animate-spin text-brand-red w-12 h-12" />
+          </div>
+      );
+  }
+
+  if (error || !product) {
+      return (
+          <div className="min-h-screen flex flex-col items-center justify-center bg-white p-4 text-center">
+              <h1 className="text-2xl font-bold text-brand-dark mb-4">Unable to connect to service</h1>
+              <p className="text-gray-500 max-w-md mb-6">We are having trouble loading the product data. Please check your internet connection or try again later.</p>
+              <Button onClick={() => window.location.reload()}>Retry Connection</Button>
+          </div>
+      );
+  }
 
   // Simulated Instagram Feed (Using product images for visual consistency)
   const instagramPosts = product.images.slice(0, 4).map((img, i) => ({
