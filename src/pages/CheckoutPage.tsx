@@ -249,12 +249,14 @@ const AddressStep = ({
     regions: RegionConfig[],
     onSubmit: (data: CheckoutFormData) => void 
 }) => {
-    // Default to the first available region if 'AU' isn't in the list
-    const defaultCountry = regions.length > 0 ? (regions.find(r => r.code === 'AU') ? 'AU' : regions[0].code) : '';
+    // Determine default country based on availability
+    const defaultCountry = regions.length > 0 
+        ? (regions.find(r => r.code === 'AU') ? 'AU' : regions[0].code) 
+        : '';
 
     const { register, handleSubmit, formState: { errors } } = useForm<CheckoutFormData>({
         resolver: zodResolver(addressSchema),
-        defaultValues: { country: defaultCountry, ...initialData }
+        defaultValues: { country: defaultCountry || 'US', ...initialData }
     });
 
     return (
@@ -302,7 +304,7 @@ const AddressStep = ({
                         {regions.length > 0 ? (
                             regions.map(c => <option key={c.id} value={c.code}>{c.name}</option>)
                         ) : (
-                            <option value="">Loading Regions...</option>
+                            <option value="">Loading...</option>
                         )}
                     </select>
                 </div>
@@ -347,7 +349,7 @@ export const CheckoutPage = () => {
     const navigate = useNavigate();
     const { setIsLoading } = useLoading();
     
-    // Fetch Shipping Regions from Database
+    // FETCH DYNAMIC SHIPPING REGIONS
     const { data: regions = [] } = useQuery({ 
         queryKey: ['shipping-regions'], 
         queryFn: fetchShippingRegions 
@@ -383,7 +385,7 @@ export const CheckoutPage = () => {
         lastName: user.lastName || user.name?.split(' ')[1],
         address: user.address,
         city: user.city,
-        country: user.country || 'AU',
+        country: user.country || 'AU', // Default to AU if available later
         zip: user.zip,
         phone: user.phone
     } : {};
@@ -398,15 +400,15 @@ export const CheckoutPage = () => {
         setIsLoading(true, 'Calculating Shipping & Taxes...');
         
         try {
-            // 1. Calculate Shipping based on fetched regions
+            // 1. Calculate Shipping using Fetched Data
             const region = regions.find(r => r.code === data.country) || regions.find(r => r.code === 'OTHER');
             
-            // Default to configured region cost, or fallback to $25 if data missing
-            let cost = region ? region.shippingCost : 25.00;
+            // Fallback costs if region logic fails (though DB should handle this)
+            let cost = region ? region.shippingCost : 29.95;
             let taxRate = region ? region.taxRate : 0;
             
-            // Logic: Free shipping if 2+ items or if logic dictates (e.g., Australia specific)
-            // Or use region.active flag
+            // Logic: Free shipping if 2+ items or if logic dictates (e.g. Australia)
+            // Replicating business logic with dynamic data
             if (itemCount >= 2 || (region && region.shippingCost === 0)) {
                 cost = 0;
             }

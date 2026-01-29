@@ -53,6 +53,7 @@ export const ProfilePage = () => {
       enabled: !!user
   });
 
+  // Fetch Countries from API
   const { data: countries = [] } = useQuery({
       queryKey: ['shipping-regions'],
       queryFn: fetchShippingRegions
@@ -295,7 +296,7 @@ export const ProfilePage = () => {
                                                 {countries.length > 0 ? (
                                                     countries.map((c: any) => <option key={c.id} value={c.code}>{c.name}</option>)
                                                 ) : (
-                                                    <option value="">Loading Regions...</option>
+                                                    <option value="">Loading...</option>
                                                 )}
                                             </select>
                                         </div>
