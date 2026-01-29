@@ -3,7 +3,6 @@ import React, { useState, useEffect } from 'react';
 import { Link, useSearchParams, useNavigate } from 'react-router-dom';
 import { ShieldCheck, Lock, ArrowLeft, Loader2, AlertCircle, CheckCircle, Package, UserCircle, ShoppingCart, ChevronDown, ChevronUp, CreditCard } from 'lucide-react';
 import { Button, Card, Container } from '../components/UI';
-import { useQuery } from '@tanstack/react-query';
 import { MAIN_PRODUCT } from '../constants';
 import { useCurrency } from '../context/CurrencyContext';
 import { useCart } from '../context/CartContext';
@@ -12,6 +11,7 @@ import { CartItem, RegionConfig } from '../types';
 import { useLoading } from '../context/LoadingContext';
 import { createPaymentIntent, createOrder, fetchShippingRegions } from '../services/api';
 import { trackPurchase } from '../services/analytics'; // Analytics
+import { useQuery } from '@tanstack/react-query';
 
 // Stripe Imports
 import { loadStripe } from '@stripe/stripe-js';
@@ -224,7 +224,6 @@ const PaymentStep = ({
                 
                 <div className="flex flex-col items-center gap-3 text-gray-400 text-xs font-medium">
                     <div className="flex gap-2 opacity-60 grayscale">
-                        {/* Simple CSS representation of cards or SVGs would go here */}
                         <div className="h-6 w-9 bg-gray-200 rounded flex items-center justify-center font-bold text-[8px]">VISA</div>
                         <div className="h-6 w-9 bg-gray-200 rounded flex items-center justify-center font-bold text-[8px]">MC</div>
                         <div className="h-6 w-9 bg-gray-200 rounded flex items-center justify-center font-bold text-[8px]">AMEX</div>
