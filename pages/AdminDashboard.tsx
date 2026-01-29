@@ -5,7 +5,7 @@ import {
 } from 'recharts';
 import { 
   LayoutDashboard, ShoppingCart, Package, Tag, Check, X, Trash2, 
-  Save, Mail, Truck, DollarSign, Percent, ArrowUpRight, ArrowDownRight, Download, History, Menu, Send, Box, Calendar, Globe, Plus, Pencil
+  Save, Mail, Truck, DollarSign, Percent, ArrowUpRight, ArrowDownRight, Download, History, Menu, Send, Box, Calendar, Globe, Plus, Pencil, Database
 } from 'lucide-react';
 import { Card, Button, Badge } from '../components/UI';
 import { Order, ProductVariant, Product, RegionConfig } from '../types';
@@ -345,15 +345,22 @@ const ProductsView = () => {
         queryFn: () => fetchProduct('himalaya-shilajit-resin')
     });
     
-    // Local state for editing prices/stock only
     const [editProduct, setEditProduct] = useState<AdminProduct | null>(null);
+    const [totalStock, setTotalStock] = useState<number>(0);
     const [isSaving, setIsSaving] = useState(false);
 
     useEffect(() => { 
-        if (product) setEditProduct(product as AdminProduct); 
+        if (product) {
+            setEditProduct(product as AdminProduct); 
+            // Product comes with variants that have calculated stock, but we need the master stock
+            // Assuming API returns totalStock on the product object
+            if (product.totalStock !== undefined) {
+                setTotalStock(product.totalStock);
+            }
+        }
     }, [product]);
 
-    const handleVariantChange = (id: string, field: string, value: string) => {
+    const handleVariantPriceChange = (id: string, field: string, value: string) => {
         if (!editProduct) return;
         const updatedVariants = editProduct.variants.map(v => 
             v.id === id ? { ...v, [field]: value } : v
@@ -366,7 +373,7 @@ const ProductsView = () => {
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['admin-product'] });
             setIsSaving(false);
-            alert("Pricing and Inventory updated successfully!");
+            alert("Pricing and Master Inventory updated successfully!");
         },
         onError: (err) => {
             setIsSaving(false);
@@ -382,18 +389,46 @@ const ProductsView = () => {
             ...v,
             price: parseFloat(v.price.toString()),
             compareAtPrice: parseFloat(v.compareAtPrice.toString()),
-            stock: parseInt(v.stock.toString())
+            // stock is not sent for variants anymore, master stock is sent separately
         }));
-        mutation.mutate({ variants: cleanVariants });
+        mutation.mutate({ variants: cleanVariants, totalStock: totalStock });
+    };
+
+    // Calculate dynamic stocks for display preview
+    const calculateStockPreview = (bundleType: string) => {
+        const multiplier = bundleType === 'TRIPLE' ? 3 : bundleType === 'DOUBLE' ? 2 : 1;
+        return Math.floor(totalStock / multiplier);
     };
 
     if (!editProduct) return <div>Loading...</div>;
 
     return (
         <div className="space-y-8">
+            {/* Master Inventory Control */}
+            <div className="bg-white p-6 rounded-2xl border border-gray-200 shadow-sm flex flex-col md:flex-row items-center justify-between gap-6">
+                <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 bg-brand-dark text-white rounded-xl flex items-center justify-center shadow-lg">
+                        <Database size={24} />
+                    </div>
+                    <div>
+                        <h3 className="font-heading font-bold text-lg text-brand-dark">Master Inventory</h3>
+                        <p className="text-gray-500 text-sm">Total physical jars available in warehouse.</p>
+                    </div>
+                </div>
+                <div className="flex items-center gap-4 bg-gray-50 p-3 rounded-xl border border-gray-200">
+                    <span className="text-sm font-bold text-gray-500 uppercase">Total Jars:</span>
+                    <input 
+                        type="number" 
+                        value={totalStock} 
+                        onChange={(e) => setTotalStock(parseInt(e.target.value) || 0)}
+                        className="w-32 text-2xl font-bold text-brand-red bg-transparent outline-none text-right"
+                    />
+                </div>
+            </div>
+
             <Card className="p-0 overflow-hidden shadow-sm">
                 <div className="p-6 border-b border-gray-100 flex justify-between items-center">
-                    <h3 className="font-heading font-bold text-lg text-brand-dark">Pricing & Inventory</h3>
+                    <h3 className="font-heading font-bold text-lg text-brand-dark">Pricing & Bundles</h3>
                     <Badge color="bg-green-500">Live on Store</Badge>
                 </div>
                 <div className="overflow-x-auto">
@@ -403,7 +438,7 @@ const ProductsView = () => {
                                 <th className="p-4">Variant Name</th>
                                 <th className="p-4">Price ($)</th>
                                 <th className="p-4">Compare At ($)</th>
-                                <th className="p-4">Stock Level</th>
+                                <th className="p-4">Calculated Stock</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-100 text-sm">
@@ -414,7 +449,7 @@ const ProductsView = () => {
                                         <input 
                                             type="number" 
                                             value={variant.price} 
-                                            onChange={(e) => handleVariantChange(variant.id, 'price', e.target.value)}
+                                            onChange={(e) => handleVariantPriceChange(variant.id, 'price', e.target.value)}
                                             className="w-24 p-2 border border-gray-200 rounded focus:border-brand-red outline-none font-bold"
                                         />
                                     </td>
@@ -422,17 +457,17 @@ const ProductsView = () => {
                                         <input 
                                             type="number" 
                                             value={variant.compareAtPrice} 
-                                            onChange={(e) => handleVariantChange(variant.id, 'compareAtPrice', e.target.value)}
+                                            onChange={(e) => handleVariantPriceChange(variant.id, 'compareAtPrice', e.target.value)}
                                             className="w-24 p-2 border border-gray-200 rounded focus:border-brand-red outline-none text-gray-500"
                                         />
                                     </td>
                                     <td className="p-4">
-                                        <input 
-                                            type="number" 
-                                            value={variant.stock} 
-                                            onChange={(e) => handleVariantChange(variant.id, 'stock', e.target.value)}
-                                            className={`w-20 p-2 border rounded focus:border-brand-red outline-none ${Number(variant.stock) < 10 ? 'border-red-300 bg-red-50' : 'border-gray-200'}`}
-                                        />
+                                        <div className="flex items-center gap-2">
+                                            <span className={`font-bold ${calculateStockPreview(variant.type) < 10 ? 'text-red-500' : 'text-gray-700'}`}>
+                                                {calculateStockPreview(variant.type)}
+                                            </span>
+                                            <span className="text-xs text-gray-400">available</span>
+                                        </div>
                                     </td>
                                 </tr>
                             ))}
@@ -443,7 +478,7 @@ const ProductsView = () => {
 
             <div className="fixed bottom-6 right-6 z-30">
                 <Button onClick={saveChanges} size="lg" className="shadow-2xl shadow-brand-red/40 animate-in fade-in slide-in-from-bottom-4">
-                    {isSaving ? 'Saving...' : <><Save size={20} className="mr-2"/> Update Prices</>}
+                    {isSaving ? 'Saving...' : <><Save size={20} className="mr-2"/> Save All Changes</>}
                 </Button>
             </div>
         </div>

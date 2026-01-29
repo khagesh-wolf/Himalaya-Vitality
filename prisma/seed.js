@@ -19,6 +19,7 @@ const MAIN_PRODUCT = {
     'https://picsum.photos/600/600?random=2',
     'https://picsum.photos/600/600?random=3'
   ],
+  totalStock: 100, // MASTER STOCK
   variants: [
     {
       id: 'var_single',
@@ -28,8 +29,7 @@ const MAIN_PRODUCT = {
       compareAtPrice: 65.00,
       label: '1 Month Supply',
       savings: 'Save $16',
-      isPopular: false,
-      stock: 50
+      isPopular: false
     },
     {
       id: 'var_double',
@@ -39,8 +39,7 @@ const MAIN_PRODUCT = {
       compareAtPrice: 130.00,
       label: '2 Month Supply',
       savings: 'Save $42',
-      isPopular: false,
-      stock: 120
+      isPopular: false
     },
     {
       id: 'var_triple',
@@ -50,8 +49,7 @@ const MAIN_PRODUCT = {
       compareAtPrice: 195.00,
       label: '3 Month Supply',
       savings: 'Save $78',
-      isPopular: true,
-      stock: 85
+      isPopular: true
     }
   ]
 };
@@ -92,10 +90,10 @@ const REVIEWS = [
 async function main() {
   console.log('Start seeding ...');
 
-  // 1. Upsert Product
+  // 1. Upsert Product with Variants
   const product = await prisma.product.upsert({
     where: { id: MAIN_PRODUCT.id },
-    update: {},
+    update: { totalStock: MAIN_PRODUCT.totalStock }, // Ensure stock is updated on re-seed
     create: {
       id: MAIN_PRODUCT.id,
       title: MAIN_PRODUCT.title,
@@ -104,6 +102,7 @@ async function main() {
       reviewCount: MAIN_PRODUCT.reviewCount,
       features: MAIN_PRODUCT.features,
       images: MAIN_PRODUCT.images,
+      totalStock: MAIN_PRODUCT.totalStock,
       variants: {
         create: MAIN_PRODUCT.variants.map(v => ({
             id: v.id,
@@ -114,7 +113,7 @@ async function main() {
             label: v.label,
             savings: v.savings,
             isPopular: v.isPopular,
-            stock: v.stock
+            // Stock removed from here
         }))
       }
     },

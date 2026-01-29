@@ -26,6 +26,13 @@ app.use(express.json());
 const DEFAULT_PRODUCT_ID = 'himalaya-shilajit-resin';
 const generateOTP = () => Math.floor(100000 + Math.random() * 900000).toString();
 
+// Bundle Multipliers for Inventory Logic
+const BUNDLE_MULTIPLIERS = {
+    'SINGLE': 1,
+    'DOUBLE': 2,
+    'TRIPLE': 3
+};
+
 const authenticate = (req, res, next) => {
     const authHeader = req.headers['authorization'];
     const token = authHeader && authHeader.split(' ')[1];
@@ -121,35 +128,53 @@ app.get('/api/products/:id', async (req, res) => {
             include: { variants: true }
         });
         if (!product) return res.status(404).json({ error: "Product not found" });
-        product.variants.sort((a, b) => a.price - b.price);
+        
+        // Dynamic Stock Calculation:
+        // Variant stock = floor(TotalStock / BundleSize)
+        product.variants = product.variants.map(v => ({
+            ...v,
+            stock: Math.floor(product.totalStock / (BUNDLE_MULTIPLIERS[v.type] || 1))
+        })).sort((a, b) => a.price - b.price);
+
         res.json(product);
     } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 app.put('/api/products/:id', requireAdmin, async (req, res) => {
-    const { variants } = req.body;
+    const { variants, totalStock } = req.body;
     try {
-        await prisma.$transaction(
-            variants.map(v => prisma.productVariant.update({
-                where: { id: v.id },
+        // Update Prices
+        if (variants) {
+            await prisma.$transaction(
+                variants.map(v => prisma.productVariant.update({
+                    where: { id: v.id },
+                    data: {
+                        price: parseFloat(v.price),
+                        compareAtPrice: parseFloat(v.compareAtPrice),
+                        // Note: we do NOT update variant 'stock' here anymore
+                    }
+                }))
+            );
+        }
+
+        // Update Master Stock if provided
+        if (totalStock !== undefined) {
+            await prisma.product.update({
+                where: { id: req.params.id },
+                data: { totalStock: parseInt(totalStock) }
+            });
+
+            // Log the inventory change
+            await prisma.inventoryLog.create({
                 data: {
-                    price: parseFloat(v.price),
-                    compareAtPrice: parseFloat(v.compareAtPrice),
-                    stock: parseInt(v.stock)
+                    sku: 'MASTER_JAR_STOCK',
+                    action: 'ADMIN_UPDATE',
+                    quantity: parseInt(totalStock),
+                    user: req.user.email,
+                    date: new Date().toLocaleDateString()
                 }
-            }))
-        );
-        
-        // Log the inventory change (Optional but good for completeness)
-        await prisma.inventoryLog.create({
-            data: {
-                sku: variants[0]?.id || 'VAR_UPDATE',
-                action: 'ADMIN_UPDATE',
-                quantity: 0,
-                user: req.user.email,
-                date: new Date().toLocaleDateString()
-            }
-        });
+            });
+        }
 
         res.json({ success: true });
     } catch (e) { res.status(500).json({ error: e.message }); }
@@ -289,28 +314,74 @@ app.get('/api/orders/:id/track', async (req, res) => {
 app.post('/api/orders', async (req, res) => {
     const { customer, items, total, paymentId, userId } = req.body;
     try {
-        const order = await prisma.order.create({
-            data: {
-                orderNumber: `HV-${Date.now()}`,
-                customerEmail: customer.email,
-                customerName: `${customer.firstName} ${customer.lastName}`,
-                shippingAddress: customer, 
-                total,
-                status: 'Paid',
-                paymentId,
-                userId: userId || null,
-                items: {
-                    create: items.map(i => ({
-                        variantId: i.variantId,
-                        quantity: i.quantity,
-                        price: i.price
-                    }))
-                }
+        // 1. Calculate Total Jars to Remove
+        let totalJarsToRemove = 0;
+        
+        // We need to look up the variants to know their 'type' (multiplier)
+        const enrichedItems = await Promise.all(items.map(async (item) => {
+            const variant = await prisma.productVariant.findUnique({ where: { id: item.variantId } });
+            return { ...item, type: variant.type };
+        }));
+
+        for (const item of enrichedItems) {
+            const multiplier = BUNDLE_MULTIPLIERS[item.type] || 1;
+            totalJarsToRemove += (item.quantity * multiplier);
+        }
+
+        // 2. Perform Transaction: Create Order & Decrement Master Stock
+        const result = await prisma.$transaction(async (tx) => {
+            // Check stock first (optional, but good practice)
+            const product = await tx.product.findUnique({ where: { id: DEFAULT_PRODUCT_ID } });
+            if (product.totalStock < totalJarsToRemove) {
+                throw new Error("Insufficient stock");
             }
+
+            // Decrement Stock
+            await tx.product.update({
+                where: { id: DEFAULT_PRODUCT_ID },
+                data: { totalStock: { decrement: totalJarsToRemove } }
+            });
+
+            // Log Inventory
+            await tx.inventoryLog.create({
+                data: {
+                    sku: 'MASTER_JAR_STOCK',
+                    action: 'ORDER_SALE',
+                    quantity: -totalJarsToRemove, // negative for sale
+                    user: 'System',
+                    date: new Date().toLocaleDateString()
+                }
+            });
+
+            // Create Order
+            const order = await tx.order.create({
+                data: {
+                    orderNumber: `HV-${Date.now()}`,
+                    customerEmail: customer.email,
+                    customerName: `${customer.firstName} ${customer.lastName}`,
+                    shippingAddress: customer, 
+                    total,
+                    status: 'Paid',
+                    paymentId,
+                    userId: userId || null,
+                    items: {
+                        create: items.map(i => ({
+                            variantId: i.variantId,
+                            quantity: i.quantity,
+                            price: i.price
+                        }))
+                    }
+                }
+            });
+            return order;
         });
-        await sendEmail(customer.email, `Order Confirmation ${order.orderNumber}`, `Your order has been received.`);
-        res.json({ success: true, orderId: order.orderNumber });
-    } catch(e) { res.status(500).json({ error: e.message }); }
+
+        await sendEmail(customer.email, `Order Confirmation ${result.orderNumber}`, `Your order has been received.`);
+        res.json({ success: true, orderId: result.orderNumber });
+    } catch(e) { 
+        console.error("Order error", e);
+        res.status(500).json({ error: e.message || 'Failed to create order' }); 
+    }
 });
 
 // Admin Stats

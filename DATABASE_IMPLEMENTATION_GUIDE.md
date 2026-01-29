@@ -54,6 +54,7 @@ model Product {
   reviewCount Int              @default(0)
   features    String[]
   images      String[]
+  totalStock  Int              @default(100) // Master Inventory Count
   variants    ProductVariant[]
   reviews     Review[]
   createdAt   DateTime         @default(now())
@@ -71,7 +72,7 @@ model ProductVariant {
   label          String
   savings        String
   isPopular      Boolean  @default(false)
-  stock          Int      @default(100)
+  // Stock is now calculated dynamically from Product.totalStock
 }
 
 model Review {

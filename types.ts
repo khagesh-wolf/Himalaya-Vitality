@@ -32,7 +32,7 @@ export interface ProductVariant {
   label: string;
   savings: string;
   isPopular?: boolean;
-  stock?: number;
+  stock?: number; // Computed on the fly
 }
 
 export interface Product {
@@ -42,6 +42,7 @@ export interface Product {
   rating: number;
   reviewCount: number;
   features: string[];
+  totalStock?: number; // Master inventory count
   variants: ProductVariant[];
   images: string[];
 }
