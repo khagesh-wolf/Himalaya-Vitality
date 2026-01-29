@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Trash2, Plus, Minus, ArrowRight, ShieldCheck, ShoppingBag, Tag, X, Loader2 } from 'lucide-react';
@@ -35,6 +34,11 @@ export const CartPage = () => {
   const handleCheckout = () => {
     trackBeginCheckout(cartItems, cartTotal);
   };
+
+  // Safely retrieve discount value (handles API 'value' vs Legacy 'amount')
+  const discountValue = discount 
+    ? (Number(discount.value) || Number(discount.amount) || 0)
+    : 0;
 
   if (cartItems.length === 0) {
     return (
@@ -172,7 +176,7 @@ export const CartPage = () => {
                     </div>
                     {discount && (
                     <div className="flex justify-between text-green-600">
-                        <span>Discount ({discount.type === 'PERCENTAGE' ? `${discount.amount}%` : `$${discount.amount}`} off)</span>
+                        <span>Discount ({discount.type === 'PERCENTAGE' ? `${discountValue}%` : `$${discountValue}`} off)</span>
                         <span>-{formatPrice(cartSubtotal - cartTotal)}</span>
                     </div>
                     )}

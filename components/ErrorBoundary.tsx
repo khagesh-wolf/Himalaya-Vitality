@@ -40,7 +40,7 @@ export class ErrorBoundary extends Component<Props, State> {
                     <RefreshCw size={16} className="mr-2" /> Reload Page
                 </Button>
                 
-                {import.meta.env.DEV && (
+                {(import.meta as any).env?.DEV && (
                     <div className="mt-8 p-4 bg-gray-100 rounded-lg text-left overflow-auto max-h-48">
                         <code className="text-xs text-red-500 font-mono">
                             {this.state.error?.toString()}
@@ -53,6 +53,6 @@ export class ErrorBoundary extends Component<Props, State> {
       );
     }
 
-    return this.props.children;
+    return (this.props as any).children;
   }
 }
