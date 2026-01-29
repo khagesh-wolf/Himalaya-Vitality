@@ -259,6 +259,46 @@ app.post('/api/orders', async (req, res) => {
     } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
+// --- NEW: User Orders History ---
+app.get('/api/orders/my-orders', authenticate, async (req, res) => {
+    try {
+        const orders = await prisma.order.findMany({
+            where: { userId: req.user.id },
+            orderBy: { createdAt: 'desc' },
+            include: { items: true }
+        });
+
+        // Enrich with product info for UI
+        const enhancedOrders = await Promise.all(orders.map(async (order) => {
+            const itemsDetails = await Promise.all(order.items.map(async (item) => {
+                // Find variant to get product details (title/image)
+                const variant = await prisma.productVariant.findUnique({
+                    where: { id: item.variantId },
+                    include: { product: true }
+                });
+                return {
+                    ...item,
+                    title: variant?.product?.title || variant?.name || 'Product',
+                    image: variant?.product?.images?.[0],
+                    productId: variant?.productId
+                };
+            }));
+            
+            return {
+                id: order.orderNumber,
+                date: new Date(order.createdAt).toLocaleDateString(),
+                total: order.total,
+                status: order.status,
+                itemsDetails
+            };
+        }));
+
+        res.json(enhancedOrders);
+    } catch (e) { 
+        res.status(500).json({ error: e.message }); 
+    }
+});
+
 // Admin Stats
 app.get('/api/admin/stats', requireAdmin, async (req, res) => {
     try {
