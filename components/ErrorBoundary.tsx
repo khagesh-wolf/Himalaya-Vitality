@@ -1,4 +1,4 @@
-import React, { ErrorInfo, ReactNode } from 'react';
+import React, { Component, ErrorInfo, ReactNode } from 'react';
 import { AlertTriangle, RefreshCw } from 'lucide-react';
 import { Button, Container } from './UI';
 
@@ -11,23 +11,20 @@ interface State {
   error?: Error;
 }
 
-export class ErrorBoundary extends React.Component<Props, State> {
-  constructor(props: Props) {
-    super(props);
-    this.state = {
-      hasError: false
-    };
-  }
+export class ErrorBoundary extends Component<Props, State> {
+  public state: State = {
+    hasError: false
+  };
 
-  static getDerivedStateFromError(error: Error): State {
+  public static getDerivedStateFromError(error: Error): State {
     return { hasError: true, error };
   }
 
-  componentDidCatch(error: Error, errorInfo: ErrorInfo) {
+  public componentDidCatch(error: Error, errorInfo: ErrorInfo) {
     console.error('Uncaught error:', error, errorInfo);
   }
 
-  render() {
+  public render() {
     if (this.state.hasError) {
       return (
         <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
@@ -43,7 +40,7 @@ export class ErrorBoundary extends React.Component<Props, State> {
                     <RefreshCw size={16} className="mr-2" /> Reload Page
                 </Button>
                 
-                {process.env.NODE_ENV === 'development' && (
+                {import.meta.env.DEV && (
                     <div className="mt-8 p-4 bg-gray-100 rounded-lg text-left overflow-auto max-h-48">
                         <code className="text-xs text-red-500 font-mono">
                             {this.state.error?.toString()}

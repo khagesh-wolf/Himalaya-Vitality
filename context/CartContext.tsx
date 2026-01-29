@@ -110,8 +110,10 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const calculateTotal = () => {
     if (!discount) return cartSubtotal;
     
-    // Safety check for value properties
-    const val = Number(discount.value) || Number(discount.amount) || 0;
+    // Safety check for value properties - Handle both value (API) and amount (Legacy)
+    // Coerce to number to prevent NaN from undefined
+    const rawVal = discount.value !== undefined ? discount.value : discount.amount;
+    const val = Number(rawVal) || 0;
     
     if (discount.type === 'PERCENTAGE') {
       return cartSubtotal * ((100 - val) / 100);

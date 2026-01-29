@@ -39,6 +39,15 @@ const addressSchema = z.object({
 
 type CheckoutFormData = z.infer<typeof addressSchema>;
 
+// Helper to safely get discount numerical value
+const getSafeDiscountValue = (discount: any): number => {
+    if (!discount) return 0;
+    // Prefer 'value', fallback to 'amount', fallback to 0
+    const val = discount.value !== undefined ? discount.value : discount.amount;
+    const num = parseFloat(String(val));
+    return isNaN(num) ? 0 : num;
+};
+
 // --- COMPONENT: MOBILE ORDER SUMMARY ---
 const MobileOrderSummary = ({ 
     items, 
@@ -59,9 +68,7 @@ const MobileOrderSummary = ({
     const [isOpen, setIsOpen] = useState(false);
     
     // Safely parse discount value
-    const discountVal = appliedDiscount 
-        ? (Number(appliedDiscount.value) || Number(appliedDiscount.amount) || 0) 
-        : 0;
+    const discountVal = getSafeDiscountValue(appliedDiscount);
 
     return (
         <div className="lg:hidden border-b border-gray-200 bg-gray-50">
@@ -75,7 +82,7 @@ const MobileOrderSummary = ({
                         <span>{isOpen ? 'Hide' : 'Show'} Order Summary</span>
                         {isOpen ? <ChevronUp size={16} className="ml-2 text-gray-400" /> : <ChevronDown size={16} className="ml-2 text-gray-400" />}
                     </div>
-                    <span className="font-heading font-extrabold text-lg text-brand-dark">{formatPrice(total)}</span>
+                    <span className="font-heading font-extrabold text-lg text-brand-dark">{formatPrice(total || 0)}</span>
                 </button>
 
                 {isOpen && (
@@ -131,21 +138,21 @@ const MobileOrderSummary = ({
                         <div className="space-y-2 text-sm text-gray-600">
                             <div className="flex justify-between">
                                 <span>Subtotal</span>
-                                <span>{formatPrice(subtotal)}</span>
+                                <span>{formatPrice(subtotal || 0)}</span>
                             </div>
                             {discount > 0 && (
                                 <div className="flex justify-between text-green-600 font-medium">
                                     <span>Discount {appliedDiscount?.type === 'PERCENTAGE' ? `(${discountVal}%)` : ''}</span>
-                                    <span>-{formatPrice(discount)}</span>
+                                    <span>-{formatPrice(discount || 0)}</span>
                                 </div>
                             )}
                             <div className="flex justify-between">
                                 <span>Shipping</span>
-                                <span>{shipping === 0 ? 'FREE' : formatPrice(shipping)}</span>
+                                <span>{shipping === 0 ? 'FREE' : formatPrice(shipping || 0)}</span>
                             </div>
                             <div className="flex justify-between">
                                 <span>Tax</span>
-                                <span>{formatPrice(tax)}</span>
+                                <span>{formatPrice(tax || 0)}</span>
                             </div>
                         </div>
                     </div>
@@ -450,10 +457,7 @@ export const CheckoutPage = () => {
     };
 
     // Calculate Dynamic Values
-    // Safe casting to Number to prevent NaN
-    const discountVal = activeDiscount 
-        ? (Number(activeDiscount.value) || Number(activeDiscount.amount) || 0) 
-        : 0;
+    const discountVal = getSafeDiscountValue(activeDiscount);
 
     const discountAmount = activeDiscount 
         ? (activeDiscount.type === 'PERCENTAGE' 
@@ -461,7 +465,9 @@ export const CheckoutPage = () => {
             : Math.min(discountVal, itemsSubtotal))
         : 0;
 
-    const subtotalAfterDiscount = Math.max(0, itemsSubtotal - discountAmount);
+    // Ensure we don't display NaN by using || 0 fallback
+    const safeDiscountAmount = isNaN(discountAmount) ? 0 : discountAmount;
+    const subtotalAfterDiscount = Math.max(0, itemsSubtotal - safeDiscountAmount);
     
     // Prepare User Data for Form
     const userData = user ? {
@@ -489,8 +495,12 @@ export const CheckoutPage = () => {
             const region = regions.find((r: RegionConfig) => r.code === data.country) || regions.find((r: RegionConfig) => r.code === 'OTHER');
             
             // Fallback costs if region logic fails (though DB should handle this)
-            let cost = region ? region.shippingCost : 29.95;
-            let taxRate = region ? (Number(region.taxRate) || 0) : 0;
+            let cost = region ? Number(region.shippingCost) : 29.95;
+            let taxRate = region ? Number(region.taxRate) : 0;
+            
+            // Validate numbers
+            cost = isNaN(cost) ? 29.95 : cost;
+            taxRate = isNaN(taxRate) ? 0 : taxRate;
             
             // Logic: Free shipping if 2+ items or if logic dictates (e.g. Australia)
             if (itemCount >= 2 || (region && region.shippingCost === 0)) {
@@ -551,7 +561,7 @@ export const CheckoutPage = () => {
                 subtotal={itemsSubtotal}
                 shipping={shippingData.cost}
                 tax={shippingData.tax}
-                discount={discountAmount}
+                discount={safeDiscountAmount}
                 total={step === 1 ? subtotalAfterDiscount : finalTotal}
                 formatPrice={formatPrice}
                 onApplyDiscount={handleApplyDiscount}
@@ -689,10 +699,10 @@ export const CheckoutPage = () => {
                                         <span>Subtotal</span>
                                         <span className="text-brand-dark">{formatPrice(itemsSubtotal)}</span>
                                     </div>
-                                    {discountAmount > 0 && (
+                                    {safeDiscountAmount > 0 && (
                                         <div className="flex justify-between text-green-600 font-bold">
                                             <span>Discount {activeDiscount.type === 'PERCENTAGE' && `(${discountVal}%)`}</span>
-                                            <span>-{formatPrice(discountAmount)}</span>
+                                            <span>-{formatPrice(safeDiscountAmount)}</span>
                                         </div>
                                     )}
                                     <div className="flex justify-between items-center">
