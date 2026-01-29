@@ -57,6 +57,8 @@ const MobileOrderSummary = ({
     onRemoveDiscount
 }: any) => {
     const [isOpen, setIsOpen] = useState(false);
+    // Helper to get value safely
+    const discountVal = appliedDiscount ? (appliedDiscount.value ?? appliedDiscount.amount ?? 0) : 0;
 
     return (
         <div className="lg:hidden border-b border-gray-200 bg-gray-50">
@@ -130,7 +132,7 @@ const MobileOrderSummary = ({
                             </div>
                             {discount > 0 && (
                                 <div className="flex justify-between text-green-600 font-medium">
-                                    <span>Discount</span>
+                                    <span>Discount {appliedDiscount?.type === 'PERCENTAGE' ? `(${discountVal}%)` : ''}</span>
                                     <span>-{formatPrice(discount)}</span>
                                 </div>
                             )}
@@ -445,10 +447,13 @@ export const CheckoutPage = () => {
     };
 
     // Calculate Dynamic Values
+    // Note: API returns 'value' but CartContext historically used 'amount'. Safely checking both.
+    const discountVal = activeDiscount ? (activeDiscount.value ?? activeDiscount.amount ?? 0) : 0;
+
     const discountAmount = activeDiscount 
         ? (activeDiscount.type === 'PERCENTAGE' 
-            ? itemsSubtotal * (activeDiscount.amount / 100) 
-            : Math.min(activeDiscount.amount, itemsSubtotal))
+            ? itemsSubtotal * (discountVal / 100) 
+            : Math.min(discountVal, itemsSubtotal))
         : 0;
 
     const subtotalAfterDiscount = Math.max(0, itemsSubtotal - discountAmount);
@@ -681,7 +686,7 @@ export const CheckoutPage = () => {
                                     </div>
                                     {discountAmount > 0 && (
                                         <div className="flex justify-between text-green-600 font-bold">
-                                            <span>Discount</span>
+                                            <span>Discount {activeDiscount.type === 'PERCENTAGE' && `(${discountVal}%)`}</span>
                                             <span>-{formatPrice(discountAmount)}</span>
                                         </div>
                                     )}
