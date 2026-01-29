@@ -1,16 +1,14 @@
-
 import React, { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { Package, User as UserIcon, LogOut, MapPin, Save, CreditCard, ChevronRight, Star, X } from 'lucide-react';
+import { Package, User as UserIcon, LogOut, MapPin, Save, CreditCard, ChevronRight, Star, X, Loader2 } from 'lucide-react';
 import { Container, Button, Card, Reveal, LazyImage } from '../components/UI';
 import { useAuth } from '../context/AuthContext';
 import { useCurrency } from '../context/CurrencyContext';
-import { fetchUserOrders, updateUserProfile, createReview } from '../services/api';
+import { fetchUserOrders, updateUserProfile, createReview, fetchShippingRegions } from '../services/api';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { SEO } from '../components/SEO';
-import { getDeliverableCountries } from '../utils';
 import { useNavigate } from 'react-router-dom';
 
 // Validation Schema for Profile
@@ -54,6 +52,12 @@ export const ProfilePage = () => {
       enabled: !!user
   });
 
+  // Fetch Countries from API
+  const { data: regions = [] } = useQuery({
+      queryKey: ['shipping-regions'],
+      queryFn: fetchShippingRegions
+  });
+
   const updateMutation = useMutation({
       mutationFn: updateUserProfile,
       onSuccess: () => {
@@ -86,7 +90,7 @@ export const ProfilePage = () => {
           phone: user?.phone || '',
           address: user?.address || '',
           city: user?.city || '',
-          country: user?.country || 'US',
+          country: user?.country || 'AU',
           zip: user?.zip || ''
       }
   });
@@ -113,8 +117,6 @@ export const ProfilePage = () => {
           content: reviewContent
       });
   };
-
-  const countries = getDeliverableCountries();
 
   return (
     <div className="bg-gray-50 min-h-screen pt-12 pb-20">
@@ -166,7 +168,10 @@ export const ProfilePage = () => {
                             <h2 className="font-heading font-bold text-2xl text-brand-dark mb-4">Order History</h2>
                             
                             {isLoadingOrders ? (
-                                <div className="text-center py-12 bg-white rounded-2xl shadow-sm"><p>Loading orders...</p></div>
+                                <div className="text-center py-12 bg-white rounded-2xl shadow-sm flex items-center justify-center">
+                                    <Loader2 className="animate-spin text-brand-red mr-2" />
+                                    <p>Loading orders...</p>
+                                </div>
                             ) : orders.length === 0 ? (
                                 <div className="text-center py-20 bg-white rounded-3xl shadow-sm border border-gray-200">
                                     <div className="w-16 h-16 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-4 text-gray-400">
@@ -287,7 +292,11 @@ export const ProfilePage = () => {
                                         <div className="space-y-1">
                                             <label className="text-xs font-bold text-gray-500 uppercase">Country</label>
                                             <select {...register('country')} className="w-full p-3 bg-gray-50 border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-brand-red">
-                                                {countries.map(c => <option key={c.code} value={c.code}>{c.name}</option>)}
+                                                {regions.length > 0 ? (
+                                                    regions.map((c: any) => <option key={c.id} value={c.code}>{c.name}</option>)
+                                                ) : (
+                                                    <option value="">Loading...</option>
+                                                )}
                                             </select>
                                         </div>
                                         <div className="space-y-1">
