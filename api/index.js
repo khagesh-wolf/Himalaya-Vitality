@@ -232,34 +232,7 @@ app.post('/api/create-payment-intent', async (req, res) => {
     } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-app.post('/api/orders', async (req, res) => {
-    const { customer, items, total, paymentId, userId } = req.body;
-    try {
-        const order = await prisma.order.create({
-            data: {
-                orderNumber: `HV-${Date.now()}`,
-                customerEmail: customer.email,
-                customerName: `${customer.firstName} ${customer.lastName}`,
-                shippingAddress: customer, 
-                total,
-                status: 'Paid',
-                paymentId,
-                userId: userId || null,
-                items: {
-                    create: items.map(i => ({
-                        variantId: i.variantId,
-                        quantity: i.quantity,
-                        price: i.price
-                    }))
-                }
-            }
-        });
-        await sendEmail(customer.email, `Order Confirmation ${order.orderNumber}`, `Your order has been received.`);
-        res.json({ success: true, orderId: order.orderNumber });
-    } catch(e) { res.status(500).json({ error: e.message }); }
-});
-
-// --- NEW: User Orders History ---
+// --- USER ORDERS HISTORY (Must be before other /api/orders routes) ---
 app.get('/api/orders/my-orders', authenticate, async (req, res) => {
     try {
         const orders = await prisma.order.findMany({
@@ -297,6 +270,45 @@ app.get('/api/orders/my-orders', authenticate, async (req, res) => {
     } catch (e) { 
         res.status(500).json({ error: e.message }); 
     }
+});
+
+// Public Tracking Endpoint
+app.get('/api/orders/:id/track', async (req, res) => {
+    try {
+        const order = await prisma.order.findUnique({
+            where: { orderNumber: req.params.id },
+            select: { orderNumber: true, status: true, trackingNumber: true, carrier: true }
+        });
+        if (!order) return res.status(404).json({ error: 'Order not found' });
+        res.json(order);
+    } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.post('/api/orders', async (req, res) => {
+    const { customer, items, total, paymentId, userId } = req.body;
+    try {
+        const order = await prisma.order.create({
+            data: {
+                orderNumber: `HV-${Date.now()}`,
+                customerEmail: customer.email,
+                customerName: `${customer.firstName} ${customer.lastName}`,
+                shippingAddress: customer, 
+                total,
+                status: 'Paid',
+                paymentId,
+                userId: userId || null,
+                items: {
+                    create: items.map(i => ({
+                        variantId: i.variantId,
+                        quantity: i.quantity,
+                        price: i.price
+                    }))
+                }
+            }
+        });
+        await sendEmail(customer.email, `Order Confirmation ${order.orderNumber}`, `Your order has been received.`);
+        res.json({ success: true, orderId: order.orderNumber });
+    } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
 // Admin Stats

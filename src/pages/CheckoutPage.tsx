@@ -296,7 +296,11 @@ const AddressStep = ({
                 <div className="space-y-1">
                     <label className="text-xs font-bold text-gray-500 uppercase">Country</label>
                     <select {...register('country')} autoComplete="country" className="w-full p-3 bg-gray-50 border border-gray-200 rounded-lg outline-none focus:border-brand-red">
-                        {regions.map(c => <option key={c.id} value={c.code}>{c.name}</option>)}
+                        {regions.length > 0 ? (
+                            regions.map(c => <option key={c.id} value={c.code}>{c.name}</option>)
+                        ) : (
+                            <option value="AU">Australia</option>
+                        )}
                     </select>
                 </div>
                 <div className="space-y-1">
