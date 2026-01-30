@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { Link, useSearchParams, useNavigate } from 'react-router-dom';
-import { ShieldCheck, Lock, ArrowLeft, Loader2, AlertCircle, CheckCircle, Package, UserCircle, ShoppingCart, ChevronDown, ChevronUp, CreditCard, Tag, X } from 'lucide-react';
+import { ShieldCheck, Lock, ArrowLeft, Loader2, AlertCircle, CheckCircle, Package, UserCircle, ShoppingCart, ChevronDown, ChevronUp, CreditCard } from 'lucide-react';
 import { Button, Card, Container } from '../components/UI';
 import { MAIN_PRODUCT } from '../constants';
 import { useCurrency } from '../context/CurrencyContext';
@@ -9,7 +9,7 @@ import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
 import { CartItem, RegionConfig } from '../types';
 import { useLoading } from '../context/LoadingContext';
-import { createPaymentIntent, createOrder, fetchShippingRegions, validateDiscount } from '../services/api';
+import { createPaymentIntent, createOrder, fetchShippingRegions } from '../services/api';
 import { trackPurchase } from '../services/analytics';
 import { useQuery } from '@tanstack/react-query';
 
@@ -28,26 +28,17 @@ const stripePromise = loadStripe(STRIPE_PUBLIC_KEY);
 
 // --- ZOD SCHEMAS ---
 const addressSchema = z.object({
-  email: z.string().email('Invalid email address'),
+  email: z.string().min(1, "Email is required").email('Invalid email address'),
   firstName: z.string().min(2, 'First name is required'),
   lastName: z.string().min(2, 'Last name is required'),
   address: z.string().min(5, 'Street address is required'),
   city: z.string().min(2, 'City is required'),
-  country: z.string().min(2, 'Country is required'),
+  country: z.string().min(1, 'Country is required'),
   zip: z.string().min(3, 'ZIP code is required'),
   phone: z.string().optional(),
 });
 
 type CheckoutFormData = z.infer<typeof addressSchema>;
-
-// Helper to safely get discount numerical value
-const getSafeDiscountValue = (discount: any): number => {
-    if (!discount) return 0;
-    // Prefer 'value', fallback to 'amount', fallback to 0
-    const val = discount.value !== undefined ? discount.value : discount.amount;
-    const num = parseFloat(String(val));
-    return isNaN(num) ? 0 : num;
-};
 
 // --- COMPONENT: MOBILE ORDER SUMMARY ---
 const MobileOrderSummary = ({ 
@@ -55,21 +46,17 @@ const MobileOrderSummary = ({
     subtotal, 
     shipping, 
     tax, 
-    discount,
     total, 
-    formatPrice,
-    onApplyDiscount,
-    discountCode,
-    setDiscountCode,
-    isApplyingDiscount,
-    discountError,
-    appliedDiscount,
-    onRemoveDiscount
-}: any) => {
+    formatPrice 
+}: { 
+    items: CartItem[], 
+    subtotal: number, 
+    shipping: number, 
+    tax: number, 
+    total: number, 
+    formatPrice: (p: number) => string 
+}) => {
     const [isOpen, setIsOpen] = useState(false);
-    
-    // Safely parse discount value
-    const discountVal = getSafeDiscountValue(appliedDiscount);
 
     return (
         <div className="lg:hidden border-b border-gray-200 bg-gray-50">
@@ -83,13 +70,13 @@ const MobileOrderSummary = ({
                         <span>{isOpen ? 'Hide' : 'Show'} Order Summary</span>
                         {isOpen ? <ChevronUp size={16} className="ml-2 text-gray-400" /> : <ChevronDown size={16} className="ml-2 text-gray-400" />}
                     </div>
-                    <span className="font-heading font-extrabold text-lg text-brand-dark">{formatPrice(total || 0)}</span>
+                    <span className="font-heading font-extrabold text-lg text-brand-dark">{formatPrice(total)}</span>
                 </button>
 
                 {isOpen && (
                     <div className="pb-6 animate-in fade-in slide-in-from-top-2">
                         <div className="space-y-4 mb-6 border-b border-gray-200 pb-6">
-                            {items.map((item: CartItem, idx: number) => (
+                            {items.map((item, idx) => (
                                 <div key={idx} className="flex items-start space-x-4">
                                     <div className="w-16 h-16 bg-white rounded-xl border border-gray-200 overflow-hidden relative shrink-0">
                                         <img src={item.image} alt={item.productTitle} className="w-full h-full object-cover" />
@@ -103,57 +90,18 @@ const MobileOrderSummary = ({
                                 </div>
                             ))}
                         </div>
-
-                        {/* Mobile Discount Input */}
-                        <div className="mb-6">
-                            {!appliedDiscount ? (
-                                <div className="flex gap-2">
-                                    <div className="relative flex-grow">
-                                        <input 
-                                            type="text" 
-                                            placeholder="Discount code" 
-                                            className={`w-full p-3 pl-10 border rounded-lg text-sm outline-none focus:ring-2 focus:ring-brand-red ${discountError ? 'border-red-300 bg-red-50' : 'border-gray-200 bg-white'}`}
-                                            value={discountCode}
-                                            onChange={(e) => setDiscountCode(e.target.value)}
-                                        />
-                                        <Tag size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-                                    </div>
-                                    <Button size="sm" onClick={onApplyDiscount} disabled={isApplyingDiscount} className="px-4 bg-gray-900 text-white">
-                                        {isApplyingDiscount ? <Loader2 size={16} className="animate-spin" /> : 'Apply'}
-                                    </Button>
-                                </div>
-                            ) : (
-                                <div className="flex justify-between items-center bg-green-50 border border-green-200 p-3 rounded-lg">
-                                    <div className="flex items-center text-green-700 font-bold text-xs">
-                                        <Tag size={14} className="mr-2" />
-                                        <span>Code: {appliedDiscount.code} applied</span>
-                                    </div>
-                                    <button onClick={onRemoveDiscount} className="text-gray-400 hover:text-red-500">
-                                        <X size={16} />
-                                    </button>
-                                </div>
-                            )}
-                            {discountError && <p className="text-xs text-red-500 mt-2 font-medium">{discountError}</p>}
-                        </div>
-
                         <div className="space-y-2 text-sm text-gray-600">
                             <div className="flex justify-between">
                                 <span>Subtotal</span>
-                                <span>{formatPrice(subtotal || 0)}</span>
+                                <span>{formatPrice(subtotal)}</span>
                             </div>
-                            {discount > 0 && (
-                                <div className="flex justify-between text-green-600 font-medium">
-                                    <span>Discount {appliedDiscount?.type === 'PERCENTAGE' ? `(${discountVal}%)` : ''}</span>
-                                    <span>-{formatPrice(discount || 0)}</span>
-                                </div>
-                            )}
                             <div className="flex justify-between">
                                 <span>Shipping</span>
-                                <span>{shipping === 0 ? 'FREE' : formatPrice(shipping || 0)}</span>
+                                <span>{shipping === 0 ? 'FREE' : formatPrice(shipping)}</span>
                             </div>
                             <div className="flex justify-between">
                                 <span>Tax</span>
-                                <span>{formatPrice(tax || 0)}</span>
+                                <span>{formatPrice(tax)}</span>
                             </div>
                         </div>
                     </div>
@@ -229,19 +177,24 @@ const PaymentStep = ({
                 setIsLoading(false);
             } else if (paymentIntent && paymentIntent.status === 'succeeded') {
                 // Payment succeeded, create order in DB
-                const order = await createOrder({
-                    customer: customerData,
-                    items,
-                    total,
-                    paymentId: paymentIntent.id,
-                    userId: user?.id,
-                    discountCode: discountCode // Send used coupon to record usage
-                });
-                
-                // Track Purchase
-                trackPurchase(order.orderId, total, items);
+                try {
+                    const order = await createOrder({
+                        customer: customerData,
+                        items,
+                        total,
+                        paymentId: paymentIntent.id,
+                        userId: user?.id,
+                        discountCode: discountCode 
+                    });
+                    
+                    // Track Purchase
+                    trackPurchase(order.orderId, total, items);
 
-                onSuccess(order.orderId);
+                    onSuccess(order.orderId);
+                } catch(orderError: any) {
+                    // Critical: Payment succeeded but DB failed (e.g., Coupon used)
+                    setMessage(orderError.message || "Payment processed, but order creation failed. Please contact support.");
+                }
                 setIsLoading(false);
             }
         } catch(err: any) {
@@ -323,8 +276,8 @@ const AddressStep = ({
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="space-y-1">
                         <label className="text-xs font-bold text-gray-500 uppercase">Email</label>
-                        <input {...register('email')} autoComplete="email" type="email" className={`w-full p-3 bg-white border rounded-lg outline-none transition-all ${errors.email ? 'border-red-500' : 'border-gray-200 focus:border-brand-red'}`} placeholder="email@example.com" />
-                        {errors.email && <p className="text-red-500 text-xs">{errors.email.message}</p>}
+                        <input {...register('email')} autoComplete="email" type="email" className={`w-full p-3 bg-white border rounded-lg outline-none transition-all ${errors.email ? 'border-red-500 bg-red-50' : 'border-gray-200 focus:border-brand-red'}`} placeholder="email@example.com" />
+                        {errors.email && <p className="text-red-500 text-xs mt-1">{errors.email.message}</p>}
                     </div>
                     <div className="space-y-1">
                         <label className="text-xs font-bold text-gray-500 uppercase">Phone</label>
@@ -336,42 +289,43 @@ const AddressStep = ({
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-1">
                     <label className="text-xs font-bold text-gray-500 uppercase">First Name</label>
-                    <input {...register('firstName')} autoComplete="given-name" type="text" className={`w-full p-3 bg-gray-50 border rounded-lg outline-none ${errors.firstName ? 'border-red-500' : 'border-gray-200 focus:border-brand-red'}`} />
-                    {errors.firstName && <p className="text-red-500 text-xs">{errors.firstName.message}</p>}
+                    <input {...register('firstName')} autoComplete="given-name" type="text" className={`w-full p-3 bg-gray-50 border rounded-lg outline-none ${errors.firstName ? 'border-red-500 bg-red-50' : 'border-gray-200 focus:border-brand-red'}`} />
+                    {errors.firstName && <p className="text-red-500 text-xs mt-1">{errors.firstName.message}</p>}
                 </div>
                 <div className="space-y-1">
                     <label className="text-xs font-bold text-gray-500 uppercase">Last Name</label>
-                    <input {...register('lastName')} autoComplete="family-name" type="text" className={`w-full p-3 bg-gray-50 border rounded-lg outline-none ${errors.lastName ? 'border-red-500' : 'border-gray-200 focus:border-brand-red'}`} />
-                    {errors.lastName && <p className="text-red-500 text-xs">{errors.lastName.message}</p>}
+                    <input {...register('lastName')} autoComplete="family-name" type="text" className={`w-full p-3 bg-gray-50 border rounded-lg outline-none ${errors.lastName ? 'border-red-500 bg-red-50' : 'border-gray-200 focus:border-brand-red'}`} />
+                    {errors.lastName && <p className="text-red-500 text-xs mt-1">{errors.lastName.message}</p>}
                 </div>
             </div>
 
             <div className="space-y-1">
                 <label className="text-xs font-bold text-gray-500 uppercase">Address</label>
-                <input {...register('address')} autoComplete="street-address" type="text" className={`w-full p-3 bg-gray-50 border rounded-lg outline-none ${errors.address ? 'border-red-500' : 'border-gray-200 focus:border-brand-red'}`} />
-                {errors.address && <p className="text-red-500 text-xs">{errors.address.message}</p>}
+                <input {...register('address')} autoComplete="street-address" type="text" className={`w-full p-3 bg-gray-50 border rounded-lg outline-none ${errors.address ? 'border-red-500 bg-red-50' : 'border-gray-200 focus:border-brand-red'}`} />
+                {errors.address && <p className="text-red-500 text-xs mt-1">{errors.address.message}</p>}
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="space-y-1">
                     <label className="text-xs font-bold text-gray-500 uppercase">Country</label>
-                    <select {...register('country')} autoComplete="country" className="w-full p-3 bg-gray-50 border border-gray-200 rounded-lg outline-none focus:border-brand-red">
+                    <select {...register('country')} autoComplete="country" className={`w-full p-3 bg-gray-50 border rounded-lg outline-none ${errors.country ? 'border-red-500 bg-red-50' : 'border-gray-200 focus:border-brand-red'}`}>
                         {regions.length > 0 ? (
                             regions.map(c => <option key={c.id} value={c.code}>{c.name}</option>)
                         ) : (
                             <option value="">Loading...</option>
                         )}
                     </select>
+                    {errors.country && <p className="text-red-500 text-xs mt-1">{errors.country.message}</p>}
                 </div>
                 <div className="space-y-1">
                     <label className="text-xs font-bold text-gray-500 uppercase">City</label>
-                    <input {...register('city')} autoComplete="address-level2" type="text" className={`w-full p-3 bg-gray-50 border rounded-lg outline-none ${errors.city ? 'border-red-500' : 'border-gray-200 focus:border-brand-red'}`} />
-                    {errors.city && <p className="text-red-500 text-xs">{errors.city.message}</p>}
+                    <input {...register('city')} autoComplete="address-level2" type="text" className={`w-full p-3 bg-gray-50 border rounded-lg outline-none ${errors.city ? 'border-red-500 bg-red-50' : 'border-gray-200 focus:border-brand-red'}`} />
+                    {errors.city && <p className="text-red-500 text-xs mt-1">{errors.city.message}</p>}
                 </div>
                 <div className="space-y-1">
                     <label className="text-xs font-bold text-gray-500 uppercase">ZIP</label>
-                    <input {...register('zip')} autoComplete="postal-code" type="text" className={`w-full p-3 bg-gray-50 border rounded-lg outline-none ${errors.zip ? 'border-red-500' : 'border-gray-200 focus:border-brand-red'}`} />
-                    {errors.zip && <p className="text-red-500 text-xs">{errors.zip.message}</p>}
+                    <input {...register('zip')} autoComplete="postal-code" type="text" className={`w-full p-3 bg-gray-50 border rounded-lg outline-none ${errors.zip ? 'border-red-500 bg-red-50' : 'border-gray-200 focus:border-brand-red'}`} />
+                    {errors.zip && <p className="text-red-500 text-xs mt-1">{errors.zip.message}</p>}
                 </div>
             </div>
 
@@ -413,8 +367,7 @@ export const CheckoutPage = () => {
         bundleType: directVariant.type
     }] : cartItems;
 
-    // Calculate Raw Items Subtotal (Before any discount)
-    const itemsSubtotal = checkoutItems.reduce((acc, item) => acc + (item.price * item.quantity), 0);
+    const baseSubtotal = directVariant ? directVariant.price : cartTotal;
     const itemCount = checkoutItems.reduce((acc, item) => acc + item.quantity, 0);
 
     // State
@@ -423,62 +376,9 @@ export const CheckoutPage = () => {
     const [clientSecret, setClientSecret] = useState<string>('');
     const [customerData, setCustomerData] = useState<CheckoutFormData | null>(null);
 
-    // Discount Logic
-    const [activeDiscount, setActiveDiscount] = useState<any>(null);
-    const [discountCode, setDiscountCode] = useState('');
-    const [discountError, setDiscountError] = useState('');
-    const [isApplyingDiscount, setIsApplyingDiscount] = useState(false);
+    // Discount Logic is handled in CartContext for cart mode, but we can pass it here
+    const discountCode = contextDiscount?.code;
 
-    // Initialize discount from Context (Cart mode) 
-    useEffect(() => {
-        if (!directVariant && contextDiscount) {
-            setActiveDiscount(contextDiscount);
-        }
-    }, [directVariant, contextDiscount]);
-
-    // Apply Discount
-    const handleApplyDiscount = async () => {
-        if (!discountCode) return;
-        setDiscountError('');
-        setIsApplyingDiscount(true);
-        try {
-            const valid = await validateDiscount(discountCode);
-            // validateDiscount now returns JSON even on error usually handled by api wrapper, 
-            // but api wrapper throws on non-200.
-            if (valid) {
-                setActiveDiscount(valid);
-                setDiscountCode('');
-            }
-        } catch (error: any) {
-            let msg = 'Unable to apply code.';
-            if (error.message && (error.message.includes('Unauthorized') || error.status === 401)) {
-                msg = 'Please sign in to use this coupon.';
-            } else if (error.message) {
-                msg = error.message;
-            }
-            setDiscountError(msg);
-        } finally {
-            setIsApplyingDiscount(false);
-        }
-    };
-
-    const handleRemoveDiscount = () => {
-        setActiveDiscount(null);
-    };
-
-    // Calculate Dynamic Values
-    const discountVal = getSafeDiscountValue(activeDiscount);
-
-    const discountAmount = activeDiscount 
-        ? (activeDiscount.type === 'PERCENTAGE' 
-            ? itemsSubtotal * (discountVal / 100) 
-            : Math.min(discountVal, itemsSubtotal))
-        : 0;
-
-    // Ensure we don't display NaN by using || 0 fallback
-    const safeDiscountAmount = isNaN(discountAmount) ? 0 : discountAmount;
-    const subtotalAfterDiscount = Math.max(0, itemsSubtotal - safeDiscountAmount);
-    
     // Prepare User Data for Form
     const userData = user ? {
         email: user.email,
@@ -508,22 +408,18 @@ export const CheckoutPage = () => {
             let cost = region ? Number(region.shippingCost) : 29.95;
             let taxRate = region ? Number(region.taxRate) : 0;
             
-            // Validate numbers
-            cost = isNaN(cost) ? 29.95 : cost;
-            taxRate = isNaN(taxRate) ? 0 : taxRate;
-            
             // Logic: Free shipping if 2+ items or if logic dictates (e.g. Australia)
+            // Replicating business logic with dynamic data
             if (itemCount >= 2 || (region && region.shippingCost === 0)) {
                 cost = 0;
             }
 
-            // Tax is usually calculated on discounted price
-            const tax = subtotalAfterDiscount * (taxRate / 100);
+            const tax = baseSubtotal * (taxRate / 100);
             
             setShippingData({ cost, tax });
             
             // 2. Create/Update Payment Intent with FINAL Total
-            const finalTotal = subtotalAfterDiscount + cost + tax;
+            const finalTotal = baseSubtotal + cost + tax;
             const { clientSecret, mockSecret } = await createPaymentIntent(checkoutItems, 'USD', finalTotal); 
             
             setClientSecret(clientSecret || mockSecret || '');
@@ -537,12 +433,12 @@ export const CheckoutPage = () => {
         }
     };
 
-    const finalTotal = subtotalAfterDiscount + shippingData.cost + shippingData.tax;
+    const finalTotal = baseSubtotal + shippingData.cost + shippingData.tax;
 
     const handleSuccess = (orderId: string) => {
         clearCart();
-        alert(`Order ${orderId} placed successfully! Check your email.`);
-        navigate('/profile');
+        // Redirect to new confirmation page to support guest users
+        navigate('/order-confirmation', { state: { orderId } });
     };
 
     return (
@@ -568,19 +464,11 @@ export const CheckoutPage = () => {
             {/* Mobile Order Summary Toggle */}
             <MobileOrderSummary 
                 items={checkoutItems}
-                subtotal={itemsSubtotal}
+                subtotal={baseSubtotal}
                 shipping={shippingData.cost}
                 tax={shippingData.tax}
-                discount={safeDiscountAmount}
-                total={step === 1 ? subtotalAfterDiscount : finalTotal}
+                total={step === 1 ? baseSubtotal : finalTotal}
                 formatPrice={formatPrice}
-                onApplyDiscount={handleApplyDiscount}
-                discountCode={discountCode}
-                setDiscountCode={setDiscountCode}
-                isApplyingDiscount={isApplyingDiscount}
-                discountError={discountError}
-                appliedDiscount={activeDiscount}
-                onRemoveDiscount={handleRemoveDiscount}
             />
 
             <Container className="pt-8">
@@ -642,7 +530,7 @@ export const CheckoutPage = () => {
                                             items={checkoutItems}
                                             total={finalTotal}
                                             customerData={customerData}
-                                            discountCode={activeDiscount?.code}
+                                            discountCode={discountCode}
                                             onSuccess={handleSuccess}
                                             onBack={() => setStep(1)}
                                         />
@@ -672,59 +560,11 @@ export const CheckoutPage = () => {
                                         </div>
                                     ))}
                                 </div>
-
-                                {/* Discount Input */}
-                                <div className="mb-6">
-                                    {!activeDiscount ? (
-                                        <div className="flex gap-2">
-                                            <div className="relative flex-grow">
-                                                <input 
-                                                    type="text" 
-                                                    placeholder="Discount code" 
-                                                    className={`w-full p-3 pl-10 border rounded-lg text-sm outline-none focus:ring-2 focus:ring-brand-red ${discountError ? 'border-red-300 bg-red-50' : 'border-gray-200 bg-gray-50'}`}
-                                                    value={discountCode}
-                                                    onChange={(e) => setDiscountCode(e.target.value)}
-                                                />
-                                                <Tag size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-                                            </div>
-                                            <Button size="sm" onClick={handleApplyDiscount} disabled={isApplyingDiscount} className="px-4">
-                                                {isApplyingDiscount ? <Loader2 size={16} className="animate-spin" /> : 'Apply'}
-                                            </Button>
-                                        </div>
-                                    ) : (
-                                        <div className="flex justify-between items-center bg-green-50 border border-green-200 p-3 rounded-lg">
-                                            <div className="flex items-center text-green-700 font-bold text-xs">
-                                                <Tag size={14} className="mr-2" />
-                                                <span>Code: {activeDiscount.code} applied</span>
-                                            </div>
-                                            <button onClick={handleRemoveDiscount} className="text-gray-400 hover:text-red-500">
-                                                <X size={16} />
-                                            </button>
-                                        </div>
-                                    )}
-                                    {discountError && (
-                                        <div className="mt-2">
-                                            <p className="text-xs text-red-500 font-medium">{discountError}</p>
-                                            {discountError.includes('sign in') && (
-                                                <Link to="/login" state={{ from: '/checkout' }} className="text-xs font-bold text-brand-dark underline mt-1 block">
-                                                    Login to account
-                                                </Link>
-                                            )}
-                                        </div>
-                                    )}
-                                </div>
-
                                 <div className="space-y-3 mb-6 text-sm text-gray-600 font-medium">
                                     <div className="flex justify-between">
                                         <span>Subtotal</span>
-                                        <span className="text-brand-dark">{formatPrice(itemsSubtotal)}</span>
+                                        <span className="text-brand-dark">{formatPrice(baseSubtotal)}</span>
                                     </div>
-                                    {safeDiscountAmount > 0 && (
-                                        <div className="flex justify-between text-green-600 font-bold">
-                                            <span>Discount {activeDiscount.type === 'PERCENTAGE' && `(${discountVal}%)`}</span>
-                                            <span>-{formatPrice(safeDiscountAmount)}</span>
-                                        </div>
-                                    )}
                                     <div className="flex justify-between items-center">
                                         <span>Shipping</span>
                                         <span className={`font-bold ${shippingData.cost === 0 && step === 2 ? 'text-green-600' : 'text-brand-dark'}`}>
@@ -740,7 +580,7 @@ export const CheckoutPage = () => {
                                 </div>
                                 <div className="flex justify-between border-t border-gray-100 pt-6 font-heading font-extrabold text-xl text-brand-dark">
                                     <span>Total</span>
-                                    <span>{step === 1 ? formatPrice(subtotalAfterDiscount) : formatPrice(finalTotal)}</span>
+                                    <span>{step === 1 ? formatPrice(baseSubtotal) : formatPrice(finalTotal)}</span>
                                 </div>
                                 <div className="mt-6 bg-green-50 p-3 rounded-lg flex items-center justify-center text-xs text-green-700 font-bold border border-green-100">
                                     <CheckCircle size={14} className="mr-2" />

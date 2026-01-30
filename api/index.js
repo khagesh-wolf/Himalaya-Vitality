@@ -45,6 +45,20 @@ const authenticate = (req, res, next) => {
     });
 };
 
+// Optional auth: attempts to identify user but doesn't block if token missing
+const optionalAuth = (req, res, next) => {
+    const authHeader = req.headers['authorization'];
+    const token = authHeader && authHeader.split(' ')[1];
+    if (token) {
+        jwt.verify(token, JWT_SECRET, (err, user) => {
+            if (!err) req.user = user;
+            next();
+        });
+    } else {
+        next();
+    }
+};
+
 const requireAdmin = (req, res, next) => {
     authenticate(req, res, () => {
         // Case-insensitive check for ADMIN role
@@ -235,7 +249,8 @@ app.delete('/api/discounts/:id', requireAdmin, async (req, res) => {
     } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-app.post('/api/discounts/validate', authenticate, async (req, res) => {
+// Modified: Publicly validate code, but check usage if logged in
+app.post('/api/discounts/validate', optionalAuth, async (req, res) => {
     const { code } = req.body;
     try {
         const discount = await prisma.discount.findUnique({ where: { code: code.toUpperCase() } });
@@ -244,18 +259,19 @@ app.post('/api/discounts/validate', authenticate, async (req, res) => {
             return res.status(404).json({ error: 'Invalid or expired code' });
         }
 
-        // Check if user has already used this discount
-        const existingUsage = await prisma.discountUsage.findUnique({
-            where: {
-                userId_discountId: {
+        // Only check usage here if user is logged in
+        // Guest usage is checked at Order Creation time when we have their email
+        if (req.user) {
+            const existingUsage = await prisma.discountUsage.findFirst({
+                where: {
                     userId: req.user.id,
                     discountId: discount.id
                 }
-            }
-        });
+            });
 
-        if (existingUsage) {
-            return res.status(409).json({ error: 'You have already used this coupon code.' });
+            if (existingUsage) {
+                return res.status(409).json({ error: 'You have already used this coupon code.' });
+            }
         }
 
         res.json(discount);
@@ -346,12 +362,37 @@ app.post('/api/orders', async (req, res) => {
             totalJarsToRemove += (item.quantity * multiplier);
         }
 
-        // 2. Perform Transaction: Create Order & Decrement Master Stock & Record Discount Usage
+        // 2. Perform Transaction: Verify Usage, Create Order & Decrement Master Stock & Record Discount Usage
         const result = await prisma.$transaction(async (tx) => {
-            // Check stock first (optional, but good practice)
+            // Check stock
             const product = await tx.product.findUnique({ where: { id: DEFAULT_PRODUCT_ID } });
             if (product.totalStock < totalJarsToRemove) {
                 throw new Error("Insufficient stock");
+            }
+
+            // CHECK COUPON USAGE AGAIN STRICTLY FOR GUESTS AND USERS
+            if (discountCode) {
+                const discount = await tx.discount.findUnique({ where: { code: discountCode.toUpperCase() } });
+                if (discount) {
+                    const usageCheckQuery = userId 
+                        ? { userId: userId, discountId: discount.id }
+                        : { guestEmail: customer.email, discountId: discount.id };
+
+                    const existingUsage = await tx.discountUsage.findFirst({ where: usageCheckQuery });
+                    
+                    if (existingUsage) {
+                        throw new Error(`The coupon '${discountCode}' has already been used by this email/account.`);
+                    }
+
+                    // Record Usage
+                    await tx.discountUsage.create({
+                        data: {
+                            userId: userId || null,
+                            guestEmail: userId ? null : customer.email, // If guest, save email
+                            discountId: discount.id
+                        }
+                    });
+                }
             }
 
             // Decrement Stock
@@ -370,19 +411,6 @@ app.post('/api/orders', async (req, res) => {
                     date: new Date().toLocaleDateString()
                 }
             });
-
-            // Record Discount Usage if provided and user exists
-            if (discountCode && userId) {
-                const discount = await tx.discount.findUnique({ where: { code: discountCode.toUpperCase() } });
-                if (discount) {
-                    await tx.discountUsage.create({
-                        data: {
-                            userId: userId,
-                            discountId: discount.id
-                        }
-                    });
-                }
-            }
 
             // Create Order
             const order = await tx.order.create({

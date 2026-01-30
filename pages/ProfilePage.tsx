@@ -1,8 +1,9 @@
+
 import React, { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { Package, User as UserIcon, LogOut, MapPin, Save, CreditCard, ChevronRight, Star, X, Loader2 } from 'lucide-react';
+import { Package, User as UserIcon, LogOut, MapPin, Save, CreditCard, ChevronRight, Star, X, Loader2, AlertCircle } from 'lucide-react';
 import { Container, Button, Card, Reveal, LazyImage } from '../components/UI';
 import { useAuth } from '../context/AuthContext';
 import { useCurrency } from '../context/CurrencyContext';
@@ -11,16 +12,16 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { SEO } from '../components/SEO';
 import { useNavigate } from 'react-router-dom';
 
-// Validation Schema for Profile
+// STRICT Validation Schema for Profile
 const profileSchema = z.object({
-  firstName: z.string().min(2, 'First name is required'),
-  lastName: z.string().min(2, 'Last name is required'),
-  email: z.string().email('Invalid email').optional(), // Read-only usually
+  firstName: z.string().min(2, 'First name must be at least 2 characters'),
+  lastName: z.string().min(2, 'Last name must be at least 2 characters'),
+  email: z.string().email('Invalid email address').optional().or(z.literal('')),
   phone: z.string().optional(),
-  address: z.string().min(5, 'Address is required'),
+  address: z.string().min(5, 'Street address is required'),
   city: z.string().min(2, 'City is required'),
-  country: z.string().min(2, 'Country is required'),
-  zip: z.string().min(3, 'ZIP is required'),
+  country: z.string().min(1, 'Country is required'), // Ensures a value is selected
+  zip: z.string().min(3, 'ZIP/Postal code is required'),
 });
 
 type ProfileFormData = z.infer<typeof profileSchema>;
@@ -251,24 +252,38 @@ export const ProfilePage = () => {
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                         <div className="space-y-1">
                                             <label className="text-xs font-bold text-gray-500 uppercase">First Name</label>
-                                            <input {...register('firstName')} className="w-full p-3 bg-gray-50 border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-brand-red" />
-                                            {errors.firstName && <p className="text-red-500 text-xs">{errors.firstName.message}</p>}
+                                            <input 
+                                                {...register('firstName')} 
+                                                className={`w-full p-3 bg-gray-50 border rounded-lg outline-none focus:ring-2 focus:ring-brand-red ${errors.firstName ? 'border-red-500 bg-red-50' : 'border-gray-200'}`}
+                                            />
+                                            {errors.firstName && <p className="text-red-500 text-xs font-bold mt-1 flex items-center"><AlertCircle size={12} className="mr-1"/> {errors.firstName.message}</p>}
                                         </div>
                                         <div className="space-y-1">
                                             <label className="text-xs font-bold text-gray-500 uppercase">Last Name</label>
-                                            <input {...register('lastName')} className="w-full p-3 bg-gray-50 border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-brand-red" />
-                                            {errors.lastName && <p className="text-red-500 text-xs">{errors.lastName.message}</p>}
+                                            <input 
+                                                {...register('lastName')} 
+                                                className={`w-full p-3 bg-gray-50 border rounded-lg outline-none focus:ring-2 focus:ring-brand-red ${errors.lastName ? 'border-red-500 bg-red-50' : 'border-gray-200'}`} 
+                                            />
+                                            {errors.lastName && <p className="text-red-500 text-xs font-bold mt-1 flex items-center"><AlertCircle size={12} className="mr-1"/> {errors.lastName.message}</p>}
                                         </div>
                                     </div>
 
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                         <div className="space-y-1">
                                             <label className="text-xs font-bold text-gray-500 uppercase">Email Address</label>
-                                            <input {...register('email')} disabled className="w-full p-3 bg-gray-100 border border-gray-200 rounded-lg text-gray-500 cursor-not-allowed" />
+                                            <input 
+                                                {...register('email')} 
+                                                disabled 
+                                                className="w-full p-3 bg-gray-100 border border-gray-200 rounded-lg text-gray-500 cursor-not-allowed" 
+                                            />
+                                            {errors.email && <p className="text-red-500 text-xs font-bold mt-1 flex items-center"><AlertCircle size={12} className="mr-1"/> {errors.email.message}</p>}
                                         </div>
                                         <div className="space-y-1">
                                             <label className="text-xs font-bold text-gray-500 uppercase">Phone Number</label>
-                                            <input {...register('phone')} className="w-full p-3 bg-gray-50 border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-brand-red" />
+                                            <input 
+                                                {...register('phone')} 
+                                                className="w-full p-3 bg-gray-50 border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-brand-red" 
+                                            />
                                         </div>
                                     </div>
 
@@ -279,30 +294,43 @@ export const ProfilePage = () => {
 
                                     <div className="space-y-1">
                                         <label className="text-xs font-bold text-gray-500 uppercase">Street Address</label>
-                                        <input {...register('address')} className="w-full p-3 bg-gray-50 border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-brand-red" />
-                                        {errors.address && <p className="text-red-500 text-xs">{errors.address.message}</p>}
+                                        <input 
+                                            {...register('address')} 
+                                            className={`w-full p-3 bg-gray-50 border rounded-lg outline-none focus:ring-2 focus:ring-brand-red ${errors.address ? 'border-red-500 bg-red-50' : 'border-gray-200'}`} 
+                                        />
+                                        {errors.address && <p className="text-red-500 text-xs font-bold mt-1 flex items-center"><AlertCircle size={12} className="mr-1"/> {errors.address.message}</p>}
                                     </div>
 
                                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                                         <div className="space-y-1">
                                             <label className="text-xs font-bold text-gray-500 uppercase">City</label>
-                                            <input {...register('city')} className="w-full p-3 bg-gray-50 border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-brand-red" />
-                                            {errors.city && <p className="text-red-500 text-xs">{errors.city.message}</p>}
+                                            <input 
+                                                {...register('city')} 
+                                                className={`w-full p-3 bg-gray-50 border rounded-lg outline-none focus:ring-2 focus:ring-brand-red ${errors.city ? 'border-red-500 bg-red-50' : 'border-gray-200'}`} 
+                                            />
+                                            {errors.city && <p className="text-red-500 text-xs font-bold mt-1 flex items-center"><AlertCircle size={12} className="mr-1"/> {errors.city.message}</p>}
                                         </div>
                                         <div className="space-y-1">
                                             <label className="text-xs font-bold text-gray-500 uppercase">Country</label>
-                                            <select {...register('country')} className="w-full p-3 bg-gray-50 border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-brand-red">
+                                            <select 
+                                                {...register('country')} 
+                                                className={`w-full p-3 bg-gray-50 border rounded-lg outline-none focus:ring-2 focus:ring-brand-red ${errors.country ? 'border-red-500 bg-red-50' : 'border-gray-200'}`}
+                                            >
                                                 {regions.length > 0 ? (
                                                     regions.map((c: any) => <option key={c.id} value={c.code}>{c.name}</option>)
                                                 ) : (
                                                     <option value="">Loading...</option>
                                                 )}
                                             </select>
+                                            {errors.country && <p className="text-red-500 text-xs font-bold mt-1 flex items-center"><AlertCircle size={12} className="mr-1"/> {errors.country.message}</p>}
                                         </div>
                                         <div className="space-y-1">
                                             <label className="text-xs font-bold text-gray-500 uppercase">ZIP / Postal Code</label>
-                                            <input {...register('zip')} className="w-full p-3 bg-gray-50 border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-brand-red" />
-                                            {errors.zip && <p className="text-red-500 text-xs">{errors.zip.message}</p>}
+                                            <input 
+                                                {...register('zip')} 
+                                                className={`w-full p-3 bg-gray-50 border rounded-lg outline-none focus:ring-2 focus:ring-brand-red ${errors.zip ? 'border-red-500 bg-red-50' : 'border-gray-200'}`} 
+                                            />
+                                            {errors.zip && <p className="text-red-500 text-xs font-bold mt-1 flex items-center"><AlertCircle size={12} className="mr-1"/> {errors.zip.message}</p>}
                                         </div>
                                     </div>
 

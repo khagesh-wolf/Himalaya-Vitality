@@ -1,3 +1,4 @@
+
 import React, { useEffect, Suspense } from 'react';
 import { HashRouter, Routes, Route, useLocation } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -31,6 +32,7 @@ const SignupPage = React.lazy(() => import('./pages/AuthPages').then(m => ({ def
 const VerifyEmailPage = React.lazy(() => import('./pages/AuthPages').then(m => ({ default: m.VerifyEmailPage })));
 const ForgotPasswordPage = React.lazy(() => import('./pages/AuthPages').then(m => ({ default: m.ForgotPasswordPage })));
 const ProfilePage = React.lazy(() => import('./pages/ProfilePage').then(m => ({ default: m.ProfilePage })));
+const OrderConfirmationPage = React.lazy(() => import('./pages/OrderConfirmationPage').then(m => ({ default: m.OrderConfirmationPage })));
 
 // Lazy load static pages
 const AboutPage = React.lazy(() => import('./pages/StaticPages').then(m => ({ default: m.AboutPage })));
@@ -101,6 +103,7 @@ const App = () => {
                               
                               {/* Checkout has its own layout inside the component */}
                               <Route path="/checkout" element={<><SEO title="Secure Checkout" /><CheckoutPage /></>} />
+                              <Route path="/order-confirmation" element={<><SEO title="Order Confirmed" /><OrderConfirmationPage /></>} />
                               
                               <Route path="/login" element={<LoginPage />} />
                               <Route path="/signup" element={<SignupPage />} />
