@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { CartItem, ProductVariant, Product, BundleType } from '../types';
 import { validateDiscount } from '../services/api';
@@ -15,7 +16,7 @@ interface CartContextType {
   removeFromCart: (variantId: string) => void;
   updateQuantity: (variantId: string, quantity: number) => void;
   clearCart: () => void;
-  applyDiscount: (code: string) => Promise<boolean>;
+  applyDiscount: (code: string) => Promise<{ success: boolean, message?: string }>;
   removeDiscount: () => void;
   cartSubtotal: number;
   cartTotal: number;
@@ -87,17 +88,24 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setDiscount(null);
   };
 
-  const applyDiscount = async (code: string): Promise<boolean> => {
+  const applyDiscount = async (code: string): Promise<{ success: boolean, message?: string }> => {
     try {
         const validDiscount = await validateDiscount(code);
         if (validDiscount) {
             setDiscount(validDiscount);
-            return true;
+            return { success: true };
         }
-        return false;
-    } catch (e) {
+        return { success: false, message: 'Invalid code' };
+    } catch (e: any) {
         console.error("Discount invalid", e);
-        return false;
+        // Extract specific messages (e.g., 'Unauthorized', 'Already used')
+        let msg = 'Unable to apply code.';
+        if (e.message && (e.message.includes('Unauthorized') || e.status === 401)) {
+            msg = 'Please sign in to use this coupon.';
+        } else if (e.message) {
+            msg = e.message;
+        }
+        return { success: false, message: msg };
     }
   };
 

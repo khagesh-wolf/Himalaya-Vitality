@@ -1,5 +1,6 @@
+
 import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { Trash2, Plus, Minus, ArrowRight, ShieldCheck, ShoppingBag, Tag, X, Loader2 } from 'lucide-react';
 import { Container, Button, Card, Reveal } from '../components/UI';
 import { useCart } from '../context/CartContext';
@@ -13,6 +14,7 @@ export const CartPage = () => {
   const [promoError, setPromoError] = useState('');
   const [promoSuccess, setPromoSuccess] = useState('');
   const [isValidating, setIsValidating] = useState(false);
+  const navigate = useNavigate();
 
   const handleApplyPromo = async () => {
     setPromoError('');
@@ -20,14 +22,18 @@ export const CartPage = () => {
     if (!promoCode) return;
     
     setIsValidating(true);
-    const success = await applyDiscount(promoCode);
+    const result = await applyDiscount(promoCode);
     setIsValidating(false);
 
-    if (success) {
+    if (result.success) {
       setPromoSuccess(`Code ${promoCode.toUpperCase()} applied!`);
       setPromoCode('');
     } else {
-      setPromoError('Invalid or expired discount code.');
+      setPromoError(result.message || 'Invalid or expired discount code.');
+      // If sign in is required, maybe show a link?
+      if (result.message && result.message.toLowerCase().includes('sign in')) {
+          // Optional: You could auto-redirect, but a message is less intrusive
+      }
     }
   };
 
@@ -174,7 +180,16 @@ export const CartPage = () => {
                         </button>
                     </div>
                     )}
-                    {promoError && <p className="text-xs text-red-500 mt-2 font-medium">{promoError}</p>}
+                    {promoError && (
+                        <div className="mt-2">
+                            <p className="text-xs text-red-500 font-medium">{promoError}</p>
+                            {promoError.includes('sign in') && (
+                                <Link to="/login" state={{ from: '/cart' }} className="text-xs font-bold text-brand-dark underline mt-1 block">
+                                    Login to account
+                                </Link>
+                            )}
+                        </div>
+                    )}
                     {promoSuccess && <p className="text-xs text-green-600 mt-2 font-bold">{promoSuccess}</p>}
                 </div>
 

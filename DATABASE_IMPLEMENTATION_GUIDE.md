@@ -5,6 +5,8 @@
 
 This schema is configured to handle the "Direct URL" requirement for Neon/Supabase and matches your frontend data structure exactly, including Admin Panel features, User Profile fields, Blog Posts, Shipping Configuration, and Order Tracking.
 
+It now includes **DiscountUsage** to track single-use coupons per customer.
+
 ```prisma
 generator client {
   provider = "prisma-client-js"
@@ -43,7 +45,8 @@ model User {
   updatedAt DateTime @updatedAt
   
   // Relations
-  orders    Order[]
+  orders        Order[]
+  discountUsage DiscountUsage[]
 }
 
 model Product {
@@ -137,6 +140,19 @@ model Discount {
   active    Boolean  @default(true)
   expiresAt String   @default("Never")
   createdAt DateTime @default(now())
+  
+  usages    DiscountUsage[]
+}
+
+model DiscountUsage {
+  id         String   @id @default(uuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id])
+  discountId String
+  discount   Discount @relation(fields: [discountId], references: [id])
+  usedAt     DateTime @default(now())
+
+  @@unique([userId, discountId]) // Ensure a user can only use a specific discount once
 }
 
 model InventoryLog {

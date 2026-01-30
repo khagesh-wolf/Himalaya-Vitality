@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Link, useSearchParams, useNavigate } from 'react-router-dom';
 import { ShieldCheck, Lock, ArrowLeft, Loader2, AlertCircle, CheckCircle, Package, UserCircle, ShoppingCart, ChevronDown, ChevronUp, CreditCard, Tag, X } from 'lucide-react';
@@ -167,12 +168,14 @@ const PaymentStep = ({
     items, 
     total, 
     customerData,
+    discountCode,
     onSuccess,
     onBack
 }: { 
     items: CartItem[], 
     total: number, 
     customerData: CheckoutFormData,
+    discountCode?: string,
     onSuccess: (orderId: string) => void,
     onBack: () => void
 }) => {
@@ -231,7 +234,8 @@ const PaymentStep = ({
                     items,
                     total,
                     paymentId: paymentIntent.id,
-                    userId: user?.id 
+                    userId: user?.id,
+                    discountCode: discountCode // Send used coupon to record usage
                 });
                 
                 // Track Purchase
@@ -439,14 +443,20 @@ export const CheckoutPage = () => {
         setIsApplyingDiscount(true);
         try {
             const valid = await validateDiscount(discountCode);
+            // validateDiscount now returns JSON even on error usually handled by api wrapper, 
+            // but api wrapper throws on non-200.
             if (valid) {
                 setActiveDiscount(valid);
                 setDiscountCode('');
-            } else {
-                setDiscountError('Invalid or expired code.');
             }
-        } catch (error) {
-            setDiscountError('Unable to apply code.');
+        } catch (error: any) {
+            let msg = 'Unable to apply code.';
+            if (error.message && (error.message.includes('Unauthorized') || error.status === 401)) {
+                msg = 'Please sign in to use this coupon.';
+            } else if (error.message) {
+                msg = error.message;
+            }
+            setDiscountError(msg);
         } finally {
             setIsApplyingDiscount(false);
         }
@@ -632,6 +642,7 @@ export const CheckoutPage = () => {
                                             items={checkoutItems}
                                             total={finalTotal}
                                             customerData={customerData}
+                                            discountCode={activeDiscount?.code}
                                             onSuccess={handleSuccess}
                                             onBack={() => setStep(1)}
                                         />
@@ -691,7 +702,16 @@ export const CheckoutPage = () => {
                                             </button>
                                         </div>
                                     )}
-                                    {discountError && <p className="text-xs text-red-500 mt-2 font-medium">{discountError}</p>}
+                                    {discountError && (
+                                        <div className="mt-2">
+                                            <p className="text-xs text-red-500 font-medium">{discountError}</p>
+                                            {discountError.includes('sign in') && (
+                                                <Link to="/login" state={{ from: '/checkout' }} className="text-xs font-bold text-brand-dark underline mt-1 block">
+                                                    Login to account
+                                                </Link>
+                                            )}
+                                        </div>
+                                    )}
                                 </div>
 
                                 <div className="space-y-3 mb-6 text-sm text-gray-600 font-medium">

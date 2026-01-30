@@ -108,16 +108,16 @@ export const Navbar = () => {
           - Always Fixed to top.
           - Transition properties handle smoothness.
           - Z-Index: 40
+          - Removed pt-4 when transparent to prevent gap above top bar
       */}
       <header 
         className={`fixed top-0 left-0 w-full z-40 transition-all duration-500 ease-in-out ${
             isTransparent 
-                ? 'bg-transparent border-b border-transparent pt-4 pb-2' 
+                ? 'bg-transparent border-b border-transparent pt-0 pb-2' 
                 : 'bg-white/95 backdrop-blur-md border-b border-gray-200/50 shadow-sm py-2'
         }`}
       >
-          {/* Dynamic Top Bar - Only show when NOT scrolled for cleaner sticky look, OR always show if preferred. 
-              Here we hide it on scroll for a smoother "compact" sticky header effect. */}
+          {/* Dynamic Top Bar - Restored and sits at very top due to pt-0 on parent */}
           <div className={`overflow-hidden transition-all duration-300 ease-in-out ${scrolled ? 'max-h-0 opacity-0' : 'max-h-10 opacity-100'}`}>
             {settings.showTopBar && (
                 <div className="bg-brand-red text-white text-[10px] font-bold text-center py-2 px-4 tracking-widest uppercase relative z-[41]">

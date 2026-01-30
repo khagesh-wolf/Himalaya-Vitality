@@ -235,11 +235,29 @@ app.delete('/api/discounts/:id', requireAdmin, async (req, res) => {
     } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-app.post('/api/discounts/validate', async (req, res) => {
+app.post('/api/discounts/validate', authenticate, async (req, res) => {
     const { code } = req.body;
     try {
         const discount = await prisma.discount.findUnique({ where: { code: code.toUpperCase() } });
-        if (!discount || !discount.active) return res.status(404).json({ error: 'Invalid code' });
+        
+        if (!discount || !discount.active) {
+            return res.status(404).json({ error: 'Invalid or expired code' });
+        }
+
+        // Check if user has already used this discount
+        const existingUsage = await prisma.discountUsage.findUnique({
+            where: {
+                userId_discountId: {
+                    userId: req.user.id,
+                    discountId: discount.id
+                }
+            }
+        });
+
+        if (existingUsage) {
+            return res.status(409).json({ error: 'You have already used this coupon code.' });
+        }
+
         res.json(discount);
     } catch (e) { res.status(500).json({ error: e.message }); }
 });
@@ -312,7 +330,7 @@ app.get('/api/orders/:id/track', async (req, res) => {
 });
 
 app.post('/api/orders', async (req, res) => {
-    const { customer, items, total, paymentId, userId } = req.body;
+    const { customer, items, total, paymentId, userId, discountCode } = req.body;
     try {
         // 1. Calculate Total Jars to Remove
         let totalJarsToRemove = 0;
@@ -328,7 +346,7 @@ app.post('/api/orders', async (req, res) => {
             totalJarsToRemove += (item.quantity * multiplier);
         }
 
-        // 2. Perform Transaction: Create Order & Decrement Master Stock
+        // 2. Perform Transaction: Create Order & Decrement Master Stock & Record Discount Usage
         const result = await prisma.$transaction(async (tx) => {
             // Check stock first (optional, but good practice)
             const product = await tx.product.findUnique({ where: { id: DEFAULT_PRODUCT_ID } });
@@ -352,6 +370,19 @@ app.post('/api/orders', async (req, res) => {
                     date: new Date().toLocaleDateString()
                 }
             });
+
+            // Record Discount Usage if provided and user exists
+            if (discountCode && userId) {
+                const discount = await tx.discount.findUnique({ where: { code: discountCode.toUpperCase() } });
+                if (discount) {
+                    await tx.discountUsage.create({
+                        data: {
+                            userId: userId,
+                            discountId: discount.id
+                        }
+                    });
+                }
+            }
 
             // Create Order
             const order = await tx.order.create({
