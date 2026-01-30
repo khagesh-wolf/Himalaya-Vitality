@@ -59,6 +59,7 @@ export const Navbar = () => {
   // Scroll Listener for Navbar Styling
   useEffect(() => {
     const handleScroll = () => {
+      // Threshold of 20px to trigger the sticky state
       setScrolled(window.scrollY > 20);
     };
     window.addEventListener('scroll', handleScroll);
@@ -79,8 +80,19 @@ export const Navbar = () => {
 
   if (isAdmin) return <GlobalLoader />;
 
-  // Determine if we are on a page where the header starts transparent (Home)
-  const isTransparentHeader = !scrolled && location.pathname === '/';
+  // Header State Logic
+  const isHomePage = location.pathname === '/';
+  
+  // Logic: 
+  // - If Homepage & Not Scrolled: Transparent (White text)
+  // - If Homepage & Scrolled: White Background (Dark text)
+  // - If Other Page: White Background (Dark text) always
+  const isTransparent = isHomePage && !scrolled;
+  
+  // Text color classes
+  const textColorClass = isTransparent ? 'text-white' : 'text-brand-dark';
+  const hoverColorClass = isTransparent ? 'hover:text-brand-red' : 'hover:text-brand-red';
+  const iconBgHoverClass = isTransparent ? 'hover:bg-white/20' : 'hover:bg-gray-100';
 
   return (
     <>
@@ -91,188 +103,197 @@ export const Navbar = () => {
       {isCartOpen && <CartDrawer onClose={() => setIsCartOpen(false)} />}
       {isSearchOpen && <SearchModal onClose={() => setIsSearchOpen(false)} />}
 
-      {/* Dynamic Top Bar */}
-      {settings.showTopBar && (
-        <div className="bg-brand-dark text-white text-[10px] font-bold text-center py-2.5 px-4 tracking-widest uppercase relative z-[50] transition-all">
-          <span dangerouslySetInnerHTML={{ __html: settings.topBarMessage }} />
-        </div>
-      )}
-      
-      {/* Transparent Sticky Nav */}
-      <nav 
-        className={`sticky top-0 z-40 transition-all duration-300 border-b ${
-          scrolled 
-            ? 'bg-white/90 backdrop-blur-md border-gray-200/50 shadow-sm' 
-            : 'bg-transparent border-transparent md:bg-gradient-to-b md:from-black/30 md:to-transparent'
+      {/* 
+          Main Header Wrapper 
+          - Always Fixed to top.
+          - Transition properties handle smoothness.
+          - Z-Index: 40
+      */}
+      <header 
+        className={`fixed top-0 left-0 w-full z-40 transition-all duration-500 ease-in-out ${
+            isTransparent 
+                ? 'bg-transparent border-b border-transparent pt-4 pb-2' 
+                : 'bg-white/95 backdrop-blur-md border-b border-gray-200/50 shadow-sm py-2'
         }`}
       >
-        <div className={`absolute inset-0 bg-white/90 backdrop-blur-md transition-opacity duration-300 md:hidden ${scrolled ? 'opacity-100' : 'opacity-0'}`}></div>
-
-        <Container className="relative">
-          <div className="flex justify-between items-center h-16 md:h-20">
-            {/* 1. Mobile Menu Trigger (Left) */}
-            <button 
-              className={`md:hidden p-2 -ml-2 rounded-full transition-colors relative z-50 ${scrolled ? 'text-brand-dark' : 'text-white'}`}
-              onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-              aria-label="Toggle Menu"
-            >
-              <Menu size={24} />
-            </button>
-
-            {/* 2. Logo */}
-            <Link to="/" className="flex-shrink-0 relative z-40">
-                <div className={`transition-opacity duration-300 ${!scrolled && location.pathname === '/' ? 'hidden md:block' : 'block'}`}>
-                     <Logo light={isTransparentHeader} />
+          {/* Dynamic Top Bar - Only show when NOT scrolled for cleaner sticky look, OR always show if preferred. 
+              Here we hide it on scroll for a smoother "compact" sticky header effect. */}
+          <div className={`overflow-hidden transition-all duration-300 ease-in-out ${scrolled ? 'max-h-0 opacity-0' : 'max-h-10 opacity-100'}`}>
+            {settings.showTopBar && (
+                <div className="bg-brand-red text-white text-[10px] font-bold text-center py-2 px-4 tracking-widest uppercase relative z-[41]">
+                <span dangerouslySetInnerHTML={{ __html: settings.topBarMessage }} />
                 </div>
-            </Link>
+            )}
+          </div>
 
-            {/* 3. Desktop Navigation (Center) */}
-            <div className="hidden md:flex items-center justify-center space-x-8 lg:space-x-12 absolute left-1/2 -translate-x-1/2">
-              <Link to="/product/himalaya-shilajit-resin" className={`text-xs lg:text-sm font-bold uppercase tracking-widest transition-colors nav-link ${scrolled ? 'text-brand-dark hover:text-brand-red' : 'text-white hover:text-brand-red drop-shadow-md'}`}>Shop</Link>
-              <Link to="/science" className={`text-xs lg:text-sm font-bold uppercase tracking-widest transition-colors nav-link ${scrolled ? 'text-brand-dark hover:text-brand-red' : 'text-white hover:text-brand-red drop-shadow-md'}`}>Science</Link>
-              <Link to="/about" className={`text-xs lg:text-sm font-bold uppercase tracking-widest transition-colors nav-link ${scrolled ? 'text-brand-dark hover:text-brand-red' : 'text-white hover:text-brand-red drop-shadow-md'}`}>Story</Link>
-              <Link to="/reviews" className={`text-xs lg:text-sm font-bold uppercase tracking-widest transition-colors nav-link ${scrolled ? 'text-brand-dark hover:text-brand-red' : 'text-white hover:text-brand-red drop-shadow-md'}`}>Reviews</Link>
-            </div>
+          {/* Navbar Content */}
+          <nav className="relative z-[40]">
+            <Container>
+              <div className="flex justify-between items-center transition-all duration-300 min-h-[64px]">
+                {/* 1. Mobile Menu Trigger (Left) */}
+                <button 
+                  className={`md:hidden p-2 -ml-2 rounded-full transition-colors relative z-50 ${textColorClass}`}
+                  onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+                  aria-label="Toggle Menu"
+                >
+                  <Menu size={24} />
+                </button>
 
-            {/* 4. Actions (Right) */}
-            <div className="flex items-center space-x-1 md:space-x-3">
-              {/* Search */}
-              <button 
-                onClick={() => setIsSearchOpen(true)}
-                className={`p-2 rounded-full transition-colors group ${scrolled ? 'text-gray-600 hover:text-brand-dark hover:bg-gray-100' : 'text-white hover:bg-white/20'}`}
-              >
-                <Search size={20} className="group-hover:scale-110 transition-transform" />
-              </button>
-
-              {/* Account (Desktop) */}
-              <div className="relative group">
-                <Link to={isAuthenticated ? '#' : '/login'} onClick={(e) => { if(isAuthenticated) { e.preventDefault(); setShowProfileMenu(!showProfileMenu); } }}>
-                    <button className={`p-2 rounded-full transition-colors group hidden md:block ${scrolled ? 'text-gray-600 hover:text-brand-dark hover:bg-gray-100' : 'text-white hover:bg-white/20'}`}>
-                        {user?.avatar ? (
-                            <img src={user.avatar} alt="Profile" className="w-5 h-5 rounded-full" />
-                        ) : (
-                            <User size={20} className="group-hover:scale-110 transition-transform" />
-                        )}
-                    </button>
-                </Link>
-                
-                {/* Desktop Dropdown */}
-                {isAuthenticated && showProfileMenu && (
-                    <div className="absolute right-0 top-12 w-48 bg-white rounded-xl shadow-xl border border-gray-100 py-2 animate-in fade-in slide-in-from-top-2 z-50">
-                        <div className="px-4 py-3 border-b border-gray-100">
-                            <p className="text-sm font-bold text-brand-dark truncate">{user?.name || 'User'}</p>
-                            <p className="text-xs text-gray-500 truncate">{user?.email}</p>
-                        </div>
-                        {user?.role === 'ADMIN' && (
-                            <Link to="/admin" onClick={() => setShowProfileMenu(false)} className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 hover:text-brand-red">Admin Dashboard</Link>
-                        )}
-                        <Link to="/profile" onClick={() => setShowProfileMenu(false)} className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 hover:text-brand-red">My Profile</Link>
-                        <Link to="/profile" onClick={() => setShowProfileMenu(false)} className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 hover:text-brand-red">Order History</Link>
-                        <button onClick={() => { logout(); setShowProfileMenu(false); }} className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 hover:text-brand-red flex items-center">
-                            <LogOut size={14} className="mr-2" /> Sign Out
-                        </button>
+                {/* 2. Logo */}
+                <Link to="/" className="flex-shrink-0 relative z-40">
+                    <div className={`transition-all duration-300 ${scrolled ? 'scale-90' : 'scale-100'}`}>
+                        <Logo light={isTransparent} />
                     </div>
-                )}
-              </div>
+                </Link>
 
-              {/* Currency */}
-              {settings.enableCurrencySelector && (
-                <div className="hidden md:block relative group mx-2">
-                  <select 
-                    value={currency} 
-                    onChange={(e) => setCurrency(e.target.value as CurrencyCode)}
-                    className={`appearance-none bg-transparent font-bold text-xs border-none focus:ring-0 cursor-pointer pr-3 py-1 outline-none ${scrolled ? 'text-brand-dark' : 'text-white'}`}
-                  >
-                    {SUPPORTED_CURRENCIES.map((c) => (<option key={c.code} value={c.code} className="text-black">{c.code}</option>))}
-                  </select>
+                {/* 3. Desktop Navigation (Center) */}
+                <div className="hidden md:flex items-center justify-center space-x-8 lg:space-x-12 absolute left-1/2 -translate-x-1/2">
+                  <Link to="/product/himalaya-shilajit-resin" className={`text-xs lg:text-sm font-bold uppercase tracking-widest transition-colors nav-link ${textColorClass} ${hoverColorClass} ${isTransparent ? 'drop-shadow-md' : ''}`}>Shop</Link>
+                  <Link to="/science" className={`text-xs lg:text-sm font-bold uppercase tracking-widest transition-colors nav-link ${textColorClass} ${hoverColorClass} ${isTransparent ? 'drop-shadow-md' : ''}`}>Science</Link>
+                  <Link to="/about" className={`text-xs lg:text-sm font-bold uppercase tracking-widest transition-colors nav-link ${textColorClass} ${hoverColorClass} ${isTransparent ? 'drop-shadow-md' : ''}`}>Story</Link>
+                  <Link to="/reviews" className={`text-xs lg:text-sm font-bold uppercase tracking-widest transition-colors nav-link ${textColorClass} ${hoverColorClass} ${isTransparent ? 'drop-shadow-md' : ''}`}>Reviews</Link>
                 </div>
-              )}
 
-              {/* Cart */}
-              <button 
-                  className={`p-2 rounded-full transition-colors relative group ${scrolled ? 'text-brand-dark hover:bg-gray-100' : 'text-white hover:bg-white/20'}`}
-                  onClick={() => setIsCartOpen(true)}
-              >
-                <ShoppingBag size={20} className="group-hover:scale-110 transition-transform" />
-                {cartCount > 0 && (
-                  <span className="absolute top-0 right-0 inline-flex items-center justify-center w-4 h-4 text-[9px] font-bold leading-none text-white bg-brand-red rounded-full ring-2 ring-white animate-in zoom-in">
-                    {cartCount}
-                  </span>
-                )}
-              </button>
-            </div>
-          </div>
-        </Container>
-
-        {/* Mobile Menu Overlay */}
-        {isMobileMenuOpen && (
-          <div className="fixed inset-0 z-50 bg-white animate-in slide-in-from-left-full duration-300 flex flex-col">
-              <div className="flex justify-between items-center p-4 border-b border-gray-100">
-                  <Logo />
-                  <button onClick={() => setIsMobileMenuOpen(false)} className="p-2 bg-gray-50 rounded-full hover:bg-gray-100 transition-colors">
-                      <X size={24} className="text-gray-500"/>
+                {/* 4. Actions (Right) */}
+                <div className="flex items-center space-x-1 md:space-x-3">
+                  {/* Search */}
+                  <button 
+                    onClick={() => setIsSearchOpen(true)}
+                    className={`p-2 rounded-full transition-colors group ${textColorClass} ${iconBgHoverClass}`}
+                  >
+                    <Search size={20} className="group-hover:scale-110 transition-transform" />
                   </button>
-              </div>
-              
-              <div className="flex-1 overflow-y-auto py-6 px-6">
-                  <nav className="space-y-6">
-                      {isAuthenticated ? (
-                          <div className="bg-gray-50 p-4 rounded-xl mb-6">
-                              <div className="flex items-center gap-3 mb-3">
-                                  <div className="w-10 h-10 bg-brand-red rounded-full flex items-center justify-center text-white font-bold">
-                                      {user?.name?.charAt(0) || 'U'}
-                                  </div>
-                                  <div>
-                                      <div className="font-bold text-brand-dark">{user?.name}</div>
-                                      <div className="text-xs text-gray-500">{user?.email}</div>
-                                  </div>
-                              </div>
-                              <Link to="/profile" onClick={() => setIsMobileMenuOpen(false)}>
-                                  <Button fullWidth size="sm" variant="outline-dark" className="bg-white mb-2">My Profile</Button>
-                              </Link>
-                              <Button fullWidth size="sm" variant="ghost" onClick={logout} className="bg-white border border-gray-200">Sign Out</Button>
-                          </div>
-                      ) : (
-                          <Link to="/login" onClick={() => setIsMobileMenuOpen(false)}>
-                              <Button fullWidth size="lg" className="mb-6 shadow-lg shadow-brand-red/20">Login / Join</Button>
-                          </Link>
-                      )}
 
-                      {['Shop', 'Science', 'About', 'Reviews', 'Blog', 'Track Order', 'Contact'].map((item) => (
-                          <Link 
-                              key={item}
-                              to={item === 'Shop' ? '/product/himalaya-shilajit-resin' : item === 'Track Order' ? '/track' : `/${item.toLowerCase().replace(/ /g, '-')}`} 
-                              className="block text-3xl font-heading font-extrabold text-brand-dark hover:text-brand-red transition-colors" 
-                              onClick={() => setIsMobileMenuOpen(false)}
-                          >
-                              {item}
-                          </Link>
-                      ))}
-                  </nav>
-              </div>
+                  {/* Account (Desktop) */}
+                  <div className="relative group">
+                    <Link to={isAuthenticated ? '#' : '/login'} onClick={(e) => { if(isAuthenticated) { e.preventDefault(); setShowProfileMenu(!showProfileMenu); } }}>
+                        <button className={`p-2 rounded-full transition-colors group hidden md:block ${textColorClass} ${iconBgHoverClass}`}>
+                            {user?.avatar ? (
+                                <img src={user.avatar} alt="Profile" className="w-5 h-5 rounded-full" />
+                            ) : (
+                                <User size={20} className="group-hover:scale-110 transition-transform" />
+                            )}
+                        </button>
+                    </Link>
+                    
+                    {/* Desktop Dropdown */}
+                    {isAuthenticated && showProfileMenu && (
+                        <div className="absolute right-0 top-12 w-48 bg-white rounded-xl shadow-xl border border-gray-100 py-2 animate-in fade-in slide-in-from-top-2 z-50">
+                            <div className="px-4 py-3 border-b border-gray-100">
+                                <p className="text-sm font-bold text-brand-dark truncate">{user?.name || 'User'}</p>
+                                <p className="text-xs text-gray-500 truncate">{user?.email}</p>
+                            </div>
+                            {user?.role === 'ADMIN' && (
+                                <Link to="/admin" onClick={() => setShowProfileMenu(false)} className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 hover:text-brand-red">Admin Dashboard</Link>
+                            )}
+                            <Link to="/profile" onClick={() => setShowProfileMenu(false)} className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 hover:text-brand-red">My Profile</Link>
+                            <Link to="/profile" onClick={() => setShowProfileMenu(false)} className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 hover:text-brand-red">Order History</Link>
+                            <button onClick={() => { logout(); setShowProfileMenu(false); }} className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 hover:text-brand-red flex items-center">
+                                <LogOut size={14} className="mr-2" /> Sign Out
+                            </button>
+                        </div>
+                    )}
+                  </div>
 
-              <div className="p-6 bg-gray-50 border-t border-gray-100">
-                  <div className="flex items-center justify-between text-sm font-bold text-gray-500 mb-6">
-                      <span>Currency</span>
+                  {/* Currency */}
+                  {settings.enableCurrencySelector && (
+                    <div className="hidden md:block relative group mx-2">
                       <select 
-                          value={currency} 
-                          onChange={(e) => setCurrency(e.target.value as CurrencyCode)}
-                          className="bg-transparent border-none font-bold text-brand-dark focus:ring-0 cursor-pointer"
+                        value={currency} 
+                        onChange={(e) => setCurrency(e.target.value as CurrencyCode)}
+                        className={`appearance-none bg-transparent font-bold text-xs border-none focus:ring-0 cursor-pointer pr-3 py-1 outline-none ${textColorClass}`}
                       >
-                          {SUPPORTED_CURRENCIES.map((c) => (<option key={c.code} value={c.code}>{c.code}</option>))}
+                        {SUPPORTED_CURRENCIES.map((c) => (<option key={c.code} value={c.code} className="text-black">{c.code}</option>))}
                       </select>
-                  </div>
-                  
-                  <div className="grid grid-cols-2 gap-4 mb-6">
-                       <Link to="/faq" className="text-xs text-gray-500 font-bold hover:text-brand-dark" onClick={() => setIsMobileMenuOpen(false)}>FAQ</Link>
-                       <Link to="/shipping-returns" className="text-xs text-gray-500 font-bold hover:text-brand-dark" onClick={() => setIsMobileMenuOpen(false)}>Shipping</Link>
-                  </div>
+                    </div>
+                  )}
 
-                  <p className="text-xs text-gray-400 text-center">© {new Date().getFullYear()} Himalaya Vitality</p>
+                  {/* Cart */}
+                  <button 
+                      className={`p-2 rounded-full transition-colors relative group ${textColorClass} ${iconBgHoverClass}`}
+                      onClick={() => setIsCartOpen(true)}
+                  >
+                    <ShoppingBag size={20} className="group-hover:scale-110 transition-transform" />
+                    {cartCount > 0 && (
+                      <span className="absolute top-0 right-0 inline-flex items-center justify-center w-4 h-4 text-[9px] font-bold leading-none text-white bg-brand-red rounded-full ring-2 ring-white animate-in zoom-in">
+                        {cartCount}
+                      </span>
+                    )}
+                  </button>
+                </div>
               </div>
-          </div>
-        )}
-      </nav>
+            </Container>
+          </nav>
+      </header>
+
+      {/* Mobile Menu Overlay - High Z-Index to cover everything */}
+      {isMobileMenuOpen && (
+        <div className="fixed inset-0 z-[100] bg-white animate-in slide-in-from-left-full duration-300 flex flex-col h-[100dvh]">
+            <div className="flex justify-between items-center p-4 border-b border-gray-100 flex-shrink-0">
+                <Logo /> {/* Always Dark Logo in Menu */}
+                <button onClick={() => setIsMobileMenuOpen(false)} className="p-2 bg-gray-50 rounded-full hover:bg-gray-100 transition-colors">
+                    <X size={24} className="text-gray-500"/>
+                </button>
+            </div>
+            
+            <div className="flex-1 overflow-y-auto py-6 px-6 min-h-0">
+                <nav className="space-y-6">
+                    {isAuthenticated ? (
+                        <div className="bg-gray-50 p-4 rounded-xl mb-6">
+                            <div className="flex items-center gap-3 mb-3">
+                                <div className="w-10 h-10 bg-brand-red rounded-full flex items-center justify-center text-white font-bold">
+                                    {user?.name?.charAt(0) || 'U'}
+                                </div>
+                                <div>
+                                    <div className="font-bold text-brand-dark">{user?.name}</div>
+                                    <div className="text-xs text-gray-500">{user?.email}</div>
+                                </div>
+                            </div>
+                            <Link to="/profile" onClick={() => setIsMobileMenuOpen(false)}>
+                                <Button fullWidth size="sm" variant="outline-dark" className="bg-white mb-2">My Profile</Button>
+                            </Link>
+                            <Button fullWidth size="sm" variant="ghost" onClick={logout} className="bg-white border border-gray-200">Sign Out</Button>
+                        </div>
+                    ) : (
+                        <Link to="/login" onClick={() => setIsMobileMenuOpen(false)}>
+                            <Button fullWidth size="lg" className="mb-6 shadow-lg shadow-brand-red/20">Login / Join</Button>
+                        </Link>
+                    )}
+
+                    {['Shop', 'Science', 'About', 'Reviews', 'Blog', 'Track Order', 'Contact'].map((item) => (
+                        <Link 
+                            key={item}
+                            to={item === 'Shop' ? '/product/himalaya-shilajit-resin' : item === 'Track Order' ? '/track' : `/${item.toLowerCase().replace(/ /g, '-')}`} 
+                            className="block text-3xl font-heading font-extrabold text-brand-dark hover:text-brand-red transition-colors" 
+                            onClick={() => setIsMobileMenuOpen(false)}
+                        >
+                            {item}
+                        </Link>
+                    ))}
+                </nav>
+            </div>
+
+            <div className="p-6 bg-gray-50 border-t border-gray-100 flex-shrink-0">
+                <div className="flex items-center justify-between text-sm font-bold text-gray-500 mb-6">
+                    <span>Currency</span>
+                    <select 
+                        value={currency} 
+                        onChange={(e) => setCurrency(e.target.value as CurrencyCode)}
+                        className="bg-transparent border-none font-bold text-brand-dark focus:ring-0 cursor-pointer"
+                    >
+                        {SUPPORTED_CURRENCIES.map((c) => (<option key={c.code} value={c.code}>{c.code}</option>))}
+                    </select>
+                </div>
+                
+                <div className="grid grid-cols-2 gap-4 mb-6">
+                      <Link to="/faq" className="text-xs text-gray-500 font-bold hover:text-brand-dark" onClick={() => setIsMobileMenuOpen(false)}>FAQ</Link>
+                      <Link to="/shipping-returns" className="text-xs text-gray-500 font-bold hover:text-brand-dark" onClick={() => setIsMobileMenuOpen(false)}>Shipping</Link>
+                </div>
+
+                <p className="text-xs text-gray-400 text-center">© {new Date().getFullYear()} Himalaya Vitality</p>
+            </div>
+        </div>
+      )}
     </>
   );
 };

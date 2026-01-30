@@ -4,7 +4,7 @@ import { Trash2, Plus, Minus, ArrowRight, ShieldCheck, ShoppingBag, Tag, X, Load
 import { Container, Button, Card, Reveal } from '../components/UI';
 import { useCart } from '../context/CartContext';
 import { useCurrency } from '../context/CurrencyContext';
-import { trackBeginCheckout } from '../services/analytics'; // Analytics
+import { trackBeginCheckout } from '../services/analytics';
 
 export const CartPage = () => {
   const { cartItems, removeFromCart, updateQuantity, cartSubtotal, cartTotal, applyDiscount, discount, removeDiscount } = useCart();
@@ -35,10 +35,16 @@ export const CartPage = () => {
     trackBeginCheckout(cartItems, cartTotal);
   };
 
-  // Safely retrieve discount value (handles API 'value' vs Legacy 'amount')
-  const discountValue = discount 
-    ? (Number(discount.value) || Number(discount.amount) || 0)
-    : 0;
+  // Robustly retrieve discount value to prevent "undefined%" display
+  const getDiscountDisplayValue = () => {
+    if (!discount) return 0;
+    // Check 'value' first (API), then 'amount' (Legacy), defaulting to 0
+    const rawVal = discount.value !== undefined ? discount.value : discount.amount;
+    const num = parseFloat(String(rawVal));
+    return isNaN(num) ? 0 : num;
+  };
+
+  const discountValue = getDiscountDisplayValue();
 
   if (cartItems.length === 0) {
     return (
@@ -54,6 +60,9 @@ export const CartPage = () => {
       </div>
     );
   }
+
+  // Calculate discount amount for display
+  const discountAmount = cartSubtotal - cartTotal;
 
   return (
     <div className="bg-gray-50 py-12 min-h-screen">
@@ -177,7 +186,7 @@ export const CartPage = () => {
                     {discount && (
                     <div className="flex justify-between text-green-600">
                         <span>Discount ({discount.type === 'PERCENTAGE' ? `${discountValue}%` : `$${discountValue}`} off)</span>
-                        <span>-{formatPrice(cartSubtotal - cartTotal)}</span>
+                        <span>-{formatPrice(discountAmount)}</span>
                     </div>
                     )}
                     <div className="flex justify-between text-gray-600">
