@@ -249,8 +249,8 @@ app.delete('/api/discounts/:id', requireAdmin, async (req, res) => {
     } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-// Modified: Publicly validate code, but check usage if logged in
-app.post('/api/discounts/validate', optionalAuth, async (req, res) => {
+// Validate Code - STRICT AUTH REQUIRED
+app.post('/api/discounts/validate', authenticate, async (req, res) => {
     const { code } = req.body;
     try {
         const discount = await prisma.discount.findUnique({ where: { code: code.toUpperCase() } });
@@ -259,19 +259,16 @@ app.post('/api/discounts/validate', optionalAuth, async (req, res) => {
             return res.status(404).json({ error: 'Invalid or expired code' });
         }
 
-        // Only check usage here if user is logged in
-        // Guest usage is checked at Order Creation time when we have their email
-        if (req.user) {
-            const existingUsage = await prisma.discountUsage.findFirst({
-                where: {
-                    userId: req.user.id,
-                    discountId: discount.id
-                }
-            });
-
-            if (existingUsage) {
-                return res.status(409).json({ error: 'You have already used this coupon code.' });
+        // User is present because 'authenticate' middleware is used
+        const existingUsage = await prisma.discountUsage.findFirst({
+            where: {
+                userId: req.user.id,
+                discountId: discount.id
             }
+        });
+
+        if (existingUsage) {
+            return res.status(409).json({ error: 'You have already used this coupon code.' });
         }
 
         res.json(discount);
@@ -374,6 +371,9 @@ app.post('/api/orders', async (req, res) => {
             if (discountCode) {
                 const discount = await tx.discount.findUnique({ where: { code: discountCode.toUpperCase() } });
                 if (discount) {
+                    // Logic updated: If user is logged in (userId present), check usage against userId.
+                    // If no userId (guest), we theoretically check email, but the new requirement enforces login for coupons.
+                    // However, we keep email check as a fallback if policy changes or for legacy guest orders.
                     const usageCheckQuery = userId 
                         ? { userId: userId, discountId: discount.id }
                         : { guestEmail: customer.email, discountId: discount.id };
@@ -381,7 +381,7 @@ app.post('/api/orders', async (req, res) => {
                     const existingUsage = await tx.discountUsage.findFirst({ where: usageCheckQuery });
                     
                     if (existingUsage) {
-                        throw new Error(`The coupon '${discountCode}' has already been used by this email/account.`);
+                        throw new Error(`The coupon '${discountCode}' has already been used by this account.`);
                     }
 
                     // Record Usage

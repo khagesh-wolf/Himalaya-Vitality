@@ -5,11 +5,13 @@ import { Trash2, Plus, Minus, ArrowRight, ShieldCheck, ShoppingBag, Tag, X, Load
 import { Container, Button, Card, Reveal } from '../components/UI';
 import { useCart } from '../context/CartContext';
 import { useCurrency } from '../context/CurrencyContext';
+import { useAuth } from '../context/AuthContext';
 import { trackBeginCheckout } from '../services/analytics';
 
 export const CartPage = () => {
   const { cartItems, removeFromCart, updateQuantity, cartSubtotal, cartTotal, applyDiscount, discount, removeDiscount } = useCart();
   const { formatPrice } = useCurrency();
+  const { isAuthenticated } = useAuth();
   const [promoCode, setPromoCode] = useState('');
   const [promoError, setPromoError] = useState('');
   const [promoSuccess, setPromoSuccess] = useState('');
@@ -19,6 +21,12 @@ export const CartPage = () => {
   const handleApplyPromo = async () => {
     setPromoError('');
     setPromoSuccess('');
+    
+    if (!isAuthenticated) {
+        setPromoError('You must be logged in to use coupons.');
+        return;
+    }
+
     if (!promoCode) return;
     
     setIsValidating(true);
@@ -30,10 +38,6 @@ export const CartPage = () => {
       setPromoCode('');
     } else {
       setPromoError(result.message || 'Invalid or expired discount code.');
-      // If sign in is required, maybe show a link?
-      if (result.message && result.message.toLowerCase().includes('sign in')) {
-          // Optional: You could auto-redirect, but a message is less intrusive
-      }
     }
   };
 
@@ -183,7 +187,7 @@ export const CartPage = () => {
                     {promoError && (
                         <div className="mt-2">
                             <p className="text-xs text-red-500 font-medium">{promoError}</p>
-                            {promoError.includes('sign in') && (
+                            {!isAuthenticated && (
                                 <Link to="/login" state={{ from: '/cart' }} className="text-xs font-bold text-brand-dark underline mt-1 block">
                                     Login to account
                                 </Link>
