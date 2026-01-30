@@ -45,20 +45,6 @@ const authenticate = (req, res, next) => {
     });
 };
 
-// Optional auth: attempts to identify user but doesn't block if token missing
-const optionalAuth = (req, res, next) => {
-    const authHeader = req.headers['authorization'];
-    const token = authHeader && authHeader.split(' ')[1];
-    if (token) {
-        jwt.verify(token, JWT_SECRET, (err, user) => {
-            if (!err) req.user = user;
-            next();
-        });
-    } else {
-        next();
-    }
-};
-
 const requireAdmin = (req, res, next) => {
     authenticate(req, res, () => {
         // Case-insensitive check for ADMIN role
@@ -70,7 +56,8 @@ const requireAdmin = (req, res, next) => {
     });
 };
 
-// --- EMAIL SETUP (Standard SMTP) ---
+// --- EMAIL INFRASTRUCTURE ---
+
 const transporter = nodemailer.createTransport({
     host: 'smtp.gmail.com', 
     port: 465, 
@@ -82,14 +69,155 @@ const transporter = nodemailer.createTransport({
     tls: { rejectUnauthorized: false }
 });
 
-const sendEmail = async (to, subject, text, html) => {
+// Brand Configuration
+const BRAND = {
+    name: "Himalaya Vitality",
+    color: "#D0202F",
+    dark: "#111111",
+    logo: "https://i.ibb.co/tMXQXvJn/logo-red.png", // Direct link to logo
+    address: "Melbourne, Australia",
+    support: "support@himalayavitality.com",
+    website: "https://himalayavitality.com"
+};
+
+// Base HTML Layout (Responsive Table Wrapper)
+const emailLayout = (title, content) => `
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>${title}</title>
+    <style>
+        body { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; background-color: #f3f4f6; margin: 0; padding: 0; -webkit-font-smoothing: antialiased; }
+        .container { max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 8px; overflow: hidden; margin-top: 40px; margin-bottom: 40px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); }
+        .header { padding: 30px; text-align: center; border-bottom: 1px solid #f0f0f0; }
+        .content { padding: 40px 30px; color: #333333; line-height: 1.6; }
+        .footer { background-color: #111111; padding: 30px; text-align: center; color: #888888; font-size: 12px; }
+        .button { display: inline-block; background-color: ${BRAND.color}; color: #ffffff; padding: 12px 30px; text-decoration: none; border-radius: 5px; font-weight: bold; margin-top: 20px; }
+        .code { font-size: 32px; font-weight: bold; letter-spacing: 5px; color: ${BRAND.dark}; margin: 20px 0; display: block; text-align: center; background: #f9f9f9; padding: 15px; border-radius: 4px; border: 1px dashed #cccccc; }
+        .divider { height: 1px; background-color: #eeeeee; margin: 20px 0; }
+        .item-row { display: flex; justify-content: space-between; margin-bottom: 10px; font-size: 14px; }
+        a { color: ${BRAND.color}; text-decoration: none; }
+        @media only screen and (max-width: 600px) {
+            .container { width: 100% !important; margin-top: 0 !important; border-radius: 0 !important; }
+            .content { padding: 20px !important; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <img src="${BRAND.logo}" alt="${BRAND.name}" style="height: 40px; width: auto;">
+        </div>
+        <div class="content">
+            ${content}
+        </div>
+        <div class="footer">
+            <p>&copy; ${new Date().getFullYear()} ${BRAND.name}. All rights reserved.</p>
+            <p>${BRAND.address}</p>
+            <p>You received this email because you recently interacted with our store.</p>
+        </div>
+    </div>
+</body>
+</html>
+`;
+
+// --- EMAIL TEMPLATES ---
+
+const Templates = {
+    otp: (otp) => emailLayout(
+        "Verify Your Email",
+        `
+        <h2 style="text-align: center; color: ${BRAND.dark}; margin-top: 0;">Verify Your Identity</h2>
+        <p>Welcome to the tribe. Use the code below to complete your verification or login request.</p>
+        <div class="code">${otp}</div>
+        <p style="text-align: center; font-size: 13px; color: #666;">This code will expire in 10 minutes.</p>
+        <p>If you didn't request this code, you can safely ignore this email.</p>
+        `
+    ),
+
+    orderConfirmation: (order, items) => {
+        const itemsHtml = items.map(item => `
+            <div style="border-bottom: 1px solid #eee; padding: 10px 0; display: flex; justify-content: space-between;">
+                <span style="font-weight: 500;">${item.quantity}x ${item.productTitle || 'Premium Shilajit'} <span style="color: #666; font-size: 12px;">(${item.variantName || 'Bundle'})</span></span>
+                <span>$${item.price.toFixed(2)}</span>
+            </div>
+        `).join('');
+
+        const address = order.shippingAddress;
+        
+        return emailLayout(
+            `Order #${order.orderNumber} Confirmed`,
+            `
+            <h2 style="color: ${BRAND.dark}; margin-top: 0;">Order Confirmed</h2>
+            <p>Thank you for your investment in your health, <strong>${order.customerName}</strong>.</p>
+            <p>We have received your order <strong>#${order.orderNumber}</strong> and are preparing it for shipment from our Melbourne warehouse.</p>
+            
+            <div style="background-color: #fafafa; padding: 20px; border-radius: 8px; margin: 20px 0;">
+                <h3 style="margin-top: 0; font-size: 16px;">Order Summary</h3>
+                ${itemsHtml}
+                <div style="margin-top: 15px; text-align: right; font-size: 18px; font-weight: bold; color: ${BRAND.color};">
+                    Total: $${order.total.toFixed(2)}
+                </div>
+            </div>
+
+            <h3 style="font-size: 16px;">Shipping To:</h3>
+            <p style="color: #555; line-height: 1.5;">
+                ${address.address}<br>
+                ${address.city}, ${address.country} ${address.zip}
+            </p>
+
+            <div style="text-align: center; margin-top: 30px;">
+                <a href="${BRAND.website}/#/track" class="button">Track Order Status</a>
+            </div>
+            `
+        );
+    },
+
+    shippingUpdate: (orderNumber, trackingNumber, carrier) => {
+        const trackingUrl = carrier.toLowerCase().includes('dhl') 
+            ? `https://www.dhl.com/en/express/tracking.html?AWB=${trackingNumber}&brand=DHL`
+            : `https://auspost.com.au/mypost/track/#/details/${trackingNumber}`;
+
+        return emailLayout(
+            `Order #${orderNumber} Shipped`,
+            `
+            <h2 style="color: ${BRAND.dark}; margin-top: 0;">Your Order is on the Way!</h2>
+            <p>Great news! Your supply of Himalaya Vitality has been dispatched and is making its way to you.</p>
+            
+            <div style="text-align: center; background-color: #fafafa; padding: 25px; border-radius: 8px; margin: 25px 0;">
+                <p style="margin: 0; font-size: 12px; text-transform: uppercase; letter-spacing: 1px; color: #888;">Tracking Number</p>
+                <div style="font-size: 24px; font-weight: bold; color: ${BRAND.dark}; margin: 10px 0;">${trackingNumber}</div>
+                <p style="margin: 0; font-size: 14px; color: #555;">Carrier: ${carrier}</p>
+            </div>
+
+            <div style="text-align: center;">
+                <a href="${trackingUrl}" class="button">Track Your Package</a>
+            </div>
+
+            <p style="margin-top: 30px; font-size: 13px; color: #666;">Note: It may take up to 24 hours for the tracking information to update on the carrier's website.</p>
+            `
+        );
+    }
+};
+
+const sendEmail = async (to, subject, htmlContent) => {
     try {
-        if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) return;
+        if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
+            console.warn("Skipping email: Credentials not found.");
+            return;
+        }
         await transporter.sendMail({ 
-            from: `"Himalaya Vitality" <${process.env.EMAIL_USER}>`, 
-            to, subject, text, html: html || text 
+            from: `"${BRAND.name}" <${process.env.EMAIL_USER}>`, 
+            to, 
+            subject, 
+            html: htmlContent 
         });
-    } catch (e) { console.error('Email error:', e); }
+        console.log(`[Email] Sent to ${to}: ${subject}`);
+    } catch (e) { 
+        console.error('[Email] Failed:', e); 
+    }
 };
 
 // --- ROUTES ---
@@ -371,9 +499,6 @@ app.post('/api/orders', async (req, res) => {
             if (discountCode) {
                 const discount = await tx.discount.findUnique({ where: { code: discountCode.toUpperCase() } });
                 if (discount) {
-                    // Logic updated: If user is logged in (userId present), check usage against userId.
-                    // If no userId (guest), we theoretically check email, but the new requirement enforces login for coupons.
-                    // However, we keep email check as a fallback if policy changes or for legacy guest orders.
                     const usageCheckQuery = userId 
                         ? { userId: userId, discountId: discount.id }
                         : { guestEmail: customer.email, discountId: discount.id };
@@ -432,11 +557,14 @@ app.post('/api/orders', async (req, res) => {
                     }
                 }
             });
-            return order;
+            return { order, items: enrichedItems }; // Return enriched items for email
         });
 
-        await sendEmail(customer.email, `Order Confirmation ${result.orderNumber}`, `Your order has been received.`);
-        res.json({ success: true, orderId: result.orderNumber });
+        // Send Professional HTML Email
+        const emailHtml = Templates.orderConfirmation(result.order, result.items);
+        await sendEmail(customer.email, `Order Confirmation ${result.order.orderNumber}`, emailHtml);
+        
+        res.json({ success: true, orderId: result.order.orderNumber });
     } catch(e) { 
         console.error("Order error", e);
         res.status(500).json({ error: e.message || 'Failed to create order' }); 
@@ -472,8 +600,19 @@ app.put('/api/admin/orders/:id/status', requireAdmin, async (req, res) => {
 
 app.put('/api/admin/orders/:id/tracking', requireAdmin, async (req, res) => {
     try {
-        const { trackingNumber, carrier } = req.body;
-        await prisma.order.update({ where: { orderNumber: req.params.id }, data: { trackingNumber, carrier, status: 'Fulfilled' } });
+        const { trackingNumber, carrier, notify } = req.body; // Added notify flag check if coming from frontend
+        
+        const order = await prisma.order.update({ 
+            where: { orderNumber: req.params.id }, 
+            data: { trackingNumber, carrier, status: 'Fulfilled' } 
+        });
+
+        // Send Shipping Email if tracking is added/updated
+        if (notify !== false && trackingNumber) {
+            const emailHtml = Templates.shippingUpdate(order.orderNumber, trackingNumber, carrier || 'Australia Post');
+            await sendEmail(order.customerEmail, `Your Order #${order.orderNumber} is on the way!`, emailHtml);
+        }
+
         res.json({ success: true });
     } catch (e) { res.status(500).json({ error: e.message }); }
 });
@@ -498,7 +637,8 @@ app.post('/api/admin/newsletter/send', requireAdmin, async (req, res) => {
     try {
         const { subject, message } = req.body;
         const subs = await prisma.subscriber.findMany();
-        for (const sub of subs) { await sendEmail(sub.email, subject, message); }
+        const htmlContent = emailLayout(subject, message); // Wrap ad-hoc email in template
+        for (const sub of subs) { await sendEmail(sub.email, subject, htmlContent); }
         res.json({ success: true, sent: subs.length });
     } catch (e) { res.status(500).json({ error: e.message }); }
 });
@@ -528,7 +668,11 @@ app.post('/api/auth/signup', async (req, res) => {
         const hashedPassword = await bcrypt.hash(password, 10);
         const otp = generateOTP();
         await prisma.user.create({ data: { name, email, password: hashedPassword, otp } });
-        await sendEmail(email, 'Verify Email', `Code: ${otp}`);
+        
+        // Send OTP Email
+        const emailHtml = Templates.otp(otp);
+        await sendEmail(email, 'Verify Your Email - Himalaya Vitality', emailHtml);
+        
         res.json({ message: 'Signup successful', requiresVerification: true, email });
     } catch (e) { res.status(500).json({ error: e.message }); }
 });
