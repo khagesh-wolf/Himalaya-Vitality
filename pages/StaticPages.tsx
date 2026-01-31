@@ -10,7 +10,7 @@ import { BLOG_POSTS, MAIN_PRODUCT, FAQ_DATA } from '../constants';
 
 // --- Shared Components ---
 const PageHeader = ({ title, subtitle, image }: { title: string, subtitle?: string, image?: string }) => (
-    <div className="relative min-h-[50vh] flex items-center justify-center overflow-hidden bg-brand-dark">
+    <div className="relative min-h-[40vh] flex items-center justify-center overflow-hidden bg-brand-dark pt-32 pb-20">
         {/* Background */}
         <div className="absolute inset-0 z-0">
             {image && (
@@ -20,7 +20,7 @@ const PageHeader = ({ title, subtitle, image }: { title: string, subtitle?: stri
             <div className="absolute inset-0 opacity-10 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')]"></div>
         </div>
         
-        <Container className="relative z-10 text-center text-white pt-20 pb-20">
+        <Container className="relative z-10 text-center text-white">
             <Reveal>
                 <div className="inline-block mb-4 border border-white/20 bg-white/5 backdrop-blur-md px-4 py-1.5 rounded-full text-xs font-bold uppercase tracking-[0.2em] text-brand-gold-400">
                     Himalaya Vitality
@@ -246,7 +246,7 @@ export const SciencePage = () => (
                             </div>
                             <div className="flex justify-between items-center p-4 bg-gray-50 rounded-xl">
                                 <span className="font-bold text-gray-600">Fulvic Acid</span>
-                                <span className="font-bold text-brand-dark"> 60%</span>
+                                <span className="font-bold text-brand-dark">> 60%</span>
                             </div>
                             <div className="flex justify-between items-center p-4 bg-gray-50 rounded-xl">
                                 <span className="font-bold text-gray-600">Dibenzo-alpha-pyrones</span>
@@ -633,7 +633,7 @@ export const TrackOrderPage = () => (
     <div className="min-h-screen bg-gray-50 flex flex-col">
          <PageHeader title="Track Your Order" />
          <Container className="py-24 text-center flex-grow">
-             <Card className="max-w-md mx-auto p-10 shadow-2xl border-t-4 border-t-brand-red">
+             <Card className="max-w-md mx-auto p-10 shadow-2xl border-t-4 border-brand-red">
                 <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-6 text-brand-dark animate-pulse-fast">
                     <Truck size={40} />
                 </div>

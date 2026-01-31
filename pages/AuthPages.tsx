@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate, Link, useLocation } from 'react-router-dom';
 import { Mail, Lock, User, AlertCircle, Key, ArrowLeft, CheckCircle, Info } from 'lucide-react';
@@ -17,16 +18,17 @@ const GoogleIcon = () => (
 );
 
 const AuthLayout = ({ children, title }: { children?: React.ReactNode, title: string }) => (
-    <div className="min-h-screen relative flex items-center justify-center py-32 px-4 bg-brand-dark overflow-hidden">
+    <div className="min-h-screen relative flex items-center justify-center py-12 px-4 bg-gray-50">
         <SEO title={title} />
-        {/* Background */}
-        <div className="absolute inset-0 z-0">
-            <LazyImage src="https://images.unsplash.com/photo-1518241353330-0f7941c2d9b5?q=80&w=1200&auto=format&fit=crop" alt="Himalaya Background" className="w-full h-full object-cover opacity-20" />
-            <div className="absolute inset-0 bg-gradient-to-t from-brand-dark via-brand-dark/80 to-transparent"></div>
+        {/* Subtle Light Background Decoration */}
+        <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none">
+             <div className="absolute top-0 right-0 w-1/2 h-1/2 bg-brand-red/5 rounded-full blur-3xl transform translate-x-1/2 -translate-y-1/2"></div>
+             <div className="absolute bottom-0 left-0 w-1/2 h-1/2 bg-gray-200/50 rounded-full blur-3xl transform -translate-x-1/2 translate-y-1/2"></div>
         </div>
         
-        {/* Content */}
-        <div className="relative z-10 w-full max-w-md animate-in fade-in zoom-in-95 duration-500">
+        {/* Content - Added mt-20 to clear the fixed white header on mobile/small screens if needed, 
+            though flex-center usually handles it. The padding ensures it doesn't touch edges. */}
+        <div className="relative z-10 w-full max-w-md animate-in fade-in zoom-in-95 duration-500 mt-20 md:mt-0">
             {children}
         </div>
     </div>
@@ -69,7 +71,7 @@ export const LoginPage = () => {
 
     return (
         <AuthLayout title="Login">
-            <Card className="p-8 shadow-2xl border border-white/10 bg-white/95 backdrop-blur-sm">
+            <Card className="p-8 shadow-xl border border-gray-100 bg-white">
                 <h1 className="font-heading font-bold text-3xl text-center mb-2 text-brand-dark">Welcome Back</h1>
                 <p className="text-gray-500 text-center mb-8 text-sm">Access your vitality profile and orders.</p>
                 
@@ -86,7 +88,7 @@ export const LoginPage = () => {
                         <div className="w-full border-t border-gray-200"></div>
                     </div>
                     <div className="relative flex justify-center text-xs uppercase">
-                        <span className="bg-white/95 px-2 text-gray-400 font-bold tracking-wider">Or Login with Email</span>
+                        <span className="bg-white px-2 text-gray-400 font-bold tracking-wider">Or Login with Email</span>
                     </div>
                 </div>
 
@@ -97,7 +99,7 @@ export const LoginPage = () => {
                             value={email} 
                             onChange={e => setEmail(e.target.value)} 
                             placeholder="Email address" 
-                            className="w-full p-4 pl-12 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-brand-red focus:bg-white outline-none transition-all font-medium" 
+                            className="w-full p-4 pl-12 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-brand-red focus:bg-white outline-none transition-all font-medium text-brand-dark" 
                             required 
                         />
                         <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
@@ -108,7 +110,7 @@ export const LoginPage = () => {
                             value={password} 
                             onChange={e => setPassword(e.target.value)} 
                             placeholder="Password" 
-                            className="w-full p-4 pl-12 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-brand-red focus:bg-white outline-none transition-all font-medium" 
+                            className="w-full p-4 pl-12 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-brand-red focus:bg-white outline-none transition-all font-medium text-brand-dark" 
                             required 
                         />
                         <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
@@ -168,7 +170,7 @@ export const SignupPage = () => {
 
     return (
         <AuthLayout title="Sign Up">
-            <Card className="p-8 shadow-2xl border border-white/10 bg-white/95 backdrop-blur-sm">
+            <Card className="p-8 shadow-xl border border-gray-100 bg-white">
                 <h1 className="font-heading font-bold text-3xl text-center mb-2 text-brand-dark">Join the Tribe</h1>
                 <p className="text-gray-500 text-center mb-8 text-sm">Start your journey to peak performance.</p>
                 
@@ -185,7 +187,7 @@ export const SignupPage = () => {
                         <div className="w-full border-t border-gray-200"></div>
                     </div>
                     <div className="relative flex justify-center text-xs uppercase">
-                        <span className="bg-white/95 px-2 text-gray-400 font-bold tracking-wider">Or Sign up with Email</span>
+                        <span className="bg-white px-2 text-gray-400 font-bold tracking-wider">Or Sign up with Email</span>
                     </div>
                 </div>
 
@@ -196,7 +198,7 @@ export const SignupPage = () => {
                             value={name} 
                             onChange={e => setName(e.target.value)} 
                             placeholder="Full Name" 
-                            className="w-full p-4 pl-12 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-brand-red focus:bg-white outline-none transition-all font-medium" 
+                            className="w-full p-4 pl-12 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-brand-red focus:bg-white outline-none transition-all font-medium text-brand-dark" 
                             required 
                         />
                         <User className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
@@ -207,7 +209,7 @@ export const SignupPage = () => {
                             value={email} 
                             onChange={e => setEmail(e.target.value)} 
                             placeholder="Email address" 
-                            className="w-full p-4 pl-12 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-brand-red focus:bg-white outline-none transition-all font-medium" 
+                            className="w-full p-4 pl-12 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-brand-red focus:bg-white outline-none transition-all font-medium text-brand-dark" 
                             required 
                         />
                         <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
@@ -218,7 +220,7 @@ export const SignupPage = () => {
                             value={password} 
                             onChange={e => setPassword(e.target.value)} 
                             placeholder="Password" 
-                            className="w-full p-4 pl-12 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-brand-red focus:bg-white outline-none transition-all font-medium" 
+                            className="w-full p-4 pl-12 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-brand-red focus:bg-white outline-none transition-all font-medium text-brand-dark" 
                             required 
                         />
                         <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
@@ -229,7 +231,7 @@ export const SignupPage = () => {
                             value={confirmPassword} 
                             onChange={e => setConfirmPassword(e.target.value)} 
                             placeholder="Confirm Password" 
-                            className={`w-full p-4 pl-12 bg-gray-50 border rounded-xl focus:ring-2 focus:bg-white outline-none transition-all font-medium ${localError ? 'border-red-500 ring-red-100' : 'border-gray-200 focus:ring-brand-red'}`} 
+                            className={`w-full p-4 pl-12 bg-gray-50 border rounded-xl focus:ring-2 focus:bg-white outline-none transition-all font-medium text-brand-dark ${localError ? 'border-red-500 ring-red-100' : 'border-gray-200 focus:ring-brand-red'}`} 
                             required 
                         />
                         <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
@@ -274,7 +276,7 @@ export const VerifyEmailPage = () => {
 
     return (
         <AuthLayout title="Verify Email">
-            <Card className="p-8 text-center shadow-xl bg-white/95 backdrop-blur-sm">
+            <Card className="p-8 text-center shadow-xl bg-white border border-gray-100">
                 <div className="w-16 h-16 bg-brand-red/10 text-brand-red rounded-full flex items-center justify-center mx-auto mb-4">
                     <Key size={32} />
                 </div>
@@ -289,7 +291,7 @@ export const VerifyEmailPage = () => {
                         value={otp} 
                         onChange={e => setOtp(e.target.value)} 
                         placeholder="000000" 
-                        className="w-full p-4 border border-gray-200 rounded-xl text-center text-2xl font-bold tracking-[0.5em] focus:ring-2 focus:ring-brand-red outline-none transition-all" 
+                        className="w-full p-4 border border-gray-200 rounded-xl text-center text-2xl font-bold tracking-[0.5em] focus:ring-2 focus:ring-brand-red outline-none transition-all text-brand-dark" 
                         maxLength={6} 
                     />
                     {msg && <p className="text-red-500 text-sm font-bold">{msg}</p>}
@@ -340,7 +342,7 @@ export const ForgotPasswordPage = () => {
 
     return (
         <AuthLayout title="Reset Password">
-            <Card className="p-8 shadow-xl bg-white/95 backdrop-blur-sm">
+            <Card className="p-8 shadow-xl bg-white border border-gray-100">
                 <h1 className="font-heading font-bold text-2xl mb-2 text-center text-brand-dark">Reset Password</h1>
                 <p className="text-gray-500 text-center mb-8 text-sm">Recover access to your account.</p>
                 
@@ -352,7 +354,7 @@ export const ForgotPasswordPage = () => {
                                 value={email} 
                                 onChange={e => setEmail(e.target.value)} 
                                 placeholder="Enter your email" 
-                                className="w-full p-4 pl-12 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-brand-red focus:bg-white outline-none transition-all font-medium" 
+                                className="w-full p-4 pl-12 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-brand-red focus:bg-white outline-none transition-all font-medium text-brand-dark" 
                                 required
                             />
                             <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
@@ -366,13 +368,13 @@ export const ForgotPasswordPage = () => {
                             <span>Code sent to <strong>{email}</strong>. Please check your spam folder.</span>
                         </div>
 
-                        <input type="text" value={otp} onChange={e => setOtp(e.target.value)} placeholder="Enter 6-Digit Code" className="w-full p-4 border border-gray-200 rounded-xl text-center font-bold tracking-widest outline-none focus:ring-2 focus:ring-brand-red" />
+                        <input type="text" value={otp} onChange={e => setOtp(e.target.value)} placeholder="Enter 6-Digit Code" className="w-full p-4 border border-gray-200 rounded-xl text-center font-bold tracking-widest outline-none focus:ring-2 focus:ring-brand-red text-brand-dark" />
                         <div className="relative">
-                            <input type="password" value={newPass} onChange={e => setNewPass(e.target.value)} placeholder="New Password" className="w-full p-4 pl-12 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-brand-red outline-none" />
+                            <input type="password" value={newPass} onChange={e => setNewPass(e.target.value)} placeholder="New Password" className="w-full p-4 pl-12 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-brand-red outline-none text-brand-dark" />
                             <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
                         </div>
                         <div className="relative">
-                            <input type="password" value={confirmPass} onChange={e => setConfirmPass(e.target.value)} placeholder="Confirm Password" className="w-full p-4 pl-12 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-brand-red outline-none" />
+                            <input type="password" value={confirmPass} onChange={e => setConfirmPass(e.target.value)} placeholder="Confirm Password" className="w-full p-4 pl-12 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-brand-red outline-none text-brand-dark" />
                             <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
                         </div>
                         <Button fullWidth size="lg">Set New Password</Button>

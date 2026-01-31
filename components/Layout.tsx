@@ -82,12 +82,11 @@ export const Navbar = () => {
 
   // Header State Logic
   const isHomePage = location.pathname === '/';
-  const isAuthPage = ['/login', '/signup', '/verify-email', '/forgot-password'].includes(location.pathname);
   
   // Logic: 
-  // - If Homepage OR AuthPage & Not Scrolled: Transparent (White text)
-  // - Otherwise: White Background (Dark text)
-  const isTransparent = (isHomePage || isAuthPage) && !scrolled;
+  // - Only Homepage is transparent when not scrolled.
+  // - All other pages (Login, Static, Product) have a solid white header by default.
+  const isTransparent = isHomePage && !scrolled;
   
   // Text color classes
   const textColorClass = isTransparent ? 'text-white' : 'text-brand-dark';
@@ -106,7 +105,6 @@ export const Navbar = () => {
       {/* 
           Main Header Wrapper 
           - Always Fixed to top.
-          - No padding on parent to ensure Top Bar is flush.
       */}
       <header 
         className={`fixed top-0 left-0 w-full z-40 transition-all duration-500 ease-in-out ${
