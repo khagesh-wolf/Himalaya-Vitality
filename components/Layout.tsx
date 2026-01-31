@@ -82,12 +82,12 @@ export const Navbar = () => {
 
   // Header State Logic
   const isHomePage = location.pathname === '/';
+  const isAuthPage = ['/login', '/signup', '/verify-email', '/forgot-password'].includes(location.pathname);
   
   // Logic: 
-  // - If Homepage & Not Scrolled: Transparent (White text)
-  // - If Homepage & Scrolled: White Background (Dark text)
-  // - If Other Page: White Background (Dark text) always
-  const isTransparent = isHomePage && !scrolled;
+  // - If Homepage OR AuthPage & Not Scrolled: Transparent (White text)
+  // - Otherwise: White Background (Dark text)
+  const isTransparent = (isHomePage || isAuthPage) && !scrolled;
   
   // Text color classes
   const textColorClass = isTransparent ? 'text-white' : 'text-brand-dark';
@@ -106,18 +106,16 @@ export const Navbar = () => {
       {/* 
           Main Header Wrapper 
           - Always Fixed to top.
-          - Transition properties handle smoothness.
-          - Z-Index: 40
-          - Removed pt-4 when transparent to prevent gap above top bar
+          - No padding on parent to ensure Top Bar is flush.
       */}
       <header 
         className={`fixed top-0 left-0 w-full z-40 transition-all duration-500 ease-in-out ${
             isTransparent 
-                ? 'bg-transparent border-b border-transparent pt-0 pb-2' 
-                : 'bg-white/95 backdrop-blur-md border-b border-gray-200/50 shadow-sm py-2'
+                ? 'bg-transparent border-b border-transparent' 
+                : 'bg-white/95 backdrop-blur-md border-b border-gray-200/50 shadow-sm'
         }`}
       >
-          {/* Dynamic Top Bar - Restored and sits at very top due to pt-0 on parent */}
+          {/* Dynamic Top Bar */}
           <div className={`overflow-hidden transition-all duration-300 ease-in-out ${scrolled ? 'max-h-0 opacity-0' : 'max-h-10 opacity-100'}`}>
             {settings.showTopBar && (
                 <div className="bg-brand-red text-white text-[10px] font-bold text-center py-2 px-4 tracking-widest uppercase relative z-[41]">
@@ -127,9 +125,9 @@ export const Navbar = () => {
           </div>
 
           {/* Navbar Content */}
-          <nav className="relative z-[40]">
+          <nav className={`relative z-[40] ${!isTransparent ? 'py-2' : 'py-2'}`}>
             <Container>
-              <div className="flex justify-between items-center transition-all duration-300 min-h-[64px]">
+              <div className="flex justify-between items-center transition-all duration-300 min-h-[50px] md:min-h-[60px]">
                 {/* 1. Mobile Menu Trigger (Left) */}
                 <button 
                   className={`md:hidden p-2 -ml-2 rounded-full transition-colors relative z-50 ${textColorClass}`}
