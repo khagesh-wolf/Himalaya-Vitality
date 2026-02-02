@@ -18,7 +18,7 @@ const GoogleIcon = () => (
 );
 
 const AuthLayout = ({ children, title }: { children?: React.ReactNode, title: string }) => (
-    <div className="min-h-screen relative flex items-center justify-center py-12 px-4 bg-gray-50">
+    <div className="min-h-screen relative flex items-center justify-center pt-32 pb-12 px-4 bg-gray-50">
         <SEO title={title} />
         {/* Subtle Light Background Decoration */}
         <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none">
@@ -26,9 +26,8 @@ const AuthLayout = ({ children, title }: { children?: React.ReactNode, title: st
              <div className="absolute bottom-0 left-0 w-1/2 h-1/2 bg-gray-200/50 rounded-full blur-3xl transform -translate-x-1/2 translate-y-1/2"></div>
         </div>
         
-        {/* Content - Added mt-20 to clear the fixed white header on mobile/small screens if needed, 
-            though flex-center usually handles it. The padding ensures it doesn't touch edges. */}
-        <div className="relative z-10 w-full max-w-md animate-in fade-in zoom-in-95 duration-500 mt-20 md:mt-0">
+        {/* Content */}
+        <div className="relative z-10 w-full max-w-md animate-in fade-in zoom-in-95 duration-500">
             {children}
         </div>
     </div>

@@ -58,7 +58,7 @@ export const CartPage = () => {
 
   if (cartItems.length === 0) {
     return (
-      <div className="min-h-[60vh] flex flex-col items-center justify-center bg-white py-20">
+      <div className="min-h-[60vh] flex flex-col items-center justify-center bg-white py-20 pt-32">
         <div className="w-24 h-24 bg-gray-50 rounded-full flex items-center justify-center mb-6 text-gray-300 animate-in zoom-in duration-500">
           <ShoppingBag size={40} />
         </div>
@@ -75,7 +75,7 @@ export const CartPage = () => {
   const discountAmount = cartSubtotal - cartTotal;
 
   return (
-    <div className="bg-gray-50 py-12 min-h-screen">
+    <div className="bg-gray-50 pt-32 pb-12 min-h-screen">
       <Container>
         <Reveal>
             <h1 className="font-heading text-3xl font-extrabold text-brand-dark mb-8">Your Cart</h1>

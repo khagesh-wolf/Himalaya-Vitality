@@ -4,7 +4,7 @@ import { useNavigate, useSearchParams, useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { Star, Check, ShieldCheck, Truck, Clock, Lock, Award, Filter, ArrowRight } from 'lucide-react';
 import { Button, Container, LazyImage, Reveal } from '../components/UI';
-import { BundleType, Product } from '../types';
+import { BundleType, Product, Review } from '../types';
 import { useCurrency } from '../context/CurrencyContext';
 import { useCart } from '../context/CartContext';
 import { useLoading } from '../context/LoadingContext';
@@ -12,7 +12,6 @@ import { SEO } from '../components/SEO';
 import { Breadcrumbs } from '../components/Breadcrumbs';
 import { fetchProduct, fetchReviews } from '../services/api';
 import { ProductPageSkeleton } from '../components/Skeletons';
-import { REVIEWS } from '../constants'; 
 import { trackViewItem, trackAddToCart } from '../services/analytics'; 
 
 export const ProductPage = () => {
@@ -25,14 +24,17 @@ export const ProductPage = () => {
   const { addToCart } = useCart();
   const { setIsLoading } = useLoading();
 
-  // Fetch product from API (DB) to ensure prices are up to date
-  const { data: product, isLoading } = useQuery<Product>({
+  // Fetch product from API - Strict
+  const { data: product, isLoading: isProductLoading } = useQuery<Product>({
       queryKey: ['product', productId || 'himalaya-shilajit-resin'],
       queryFn: () => fetchProduct(productId || 'himalaya-shilajit-resin')
   });
 
-  // Use hardcoded reviews for now as they are static
-  const reviews = REVIEWS;
+  // Fetch Reviews from API - Strict
+  const { data: reviews = [] } = useQuery<Review[]>({
+      queryKey: ['reviews'],
+      queryFn: fetchReviews
+  });
 
   const initialBundle = (bundleParam && Object.values(BundleType).includes(bundleParam as BundleType))
     ? (bundleParam as BundleType)
@@ -40,12 +42,10 @@ export const ProductPage = () => {
 
   const [selectedBundle, setSelectedBundle] = useState<BundleType>(initialBundle);
   const [showStickyBar, setShowStickyBar] = useState(false);
-  
-  // Review Filtering State
   const [reviewFilter, setReviewFilter] = useState<'All' | 'Athlete'>('All');
   const [visibleReviews, setVisibleReviews] = useState(3);
   
-  // Safe access to variants
+  // Safe access to variants if product exists
   const currentVariant = product?.variants.find(v => v.type === selectedBundle) || product?.variants[0];
 
   useEffect(() => {
@@ -110,7 +110,7 @@ export const ProductPage = () => {
   const displayedReviews = filteredReviews.slice(0, visibleReviews);
   const hasMoreReviews = visibleReviews < filteredReviews.length;
 
-  if (isLoading || !product || !currentVariant) return <ProductPageSkeleton />;
+  if (isProductLoading || !product || !currentVariant) return <ProductPageSkeleton />;
 
   return (
     <div className="bg-[#FAFAFA] pt-32 pb-16">
@@ -136,8 +136,10 @@ export const ProductPage = () => {
                     alt={product.title} 
                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" 
                     sizes="(max-width: 1024px) 100vw, 60vw"
+                    loading="eager"
+                    fetchPriority="high"
                 />
-                <div className="absolute top-6 left-6 flex gap-2">
+                <div className="absolute top-6 left-6 flex flex-col gap-2 items-start">
                     <div className="bg-white/90 backdrop-blur px-4 py-2 rounded-full text-xs font-bold text-brand-dark shadow-sm border border-gray-100">
                     High Altitude • Gold Grade
                     </div>
@@ -234,16 +236,16 @@ export const ProductPage = () => {
                                 Most Popular
                                 </span>
                             )}
-                            <div className="flex items-center">
-                                <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center mr-4 shrink-0 transition-colors ${isSelected ? 'border-brand-red' : 'border-gray-300'}`}>
+                            <div className="flex items-center flex-1 min-w-0 pr-4">
+                                <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center mr-3 sm:mr-4 shrink-0 transition-colors ${isSelected ? 'border-brand-red' : 'border-gray-300'}`}>
                                 {isSelected && <div className="w-2.5 h-2.5 rounded-full bg-brand-red" />}
                                 </div>
-                                <div>
-                                <span className={`block font-bold text-sm ${isSelected ? 'text-brand-dark' : 'text-gray-700'}`}>{variant.name}</span>
-                                <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wide">{variant.label}</span>
+                                <div className="min-w-0">
+                                <span className={`block font-bold text-sm truncate ${isSelected ? 'text-brand-dark' : 'text-gray-700'}`}>{variant.name}</span>
+                                <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wide block">{variant.label}</span>
                                 </div>
                             </div>
-                            <div className="text-right">
+                            <div className="text-right shrink-0">
                                 <div className="font-heading font-bold text-lg text-brand-dark">{formatPrice(variant.price)}</div>
                                 {variant.type !== BundleType.SINGLE && (
                                 <div className="text-xs flex flex-col items-end">
@@ -286,12 +288,12 @@ export const ProductPage = () => {
         {/* Customer Reviews Section */}
         <div id="reviews" className="border-t border-gray-200 pt-20">
             <Reveal>
-                <div className="flex items-end justify-between mb-12">
+                <div className="flex flex-col md:flex-row md:items-end justify-between mb-12 gap-4">
                     <div>
                         <span className="text-brand-red font-bold text-xs uppercase tracking-widest mb-2 block">Community Feedback</span>
                         <h2 className="font-heading text-3xl md:text-4xl font-extrabold text-brand-dark">Customer Reviews</h2>
                     </div>
-                    <div className="hidden md:flex items-center gap-2">
+                    <div className="flex items-center gap-2">
                         <div className="flex text-brand-red">
                             {[...Array(5)].map((_,i) => <Star key={i} size={20} fill="currentColor" strokeWidth={0} />)}
                         </div>
@@ -366,8 +368,8 @@ export const ProductPage = () => {
       {/* Sticky Mobile CTA Bar */}
       <div className={`fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-4 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)] z-[60] transition-transform duration-300 lg:hidden ${showStickyBar ? 'translate-y-0' : 'translate-y-full'}`}>
         <div className="flex items-center justify-between gap-4">
-            <div className="flex flex-col">
-                <span className="text-xs font-bold text-gray-500">{currentVariant.name}</span>
+            <div className="flex flex-col min-w-0">
+                <span className="text-xs font-bold text-gray-500 truncate max-w-[120px]">{currentVariant.name}</span>
                 <span className="text-lg font-heading font-bold text-brand-dark">{formatPrice(currentVariant.price)}</span>
             </div>
             <Button className="flex-1 shadow-lg shadow-brand-red/20" onClick={handleAddToCart}>

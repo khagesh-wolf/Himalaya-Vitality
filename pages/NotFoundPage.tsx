@@ -7,7 +7,7 @@ import { SEO } from '../components/SEO';
 
 export const NotFoundPage = () => {
   return (
-    <div className="min-h-[80vh] flex items-center justify-center bg-white relative overflow-hidden">
+    <div className="min-h-[80vh] flex items-center justify-center bg-white relative overflow-hidden pt-32 pb-20">
       <SEO title="Page Not Found" description="The page you are looking for has been moved or does not exist." />
       
       {/* Background Decor */}
