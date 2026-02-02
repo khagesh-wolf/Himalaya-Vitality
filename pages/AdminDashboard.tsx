@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { 
@@ -211,6 +212,20 @@ const OrdersView = () => {
         });
     };
 
+    const exportCSV = () => {
+        const filteredData = filter === 'All' ? orders : orders.filter((o: any) => o.status === filter);
+        const csvContent = "data:text/csv;charset=utf-8," 
+            + "Order ID,Customer,Email,Total,Status,Date,Tracking,Carrier\n"
+            + filteredData.map((o: any) => `${o.id},${o.customer},${o.email},${o.total},${o.status},${o.date},${o.trackingNumber || ''},${o.carrier || ''}`).join("\n");
+        const encodedUri = encodeURI(csvContent);
+        const link = document.createElement("a");
+        link.setAttribute("href", encodedUri);
+        link.setAttribute("download", `orders_export_${new Date().toISOString().split('T')[0]}.csv`);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    };
+
     const filtered = filter === 'All' ? orders : orders.filter((o: any) => o.status === filter);
 
     return (
@@ -221,6 +236,9 @@ const OrdersView = () => {
                         <button key={f} onClick={() => setFilter(f)} className={`px-4 py-2 rounded-lg text-sm font-bold transition-colors ${filter === f ? 'bg-brand-dark text-white' : 'bg-gray-50 text-gray-500 hover:bg-gray-100'}`}>{f}</button>
                     ))}
                 </div>
+                <Button size="sm" variant="outline" onClick={exportCSV}>
+                    <Download size={16} className="mr-2"/> Export CSV
+                </Button>
             </div>
             
             <div className="overflow-x-auto">

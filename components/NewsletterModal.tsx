@@ -23,28 +23,36 @@ export const NewsletterModal = () => {
     const isDismissed = sessionStorage.getItem('himalaya_newsletter_dismissed') === 'true';
     if (isDismissed) return;
 
-    // 3. Auto-show after 10 seconds
+    // 3. Time on Page Check (Wait 5 seconds minimum)
+    const timeCheck = () => (Date.now() - mountedTime) > 5000;
+
+    // 4. Scroll Depth Check (Wait until user scrolls 30%)
+    const scrollCheck = () => {
+        const scrollTop = window.scrollY;
+        const docHeight = document.body.offsetHeight;
+        const winHeight = window.innerHeight;
+        const scrollPercent = scrollTop / (docHeight - winHeight);
+        return scrollPercent > 0.3;
+    }
+
+    // Auto-show after 30 seconds if high engagement
     const timer = setTimeout(() => {
-        // Double check status before showing
         if (
             localStorage.getItem('himalaya_subscribed') !== 'true' &&
             sessionStorage.getItem('himalaya_newsletter_dismissed') !== 'true'
         ) {
             setIsOpen(true);
         }
-    }, 15000);
+    }, 30000);
 
-    // 4. Exit Intent Logic (Enforcing 10s rule as requested)
+    // Smart Exit Intent Logic
     const handleMouseLeave = (e: MouseEvent) => {
-      if (e.clientY <= 0) {
-        const timeOnPage = Date.now() - mountedTime;
-        // Only show if user has been hanging on the website for more than 10 seconds
-        if (timeOnPage < 15000) return;
-
+      // Trigger if mouse crosses top boundary AND time/scroll conditions met
+      if (e.clientY <= 0 && timeCheck() && scrollCheck()) {
         if (
             localStorage.getItem('himalaya_subscribed') !== 'true' &&
             sessionStorage.getItem('himalaya_newsletter_dismissed') !== 'true' &&
-            !isOpen // Don't trigger if already open
+            !isOpen 
         ) {
             setIsOpen(true);
         }

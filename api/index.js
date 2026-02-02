@@ -458,16 +458,51 @@ app.get('/api/orders/my-orders', authenticate, async (req, res) => {
     }
 });
 
-// Public Tracking Endpoint
+// Public Tracking Endpoint - GUEST CHECKOUT ORDER LOOKUP
 app.get('/api/orders/:id/track', async (req, res) => {
     try {
+        // Case-insensitive lookup fallback if exact match fails?
+        // For security, strict matching is better.
         const order = await prisma.order.findUnique({
             where: { orderNumber: req.params.id },
-            select: { orderNumber: true, status: true, trackingNumber: true, carrier: true }
+            select: { 
+                orderNumber: true, 
+                status: true, 
+                trackingNumber: true, 
+                carrier: true,
+                createdAt: true
+            }
         });
-        if (!order) return res.status(404).json({ error: 'Order not found' });
-        res.json(order);
+        if (!order) return res.status(404).json({ error: 'Order not found. Check your ID.' });
+        
+        // Return a simplified object safe for public viewing
+        res.json({
+            orderNumber: order.orderNumber,
+            status: order.status,
+            trackingNumber: order.trackingNumber,
+            carrier: order.carrier,
+            date: new Date(order.createdAt).toLocaleDateString()
+        });
     } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// ABANDONED CART RECOVERY: Capture Lead
+app.post('/api/checkout/lead', async (req, res) => {
+    const { email } = req.body;
+    if (!email) return res.status(400).json({ error: 'Email required' });
+    
+    try {
+        // Upsert subscriber with source "Checkout" or "Abandoned Cart"
+        await prisma.subscriber.upsert({
+            where: { email },
+            update: {}, // Don't overwrite if exists
+            create: { email, source: 'Abandoned Cart' }
+        });
+        res.json({ success: true });
+    } catch (e) {
+        // Silently fail for frontend
+        res.json({ success: false });
+    }
 });
 
 app.post('/api/orders', async (req, res) => {
@@ -574,25 +609,100 @@ app.post('/api/orders', async (req, res) => {
 // Admin Stats
 app.get('/api/admin/stats', requireAdmin, async (req, res) => {
     try {
+        // Valid statuses including Fulfilled
         const validStatuses = ['Paid', 'Fulfilled', 'Delivered'];
+        const { startDate, endDate } = req.query;
         
+        // Parse date range (Default to last 30 days)
+        const end = endDate ? new Date(endDate) : new Date();
+        const start = startDate ? new Date(startDate) : new Date(new Date().setDate(end.getDate() - 30));
+
+        // Define filter criteria for the selected range
+        const metricsWhere = {
+            status: { in: validStatuses },
+            createdAt: { gte: start, lte: end }
+        };
+
+        // 1. Total Metrics (Filtered by range)
         const totalRevenue = (await prisma.order.aggregate({ 
             _sum: { total: true }, 
-            where: { status: { in: validStatuses } } 
+            where: metricsWhere
         }))._sum.total || 0;
         
-        // Only count valid orders for AOV calculation to prevent dilution by Pending/Unpaid
         const totalOrders = await prisma.order.count({
-            where: { status: { in: validStatuses } }
+            where: metricsWhere
         });
+
+        const avgOrderValue = totalOrders ? totalRevenue / totalOrders : 0;
+
+        // 2. Chart Data Aggregation (Daily Breakdown)
+        const ordersInRange = await prisma.order.findMany({
+            where: metricsWhere,
+            select: { createdAt: true, total: true },
+            orderBy: { createdAt: 'asc' }
+        });
+
+        // Initialize map with 0 for every day in range to have a continuous line
+        const chartData = {};
+        for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+            chartData[d.toISOString().split('T')[0]] = 0;
+        }
+
+        // Fill with actual data
+        ordersInRange.forEach(o => {
+            const date = o.createdAt.toISOString().split('T')[0];
+            if (chartData[date] !== undefined) {
+                chartData[date] += o.total;
+            } else {
+                // In case of timezone edge cases or if order falls slightly outside initialized loop
+                // (Though query should prevent this, good for safety)
+                chartData[date] = (chartData[date] || 0) + o.total;
+            }
+        });
+
+        const chart = Object.keys(chartData).map(date => ({
+            date,
+            revenue: chartData[date]
+        })).sort((a, b) => new Date(a.date) - new Date(b.date));
+
+        // 3. Trends (Compare vs Previous Period)
+        const duration = end.getTime() - start.getTime();
+        const prevStart = new Date(start.getTime() - duration);
+        const prevEnd = start;
+
+        const prevWhere = {
+            status: { in: validStatuses },
+            createdAt: { gte: prevStart, lte: prevEnd }
+        };
+
+        const prevRevenue = (await prisma.order.aggregate({ 
+            _sum: { total: true }, 
+            where: prevWhere 
+        }))._sum.total || 0;
+
+        const prevOrders = await prisma.order.count({ where: prevWhere });
+        const prevAov = prevOrders ? prevRevenue / prevOrders : 0;
         
+        const calculateTrend = (current, previous) => {
+            if (previous === 0) return current > 0 ? 100 : 0;
+            return ((current - previous) / previous) * 100;
+        };
+
         res.json({ 
             totalRevenue, 
             totalOrders, 
-            avgOrderValue: totalOrders ? totalRevenue/totalOrders : 0, 
-            chart: [] 
+            avgOrderValue,
+            trends: {
+                revenue: calculateTrend(totalRevenue, prevRevenue),
+                orders: calculateTrend(totalOrders, prevOrders),
+                aov: calculateTrend(avgOrderValue, prevAov)
+            },
+            chart 
         });
-    } catch (e) { res.status(500).json({ error: e.message }); }
+    } catch (e) { 
+        console.error("Stats Error:", e);
+        res.status(500).json({ error: e.message }); 
+    }
 });
 
 app.get('/api/admin/orders', requireAdmin, async (req, res) => {

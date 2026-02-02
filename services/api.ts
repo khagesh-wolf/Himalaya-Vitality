@@ -185,8 +185,22 @@ export const fetchUserOrders = async (): Promise<Order[]> => {
 };
 
 export const trackOrder = async (orderId: string) => {
-    const res = await fetch(`${API_URL}/orders/${orderId}/track`); // Ensure backend has this public endpoint or create it
+    // Encoded to handle cases where ID might have special chars
+    const res = await fetch(`${API_URL}/orders/${encodeURIComponent(orderId)}/track`); 
     return handleResponse(res);
+};
+
+export const captureCheckoutLead = async (email: string) => {
+    try {
+        await fetch(`${API_URL}/checkout/lead`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email })
+        });
+    } catch (e) {
+        // Silently fail is acceptable for lead capture
+        console.warn("Lead capture failed", e);
+    }
 };
 
 // --- ADMIN DASHBOARD ---

@@ -2,11 +2,12 @@
 import React, { useState } from 'react';
 import { 
   ShieldCheck, Globe, Truck, Beaker, FileText, Mail, Phone, MapPin, 
-  ChevronDown, ChevronUp, Search, ArrowRight, Sun, Coffee, Droplet, Clock, PlayCircle, Loader2, Circle, CheckCircle, Package, Mountain, Heart, Zap, Brain, Activity, HelpCircle, AlertTriangle
+  ChevronDown, ChevronUp, Search, ArrowRight, Sun, Coffee, Droplet, Clock, PlayCircle, Loader2, Circle, CheckCircle, Package, Mountain, Heart, Zap, Brain, Activity, HelpCircle, AlertTriangle, AlertCircle
 } from 'lucide-react';
 import { Container, Button, Card, Reveal, LazyImage, Badge } from '../components/UI';
 import { Link } from 'react-router-dom';
 import { BLOG_POSTS, MAIN_PRODUCT, FAQ_DATA } from '../constants';
+import { trackOrder } from '../services/api';
 
 // --- Shared Components ---
 const PageHeader = ({ title, subtitle, image }: { title: string, subtitle?: string, image?: string }) => (
@@ -400,33 +401,52 @@ export const HowToUsePage = () => (
 );
 
 // --- FAQ Page ---
-export const FAQPage = () => (
-    <div className="bg-gray-50 min-h-screen">
-        <PageHeader title="Frequently Asked Questions" subtitle="Everything you need to know about Himalaya Vitality." />
-        <Container className="py-24">
-             <div className="max-w-3xl mx-auto space-y-6">
-                {FAQ_DATA.map((item, i) => (
-                    <Reveal key={i} delay={i * 100}>
-                        <div className="bg-white p-8 rounded-2xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
-                            <h3 className="font-bold text-lg text-brand-dark mb-3 flex items-start gap-4">
-                                <span className="bg-brand-red/10 text-brand-red p-2 rounded-lg shrink-0"><HelpCircle size={20}/></span>
-                                <span className="mt-1">{item.question}</span>
-                            </h3>
-                            <p className="text-gray-600 pl-[3.25rem] leading-relaxed">{item.answer}</p>
-                        </div>
-                    </Reveal>
-                ))}
-             </div>
-             
-             <div className="text-center mt-16">
-                 <p className="text-gray-500 mb-4">Still have questions?</p>
-                 <Link to="/contact">
-                    <Button variant="outline-dark">Contact Support</Button>
-                 </Link>
-             </div>
-        </Container>
-    </div>
-);
+export const FAQPage = () => {
+    // Generate FAQ Schema
+    const faqSchema = {
+        "@context": "https://schema.org",
+        "@type": "FAQPage",
+        "mainEntity": FAQ_DATA.map(item => ({
+            "@type": "Question",
+            "name": item.question,
+            "acceptedAnswer": {
+                "@type": "Answer",
+                "text": item.answer
+            }
+        }))
+    };
+
+    return (
+        <div className="bg-gray-50 min-h-screen">
+            <PageHeader title="Frequently Asked Questions" subtitle="Everything you need to know about Himalaya Vitality." />
+            <script type="application/ld+json">
+                {JSON.stringify(faqSchema)}
+            </script>
+            <Container className="py-24">
+                 <div className="max-w-3xl mx-auto space-y-6">
+                    {FAQ_DATA.map((item, i) => (
+                        <Reveal key={i} delay={i * 100}>
+                            <div className="bg-white p-8 rounded-2xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
+                                <h3 className="font-bold text-lg text-brand-dark mb-3 flex items-start gap-4">
+                                    <span className="bg-brand-red/10 text-brand-red p-2 rounded-lg shrink-0"><HelpCircle size={20}/></span>
+                                    <span className="mt-1">{item.question}</span>
+                                </h3>
+                                <p className="text-gray-600 pl-[3.25rem] leading-relaxed">{item.answer}</p>
+                            </div>
+                        </Reveal>
+                    ))}
+                 </div>
+                 
+                 <div className="text-center mt-16">
+                     <p className="text-gray-500 mb-4">Still have questions?</p>
+                     <Link to="/contact">
+                        <Button variant="outline-dark">Contact Support</Button>
+                     </Link>
+                 </div>
+            </Container>
+        </div>
+    );
+};
 
 // --- Contact Page ---
 export const ContactPage = () => (
@@ -629,24 +649,88 @@ export const SitemapPage = () => (
 );
 
 // --- Track Order Page ---
-export const TrackOrderPage = () => (
-    <div className="min-h-screen bg-gray-50 flex flex-col">
-         <PageHeader title="Track Your Order" />
-         <Container className="py-24 text-center flex-grow">
-             <Card className="max-w-md mx-auto p-10 shadow-2xl border-t-4 border-brand-red">
-                <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-6 text-brand-dark animate-pulse-fast">
-                    <Truck size={40} />
-                </div>
-                <h2 className="font-heading font-bold text-2xl text-brand-dark mb-2">Where is my package?</h2>
-                <p className="mb-8 text-gray-500">Enter your order ID found in your confirmation email.</p>
-                <div className="space-y-4">
-                    <div className="relative">
-                        <input className="w-full p-4 pl-12 bg-white border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-brand-red transition-all" placeholder="Order # (e.g. HV-1234)" />
-                        <Package className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
+export const TrackOrderPage = () => {
+    const [orderId, setOrderId] = useState('');
+    const [status, setStatus] = useState<any>(null);
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState('');
+
+    const handleTrack = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!orderId) return;
+        setLoading(true);
+        setError('');
+        setStatus(null);
+
+        try {
+            const data = await trackOrder(orderId);
+            setStatus(data);
+        } catch (e: any) {
+            setError(e.message || "Order not found. Please check your ID and try again.");
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    return (
+        <div className="min-h-screen bg-gray-50 flex flex-col">
+             <PageHeader title="Track Your Order" />
+             <Container className="py-24 text-center flex-grow">
+                 <Card className="max-w-md mx-auto p-10 shadow-2xl border-t-4 border-brand-red">
+                    <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-6 text-brand-dark animate-pulse-fast">
+                        <Truck size={40} />
                     </div>
-                    <Button fullWidth size="lg" className="shadow-lg shadow-brand-red/20">Track Order</Button>
-                </div>
-             </Card>
-         </Container>
-    </div>
-);
+                    <h2 className="font-heading font-bold text-2xl text-brand-dark mb-2">Where is my package?</h2>
+                    <p className="mb-8 text-gray-500">Enter your order ID found in your confirmation email.</p>
+                    
+                    <form onSubmit={handleTrack} className="space-y-4">
+                        <div className="relative">
+                            <input 
+                                value={orderId}
+                                onChange={(e) => setOrderId(e.target.value)}
+                                className="w-full p-4 pl-12 bg-white border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-brand-red transition-all" 
+                                placeholder="Order # (e.g. HV-1234)" 
+                            />
+                            <Package className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
+                        </div>
+                        <Button fullWidth size="lg" className="shadow-lg shadow-brand-red/20" disabled={loading}>
+                            {loading ? 'Tracking...' : 'Track Order'}
+                        </Button>
+                    </form>
+
+                    {error && (
+                        <div className="mt-6 p-4 bg-red-50 text-red-600 rounded-xl flex items-start gap-2 text-left text-sm animate-in fade-in">
+                            <AlertCircle size={16} className="shrink-0 mt-0.5" />
+                            <span>{error}</span>
+                        </div>
+                    )}
+
+                    {status && (
+                        <div className="mt-8 p-6 bg-green-50 border border-green-200 rounded-2xl text-left animate-in fade-in slide-in-from-bottom-2">
+                            <div className="flex justify-between items-center mb-4 border-b border-green-200 pb-2">
+                                <span className="text-xs font-bold text-green-700 uppercase tracking-wide">Status</span>
+                                <Badge color={status.status === 'Delivered' ? 'bg-green-600' : 'bg-blue-600'}>{status.status}</Badge>
+                            </div>
+                            <div className="space-y-2 text-sm text-brand-dark">
+                                <div className="flex justify-between">
+                                    <span className="text-gray-500">Order ID:</span>
+                                    <span className="font-bold">{status.orderNumber}</span>
+                                </div>
+                                <div className="flex justify-between">
+                                    <span className="text-gray-500">Order Date:</span>
+                                    <span className="font-bold">{status.date}</span>
+                                </div>
+                                {status.trackingNumber && (
+                                    <div className="pt-2 mt-2 border-t border-green-200">
+                                        <div className="text-xs text-gray-500 mb-1">Tracking Number ({status.carrier})</div>
+                                        <div className="font-mono font-bold text-lg select-all">{status.trackingNumber}</div>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    )}
+                 </Card>
+             </Container>
+        </div>
+    );
+};

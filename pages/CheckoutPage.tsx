@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { Link, useSearchParams, useNavigate } from 'react-router-dom';
-import { ShieldCheck, Lock, ArrowLeft, Loader2, AlertCircle, CheckCircle, Package, UserCircle, ShoppingCart, ChevronDown, ChevronUp, CreditCard, Tag, X } from 'lucide-react';
+import { ShieldCheck, Lock, ArrowLeft, Loader2, AlertCircle, CheckCircle, Package, UserCircle, ShoppingCart, ChevronDown, ChevronUp, CreditCard } from 'lucide-react';
 import { Button, Card, Container } from '../components/UI';
 import { MAIN_PRODUCT } from '../constants';
 import { useCurrency } from '../context/CurrencyContext';
@@ -9,7 +9,7 @@ import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
 import { CartItem, RegionConfig } from '../types';
 import { useLoading } from '../context/LoadingContext';
-import { createPaymentIntent, createOrder, fetchShippingRegions } from '../services/api';
+import { createPaymentIntent, createOrder, fetchShippingRegions, captureCheckoutLead } from '../services/api';
 import { trackPurchase } from '../services/analytics';
 import { useQuery } from '@tanstack/react-query';
 
@@ -28,12 +28,12 @@ const stripePromise = loadStripe(STRIPE_PUBLIC_KEY);
 
 // --- ZOD SCHEMAS ---
 const addressSchema = z.object({
-  email: z.string().min(1, "Email is required").email('Invalid email address'),
+  email: z.string().email('Invalid email address'),
   firstName: z.string().min(2, 'First name is required'),
   lastName: z.string().min(2, 'Last name is required'),
   address: z.string().min(5, 'Street address is required'),
   city: z.string().min(2, 'City is required'),
-  country: z.string().min(1, 'Country is required'),
+  country: z.string().min(2, 'Country is required'),
   zip: z.string().min(3, 'ZIP code is required'),
   phone: z.string().optional(),
 });
@@ -44,7 +44,6 @@ type CheckoutFormData = z.infer<typeof addressSchema>;
 const MobileOrderSummary = ({ 
     items, 
     subtotal, 
-    discountAmount,
     shipping, 
     tax, 
     total, 
@@ -52,7 +51,6 @@ const MobileOrderSummary = ({
 }: { 
     items: CartItem[], 
     subtotal: number, 
-    discountAmount: number,
     shipping: number, 
     tax: number, 
     total: number, 
@@ -97,12 +95,6 @@ const MobileOrderSummary = ({
                                 <span>Subtotal</span>
                                 <span>{formatPrice(subtotal)}</span>
                             </div>
-                            {discountAmount > 0 && (
-                                <div className="flex justify-between text-green-600 font-medium">
-                                    <span>Discount</span>
-                                    <span>-{formatPrice(discountAmount)}</span>
-                                </div>
-                            )}
                             <div className="flex justify-between">
                                 <span>Shipping</span>
                                 <span>{shipping === 0 ? 'FREE' : formatPrice(shipping)}</span>
@@ -124,14 +116,12 @@ const PaymentStep = ({
     items, 
     total, 
     customerData,
-    discountCode,
     onSuccess,
     onBack
 }: { 
     items: CartItem[], 
     total: number, 
     customerData: CheckoutFormData,
-    discountCode?: string,
     onSuccess: (orderId: string) => void,
     onBack: () => void
 }) => {
@@ -185,24 +175,18 @@ const PaymentStep = ({
                 setIsLoading(false);
             } else if (paymentIntent && paymentIntent.status === 'succeeded') {
                 // Payment succeeded, create order in DB
-                try {
-                    const order = await createOrder({
-                        customer: customerData,
-                        items,
-                        total,
-                        paymentId: paymentIntent.id,
-                        userId: user?.id,
-                        discountCode: discountCode 
-                    });
-                    
-                    // Track Purchase
-                    trackPurchase(order.orderId, total, items);
+                const order = await createOrder({
+                    customer: customerData,
+                    items,
+                    total,
+                    paymentId: paymentIntent.id,
+                    userId: user?.id 
+                });
+                
+                // Track Purchase
+                trackPurchase(order.orderId, total, items);
 
-                    onSuccess(order.orderId);
-                } catch(orderError: any) {
-                    // Critical: Payment succeeded but DB failed (e.g., Coupon used)
-                    setMessage(orderError.message || "Payment processed, but order creation failed. Please contact support.");
-                }
+                onSuccess(order.orderId);
                 setIsLoading(false);
             }
         } catch(err: any) {
@@ -275,6 +259,14 @@ const AddressStep = ({
         defaultValues: { country: defaultCountry || 'US', ...initialData }
     });
 
+    const handleEmailBlur = (e: React.FocusEvent<HTMLInputElement>) => {
+        const email = e.target.value;
+        if (email && email.includes('@')) {
+            // Send to backend for abandoned cart recovery
+            captureCheckoutLead(email);
+        }
+    };
+
     return (
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-5 animate-in fade-in">
             <div className="bg-gray-50 p-4 rounded-xl border border-gray-100 space-y-4">
@@ -284,8 +276,15 @@ const AddressStep = ({
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="space-y-1">
                         <label className="text-xs font-bold text-gray-500 uppercase">Email</label>
-                        <input {...register('email')} autoComplete="email" type="email" className={`w-full p-3 bg-white border rounded-lg outline-none transition-all ${errors.email ? 'border-red-500' : 'border-gray-200 focus:border-brand-red'}`} placeholder="email@example.com" />
-                        {errors.email && <p className="text-red-500 text-xs mt-1">{errors.email.message}</p>}
+                        <input 
+                            {...register('email')} 
+                            onBlur={handleEmailBlur}
+                            autoComplete="email" 
+                            type="email" 
+                            className={`w-full p-3 bg-white border rounded-lg outline-none transition-all ${errors.email ? 'border-red-500' : 'border-gray-200 focus:border-brand-red'}`} 
+                            placeholder="email@example.com" 
+                        />
+                        {errors.email && <p className="text-red-500 text-xs">{errors.email.message}</p>}
                     </div>
                     <div className="space-y-1">
                         <label className="text-xs font-bold text-gray-500 uppercase">Phone</label>
@@ -298,42 +297,41 @@ const AddressStep = ({
                 <div className="space-y-1">
                     <label className="text-xs font-bold text-gray-500 uppercase">First Name</label>
                     <input {...register('firstName')} autoComplete="given-name" type="text" className={`w-full p-3 bg-gray-50 border rounded-lg outline-none ${errors.firstName ? 'border-red-500' : 'border-gray-200 focus:border-brand-red'}`} />
-                    {errors.firstName && <p className="text-red-500 text-xs mt-1">{errors.firstName.message}</p>}
+                    {errors.firstName && <p className="text-red-500 text-xs">{errors.firstName.message}</p>}
                 </div>
                 <div className="space-y-1">
                     <label className="text-xs font-bold text-gray-500 uppercase">Last Name</label>
                     <input {...register('lastName')} autoComplete="family-name" type="text" className={`w-full p-3 bg-gray-50 border rounded-lg outline-none ${errors.lastName ? 'border-red-500' : 'border-gray-200 focus:border-brand-red'}`} />
-                    {errors.lastName && <p className="text-red-500 text-xs mt-1">{errors.lastName.message}</p>}
+                    {errors.lastName && <p className="text-red-500 text-xs">{errors.lastName.message}</p>}
                 </div>
             </div>
 
             <div className="space-y-1">
                 <label className="text-xs font-bold text-gray-500 uppercase">Address</label>
                 <input {...register('address')} autoComplete="street-address" type="text" className={`w-full p-3 bg-gray-50 border rounded-lg outline-none ${errors.address ? 'border-red-500' : 'border-gray-200 focus:border-brand-red'}`} />
-                {errors.address && <p className="text-red-500 text-xs mt-1">{errors.address.message}</p>}
+                {errors.address && <p className="text-red-500 text-xs">{errors.address.message}</p>}
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="space-y-1">
                     <label className="text-xs font-bold text-gray-500 uppercase">Country</label>
-                    <select {...register('country')} autoComplete="country" className={`w-full p-3 bg-gray-50 border rounded-lg outline-none ${errors.country ? 'border-red-500 bg-red-50' : 'border-gray-200 focus:border-brand-red'}`}>
+                    <select {...register('country')} autoComplete="country" className="w-full p-3 bg-gray-50 border border-gray-200 rounded-lg outline-none focus:border-brand-red">
                         {regions.length > 0 ? (
                             regions.map(c => <option key={c.id} value={c.code}>{c.name}</option>)
                         ) : (
                             <option value="">Loading...</option>
                         )}
                     </select>
-                    {errors.country && <p className="text-red-500 text-xs mt-1">{errors.country.message}</p>}
                 </div>
                 <div className="space-y-1">
                     <label className="text-xs font-bold text-gray-500 uppercase">City</label>
-                    <input {...register('city')} autoComplete="address-level2" type="text" className={`w-full p-3 bg-gray-50 border rounded-lg outline-none ${errors.city ? 'border-red-500 bg-red-50' : 'border-gray-200 focus:border-brand-red'}`} />
-                    {errors.city && <p className="text-red-500 text-xs mt-1">{errors.city.message}</p>}
+                    <input {...register('city')} autoComplete="address-level2" type="text" className={`w-full p-3 bg-gray-50 border rounded-lg outline-none ${errors.city ? 'border-red-500' : 'border-gray-200 focus:border-brand-red'}`} />
+                    {errors.city && <p className="text-red-500 text-xs">{errors.city.message}</p>}
                 </div>
                 <div className="space-y-1">
                     <label className="text-xs font-bold text-gray-500 uppercase">ZIP</label>
-                    <input {...register('zip')} autoComplete="postal-code" type="text" className={`w-full p-3 bg-gray-50 border rounded-lg outline-none ${errors.zip ? 'border-red-500 bg-red-50' : 'border-gray-200 focus:border-brand-red'}`} />
-                    {errors.zip && <p className="text-red-500 text-xs mt-1">{errors.zip.message}</p>}
+                    <input {...register('zip')} autoComplete="postal-code" type="text" className={`w-full p-3 bg-gray-50 border rounded-lg outline-none ${errors.zip ? 'border-red-500' : 'border-gray-200 focus:border-brand-red'}`} />
+                    {errors.zip && <p className="text-red-500 text-xs">{errors.zip.message}</p>}
                 </div>
             </div>
 
@@ -349,7 +347,7 @@ const AddressStep = ({
 // --- MAIN PAGE COMPONENT ---
 export const CheckoutPage = () => {
     const { formatPrice } = useCurrency();
-    const { cartItems, cartSubtotal, cartTotal: cartTotalContext, clearCart, discount: contextDiscount, applyDiscount, removeDiscount } = useCart();
+    const { cartItems, cartTotal, clearCart } = useCart();
     const { user, isAuthenticated } = useAuth();
     const [searchParams] = useSearchParams();
     const navigate = useNavigate();
@@ -375,9 +373,7 @@ export const CheckoutPage = () => {
         bundleType: directVariant.type
     }] : cartItems;
 
-    // Use cartSubtotal (raw price) for calculations to properly apply discount on top
-    // If directVariant, use its price as raw subtotal
-    const rawSubtotal = directVariant ? directVariant.price : cartSubtotal;
+    const baseSubtotal = directVariant ? directVariant.price : cartTotal;
     const itemCount = checkoutItems.reduce((acc, item) => acc + item.quantity, 0);
 
     // State
@@ -385,22 +381,6 @@ export const CheckoutPage = () => {
     const [shippingData, setShippingData] = useState({ cost: 0, tax: 0 });
     const [clientSecret, setClientSecret] = useState<string>('');
     const [customerData, setCustomerData] = useState<CheckoutFormData | null>(null);
-    
-    // Discount State
-    const [promoCode, setPromoCode] = useState('');
-    const [promoError, setPromoError] = useState('');
-    const [isValidatingPromo, setIsValidatingPromo] = useState(false);
-
-    // Calculate Discount
-    let discountAmount = 0;
-    if (contextDiscount) {
-        if (contextDiscount.type === 'PERCENTAGE') {
-            discountAmount = rawSubtotal * ((contextDiscount.value || 0) / 100);
-        } else {
-            discountAmount = contextDiscount.value || 0;
-        }
-    }
-    const discountedSubtotal = Math.max(0, rawSubtotal - discountAmount);
 
     // Prepare User Data for Form
     const userData = user ? {
@@ -418,26 +398,6 @@ export const CheckoutPage = () => {
         if (!directVariant && cartItems.length === 0) navigate('/');
     }, [cartItems, directVariant, navigate]);
 
-    // Handle Promo Application
-    const handleApplyPromo = async () => {
-        setPromoError('');
-        if (!isAuthenticated) {
-            setPromoError("You must be logged in to redeem a coupon.");
-            return;
-        }
-        if (!promoCode) return;
-
-        setIsValidatingPromo(true);
-        const result = await applyDiscount(promoCode);
-        setIsValidatingPromo(false);
-
-        if (!result.success) {
-            setPromoError(result.message || "Invalid discount code");
-        } else {
-            setPromoCode('');
-        }
-    };
-
     // Handle Address Submission (Step 1 -> 2)
     const handleAddressSubmit = async (data: CheckoutFormData) => {
         setCustomerData(data);
@@ -448,8 +408,8 @@ export const CheckoutPage = () => {
             const region = regions.find((r: RegionConfig) => r.code === data.country) || regions.find((r: RegionConfig) => r.code === 'OTHER');
             
             // Fallback costs if region logic fails (though DB should handle this)
-            let cost = region ? Number(region.shippingCost) : 29.95;
-            let taxRate = region ? Number(region.taxRate) : 0;
+            let cost = region ? region.shippingCost : 29.95;
+            let taxRate = region ? region.taxRate : 0;
             
             // Logic: Free shipping if 2+ items or if logic dictates (e.g. Australia)
             // Replicating business logic with dynamic data
@@ -457,13 +417,12 @@ export const CheckoutPage = () => {
                 cost = 0;
             }
 
-            // Tax is calculated on the discounted subtotal
-            const tax = discountedSubtotal * (taxRate / 100);
+            const tax = baseSubtotal * (taxRate / 100);
             
             setShippingData({ cost, tax });
             
             // 2. Create/Update Payment Intent with FINAL Total
-            const finalTotal = discountedSubtotal + cost + tax;
+            const finalTotal = baseSubtotal + cost + tax;
             const { clientSecret, mockSecret } = await createPaymentIntent(checkoutItems, 'USD', finalTotal); 
             
             setClientSecret(clientSecret || mockSecret || '');
@@ -477,12 +436,12 @@ export const CheckoutPage = () => {
         }
     };
 
-    const finalTotal = discountedSubtotal + shippingData.cost + shippingData.tax;
+    const finalTotal = baseSubtotal + shippingData.cost + shippingData.tax;
 
     const handleSuccess = (orderId: string) => {
         clearCart();
-        // Redirect to new confirmation page to support guest users
-        navigate('/order-confirmation', { state: { orderId } });
+        alert(`Order ${orderId} placed successfully! Check your email.`);
+        navigate('/profile');
     };
 
     return (
@@ -508,11 +467,10 @@ export const CheckoutPage = () => {
             {/* Mobile Order Summary Toggle */}
             <MobileOrderSummary 
                 items={checkoutItems}
-                subtotal={rawSubtotal}
-                discountAmount={discountAmount}
+                subtotal={baseSubtotal}
                 shipping={shippingData.cost}
                 tax={shippingData.tax}
-                total={step === 1 ? rawSubtotal : finalTotal}
+                total={step === 1 ? baseSubtotal : finalTotal}
                 formatPrice={formatPrice}
             />
 
@@ -575,7 +533,6 @@ export const CheckoutPage = () => {
                                             items={checkoutItems}
                                             total={finalTotal}
                                             customerData={customerData}
-                                            discountCode={contextDiscount?.code}
                                             onSuccess={handleSuccess}
                                             onBack={() => setStep(1)}
                                         />
@@ -608,17 +565,8 @@ export const CheckoutPage = () => {
                                 <div className="space-y-3 mb-6 text-sm text-gray-600 font-medium">
                                     <div className="flex justify-between">
                                         <span>Subtotal</span>
-                                        <span className="text-brand-dark">{formatPrice(rawSubtotal)}</span>
+                                        <span className="text-brand-dark">{formatPrice(baseSubtotal)}</span>
                                     </div>
-                                    
-                                    {/* Discount Line Item */}
-                                    {contextDiscount && (
-                                        <div className="flex justify-between items-center text-green-600">
-                                            <span className="flex items-center gap-1"><Tag size={14}/> Discount ({contextDiscount.code})</span>
-                                            <span>-{formatPrice(discountAmount)}</span>
-                                        </div>
-                                    )}
-
                                     <div className="flex justify-between items-center">
                                         <span>Shipping</span>
                                         <span className={`font-bold ${shippingData.cost === 0 && step === 2 ? 'text-green-600' : 'text-brand-dark'}`}>
@@ -632,53 +580,9 @@ export const CheckoutPage = () => {
                                         </div>
                                     )}
                                 </div>
-
-                                {/* Discount Input Field */}
-                                {!contextDiscount && step === 1 && (
-                                    <div className="mb-6">
-                                        <div className="flex gap-2">
-                                            <div className="relative flex-grow">
-                                                <input 
-                                                    type="text" 
-                                                    placeholder="Discount code" 
-                                                    className={`w-full p-2.5 pl-9 border rounded-lg text-xs outline-none focus:ring-2 focus:ring-brand-red ${promoError ? 'border-red-300 bg-red-50' : 'border-gray-200 bg-gray-50'}`}
-                                                    value={promoCode}
-                                                    onChange={(e) => setPromoCode(e.target.value)}
-                                                    onKeyDown={(e) => e.key === 'Enter' && handleApplyPromo()}
-                                                />
-                                                <Tag size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-                                            </div>
-                                            <Button size="sm" onClick={handleApplyPromo} disabled={isValidatingPromo} className="px-3 h-auto text-xs">
-                                                {isValidatingPromo ? <Loader2 size={12} className="animate-spin" /> : 'Apply'}
-                                            </Button>
-                                        </div>
-                                        {promoError && (
-                                            <div className="mt-2">
-                                                <p className="text-[10px] text-red-500 font-bold">{promoError}</p>
-                                                {!isAuthenticated && (
-                                                    <Link to="/login" state={{ from: '/checkout' }} className="text-[10px] font-bold text-brand-dark underline block mt-1">
-                                                        Login to use coupon
-                                                    </Link>
-                                                )}
-                                            </div>
-                                        )}
-                                    </div>
-                                )}
-                                {contextDiscount && step === 1 && (
-                                    <div className="mb-6 flex justify-between items-center bg-green-50 border border-green-200 p-2 rounded-lg">
-                                        <div className="flex items-center text-green-700 font-bold text-xs">
-                                            <Tag size={12} className="mr-2" />
-                                            <span>Code: {contextDiscount.code} applied</span>
-                                        </div>
-                                        <button onClick={removeDiscount} className="text-gray-400 hover:text-red-500">
-                                            <X size={14} />
-                                        </button>
-                                    </div>
-                                )}
-
                                 <div className="flex justify-between border-t border-gray-100 pt-6 font-heading font-extrabold text-xl text-brand-dark">
                                     <span>Total</span>
-                                    <span>{step === 1 ? formatPrice(rawSubtotal - discountAmount) : formatPrice(finalTotal)}</span>
+                                    <span>{step === 1 ? formatPrice(baseSubtotal) : formatPrice(finalTotal)}</span>
                                 </div>
                                 <div className="mt-6 bg-green-50 p-3 rounded-lg flex items-center justify-center text-xs text-green-700 font-bold border border-green-100">
                                     <CheckCircle size={14} className="mr-2" />
