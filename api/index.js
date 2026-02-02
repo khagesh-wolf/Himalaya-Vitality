@@ -12,6 +12,7 @@ const cors = require('cors');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const nodemailer = require('nodemailer'); 
+const rateLimit = require('express-rate-limit');
 
 const prisma = new PrismaClient();
 const stripe = process.env.STRIPE_SECRET_KEY ? require('stripe')(process.env.STRIPE_SECRET_KEY) : null;
@@ -19,8 +20,44 @@ const app = express();
 
 const JWT_SECRET = process.env.JWT_SECRET || 'dev-secret-key';
 
+// --- SECURITY: RATE LIMITING ---
+// Trust Proxy is required for Vercel/Serverless to correctly identify the Client IP
+app.set('trust proxy', 1);
+
+// 1. General API Limiter (Protection against DDoS/Scraping)
+const apiLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    max: 300, // Limit each IP to 300 requests per 15 minutes
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { error: 'Too many requests, please try again later.' }
+});
+
+// 2. Auth Limiter (Protection against Brute Force & OTP Spam)
+const authLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    max: 10, // Strict: 10 attempts per 15 minutes
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { error: 'Too many login/signup attempts. Please wait 15 minutes.' }
+});
+
+// 3. Checkout Limiter (Protection against Card Testing Attacks)
+const checkoutLimiter = rateLimit({
+    windowMs: 60 * 60 * 1000, // 1 hour
+    max: 20, // Strict: 20 payment attempts per hour
+    message: { error: 'Payment initialization limit reached. Please try again later.' }
+});
+
 app.use(cors());
 app.use(express.json());
+
+// Apply Limiters
+app.use('/api', apiLimiter); // Global limit for all API routes
+app.use('/api/auth', authLimiter); // Stricter limit for auth routes
+app.use('/api/create-payment-intent', checkoutLimiter); // Strict limit for payments
+app.use('/api/newsletter/subscribe', authLimiter); // Prevent spam subscriptions
+app.use('/api/reviews', authLimiter); // Prevent spam reviews
 
 // --- CONSTANTS & HELPERS ---
 const DEFAULT_PRODUCT_ID = 'himalaya-shilajit-resin';
