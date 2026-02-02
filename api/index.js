@@ -461,8 +461,7 @@ app.get('/api/orders/my-orders', authenticate, async (req, res) => {
 // Public Tracking Endpoint - GUEST CHECKOUT ORDER LOOKUP
 app.get('/api/orders/:id/track', async (req, res) => {
     try {
-        // Case-insensitive lookup fallback if exact match fails?
-        // For security, strict matching is better.
+        // Explicit selection to avoid 'updatedAt' errors if column missing in DB
         const order = await prisma.order.findUnique({
             where: { orderNumber: req.params.id },
             select: { 
@@ -573,6 +572,7 @@ app.post('/api/orders', async (req, res) => {
             });
 
             // Create Order
+            // Explicitly do NOT include updatedAt to prevent errors with legacy DB schema
             const order = await tx.order.create({
                 data: {
                     orderNumber: `HV-${Date.now()}`,
@@ -707,7 +707,25 @@ app.get('/api/admin/stats', requireAdmin, async (req, res) => {
 
 app.get('/api/admin/orders', requireAdmin, async (req, res) => {
     try {
-        const orders = await prisma.order.findMany({ orderBy: { createdAt: 'desc' }, include: { items: true } });
+        // Explicitly select columns to exclude 'updatedAt' if schema is out of sync
+        const orders = await prisma.order.findMany({ 
+            orderBy: { createdAt: 'desc' }, 
+            select: {
+                id: true,
+                orderNumber: true,
+                customerName: true,
+                customerEmail: true,
+                shippingAddress: true,
+                total: true,
+                status: true,
+                paymentId: true,
+                trackingNumber: true,
+                carrier: true,
+                createdAt: true,
+                items: true // Relation can be selected
+            }
+        });
+        
         res.json(orders.map(o => ({
             id: o.orderNumber, dbId: o.id, customer: o.customerName, email: o.customerEmail,
             date: new Date(o.createdAt).toLocaleDateString(), total: o.total, status: o.status,

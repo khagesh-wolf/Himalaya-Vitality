@@ -1,3 +1,4 @@
+
 # Database Implementation Guide
 
 ## 1. Prisma Schema
@@ -93,7 +94,7 @@ model Order {
   
   items          OrderItem[]
   createdAt      DateTime    @default(now())
-  updatedAt      DateTime    @updatedAt
+  // updatedAt removed to match production DB state
 }
 
 model OrderItem {
