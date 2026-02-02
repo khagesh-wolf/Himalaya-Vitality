@@ -1,10 +1,9 @@
-
 # Technical Setup Guide
 
 ## System Requirements
-- Node.js v18.17+ 
-- npm or pnpm
-- Docker (optional, for local Postgres)
+- **Node.js**: v18.17.0 or higher (Recommended: v20 LTS).
+- **npm** or **pnpm**.
+- **PostgreSQL Database**: Local Docker instance or a cloud provider (Neon, Supabase).
 
 ## 1. Installation
 
@@ -18,48 +17,71 @@ npm install
 
 ## 2. Environment Configuration
 
-Create a `.env` file in the root directory:
+Create a `.env` file in the root directory. Use the following template:
 
 ```env
-# Database (Example: Local Docker Postgres)
-DATABASE_URL="postgresql://postgres:password@localhost:5432/himalaya?schema=public"
+# --- DATABASE (Neon / Supabase) ---
+# Connection Pool URL (Transaction Mode)
+DATABASE_URL="postgres://user:pass@host:5432/db?sslmode=require&pgbouncer=true"
+# Direct Connection URL (Session Mode - Required for Migrations)
+DIRECT_URL="postgres://user:pass@host:5432/db?sslmode=require"
 
-# Authentication
-NEXTAUTH_SECRET="your-development-secret-key"
-NEXTAUTH_URL="http://localhost:3000"
+# --- AUTHENTICATION ---
+JWT_SECRET="generate-a-secure-random-string-here"
+# Optional: Google OAuth Client ID for Social Login
+VITE_GOOGLE_CLIENT_ID="your-google-client-id"
 
-# Stripe (Test Mode)
+# --- PAYMENTS (Stripe) ---
+# Secret Key (Backend)
 STRIPE_SECRET_KEY="sk_test_..."
-NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY="pk_test_..."
-STRIPE_WEBHOOK_SECRET="whsec_..."
+# Publishable Key (Frontend)
+VITE_STRIPE_PUBLIC_KEY="pk_test_..."
 
-# Feature Flags
-VITE_USE_MOCK="true"  # Set to "false" to use real backend API
+# --- EMAIL (SMTP / Nodemailer) ---
+# Used for Order Confirmations and OTPs
+EMAIL_USER="support@himalayavitality.com"
+EMAIL_PASS="your-app-password"
+
+# --- APP CONFIG ---
+VITE_API_URL="/api"
+PORT=3000
 ```
 
-## 3. Running the Development Server
+## 3. Database Initialization
 
-The project uses **Vite** for the frontend.
+We use Prisma ORM. You need to push the schema to your database and seed initial data.
+
+```bash
+# This command generates the client, pushes schema, and runs the seed script
+npm run db:init
+```
+
+If you encounter connection errors, ensure your `DATABASE_URL` and `DIRECT_URL` are correct in `.env`.
+
+## 4. Running Development Server
+
+The project runs both the Frontend (Vite) and the Backend (Express) concurrently or via proxy in development.
 
 ```bash
 npm run dev
 ```
 
-Open [http://localhost:5173](http://localhost:5173) to view the app.
+- **Frontend**: http://localhost:5173
+- **Backend API**: http://localhost:5173/api (Proxied to Express)
 
-## 4. Backend Mocking vs. Real API
+## 5. Development Workflow
 
-### Demo Mode (Current Default)
-The application currently runs in **Mock Mode** (`VITE_USE_MOCK=true` in `services/api.ts`). This allows the frontend to be fully navigable without a running backend server or database. API calls are intercepted and return static data from `constants.ts`.
+- **Schema Changes**: If you modify `prisma/schema.prisma`, run:
+  ```bash
+  npx prisma generate
+  npx prisma db push
+  ```
+- **Admin Access**:
+  - Visit `/admin/login`.
+  - Ensure your user has `role: "ADMIN"` in the database.
+  - You can manually promote a user via Prisma Studio: `npx prisma studio`.
 
-### Real Backend Integration
-To connect to a real backend:
-1. Ensure your backend API is running (e.g., at `http://localhost:3000/api`).
-2. Update `services/api.ts`: Set `USE_MOCK = false`.
-3. Configure the `API_URL` to point to your backend.
-4. Ensure the backend implements the endpoints defined in `DATABASE_IMPLEMENTATION_GUIDE.md`.
-
-## 5. Testing Payments
-In Test Mode (`VITE_USE_MOCK=true` or Stripe Test Mode):
+## 6. Testing Payments
+In Development mode with Test keys:
 - Use Stripe Test Cards (e.g., `4242 4242 4242 4242`).
 - Any future date, any CVC.

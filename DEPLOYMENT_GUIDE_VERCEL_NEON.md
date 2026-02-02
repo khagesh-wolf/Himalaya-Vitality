@@ -1,119 +1,45 @@
+# 🚀 Deployment Guide: Vercel + Neon
 
-# 🚀 Step-by-Step Deployment Guide (Vercel + Neon)
+This specific guide covers deploying the Himalaya Vitality stack using Vercel for hosting and Neon for the database.
 
-This guide assumes you have the project files locally on your computer.
+## 1. Database (Neon)
 
-## Phase 1: Local Setup
+1.  Create a project at [Neon.tech](https://neon.tech).
+2.  Go to **Dashboard > Connection Details**.
+3.  **Pooled Connection**: Enable "Connection Pooling". Copy this URL. It ends with `pooler.region.neon.tech...`.
+4.  **Direct Connection**: Copy the direct URL.
 
-### 1. Install Dependencies
-Open your terminal in the project folder and install the necessary packages for the backend and database.
+## 2. Application Config
 
-```bash
-# Install Prisma (Database ORM), Stripe, and Express
-npm install prisma @prisma/client stripe express cors dotenv
-```
-
-### 2. Initialize Git (If not done)
-```bash
-git init
-git add .
-git commit -m "Initial commit"
-```
-*Push this to a GitHub repository.*
-
----
-
-## Phase 2: Database Setup (Neon)
-
-1.  Go to [Neon.tech](https://neon.tech) and Sign Up.
-2.  Create a **New Project**.
-3.  **Copy the Connection String**:
-    *   Look for the **"Pooled connection string"** (It usually includes `-pooler` in the host or ends with `?pgbouncer=true`).
-    *   Also look for the **"Direct connection string"**.
-4.  Create a `.env` file in your project root locally:
-
-    ```env
-    # .env
-    # Replace with YOUR Neon strings
-    DATABASE_URL="postgres://user:pass@ep-xyz-pooler.region.aws.neon.tech/neondb?pgbouncer=true"
-    DIRECT_URL="postgres://user:pass@ep-xyz.region.aws.neon.tech/neondb"
-    
-    # Stripe Keys (Get from Stripe Dashboard)
-    STRIPE_SECRET_KEY="sk_test_..."
-    
-    # App Config
-    VITE_USE_MOCK="false"
-    ```
-
-5.  **Push Schema to Database**:
-    Run this command to create the tables in your Neon database based on `prisma/schema.prisma`.
+1.  Clone the repo.
+2.  Install dependencies: `npm install`.
+3.  Update `prisma/schema.prisma` if needed.
+4.  **Push Schema**:
     ```bash
+    # Create .env with DIRECT_URL
     npx prisma db push
     ```
 
-6.  **Seed the Database**:
-    Run the seed script to add the initial Product and Reviews.
+## 3. Vercel Deployment
+
+1.  Install Vercel CLI or use the Web Dashboard.
+2.  **Environment Variables** (Essential):
+    *   `DATABASE_URL`: Paste the **Pooled** connection string. Append `?pgbouncer=true&connect_timeout=15`.
+    *   `DIRECT_URL`: Paste the **Direct** connection string.
+    *   `JWT_SECRET`: Random string.
+    *   `VITE_API_URL`: `/api`
+    *   `STRIPE_SECRET_KEY`: Live key.
+    *   `VITE_STRIPE_PUBLIC_KEY`: Live key.
+
+3.  **Deploy**:
     ```bash
-    node prisma/seed.js
+    vercel --prod
     ```
 
----
+## 4. Post-Launch
 
-## Phase 3: Vercel Deployment
-
-### 1. Import to Vercel
-1.  Go to [Vercel Dashboard](https://vercel.com/dashboard).
-2.  Click **"Add New..."** -> **"Project"**.
-3.  Import your GitHub repository.
-
-### 2. Configure Build Settings
-Vercel usually detects Vite/React automatically.
-*   **Framework Preset**: Vite
-*   **Build Command**: `npm run build` (Default)
-*   **Output Directory**: `dist` (Default)
-
-### 3. Configure Environment Variables
-**Crucial Step**: You must add the environment variables in Vercel settings so the backend can access the database.
-
-Add the following variables in the Vercel Project Settings:
-
-| Name | Value |
-|------|-------|
-| `DATABASE_URL` | (Your Neon **Pooled** Connection String) |
-| `DIRECT_URL` | (Your Neon **Direct** Connection String) |
-| `STRIPE_SECRET_KEY` | (Your Stripe Secret Key `sk_live_...` or `sk_test_...`) |
-| `VITE_USE_MOCK` | `false` |
-| `VITE_API_URL` | (Leave empty or set to `/api`) |
-
-### 4. Deploy
-Click **"Deploy"**.
-
----
-
-## Phase 4: Verification
-
-1.  Wait for the deployment to finish.
-2.  Open the Vercel URL (e.g., `https://himalaya-vitality.vercel.app`).
-3.  **Test the Backend**:
-    *   Go to `https://your-app.vercel.app/api/health`. It should say "OK".
-    *   Go to `https://your-app.vercel.app/api/products/himalaya-shilajit-resin`. It should return JSON data from your Neon database.
-4.  **Test the App**:
-    *   Go to the Product Page. It should load data from the DB.
-    *   Add to Cart -> Checkout.
-    *   The Payment Element should load (if Stripe key is valid).
-
-## Troubleshooting
-
-**Error: 500 on /api routes**
-*   Check Vercel Logs (Dashboard -> Project -> Logs).
-*   Ensure `DATABASE_URL` is set correctly in Vercel.
-*   Ensure `stripe` and `@prisma/client` are in `dependencies` in `package.json`, not `devDependencies`.
-
-**Error: "Prisma Client could not find its schema"**
-*   In `package.json`, add a postinstall script:
-    ```json
-    "scripts": {
-      "postinstall": "prisma generate"
-    }
+1.  **Seed Data**: Use the local seed script pointed at the remote DB to create the initial Product and Reviews.
+    ```bash
+    npm run seed
     ```
-    This ensures Vercel generates the Prisma Client during the build process.
+2.  **Webhooks**: Configure Stripe Webhooks to point to `https://your-domain.com/api/webhooks` (if webhook handling is implemented for async events).
