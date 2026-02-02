@@ -52,7 +52,7 @@ const checkoutLimiter = rateLimit({
 app.use(cors());
 app.use(express.json());
 
-// Apply Limiters
+// Apply Global Limiters
 app.use('/api', apiLimiter); // Global limit for all API routes
 app.use('/api/auth', authLimiter); // Stricter limit for auth routes
 app.use('/api/create-payment-intent', checkoutLimiter); // Strict limit for payments
@@ -414,8 +414,8 @@ app.delete('/api/discounts/:id', requireAdmin, async (req, res) => {
     } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-// Validate Code - STRICT AUTH REQUIRED
-app.post('/api/discounts/validate', authenticate, async (req, res) => {
+// Validate Code - STRICT AUTH REQUIRED & RATE LIMITED
+app.post('/api/discounts/validate', authenticate, authLimiter, async (req, res) => {
     const { code } = req.body;
     try {
         const discount = await prisma.discount.findUnique({ where: { code: code.toUpperCase() } });
@@ -522,8 +522,8 @@ app.get('/api/orders/:id/track', async (req, res) => {
     } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-// ABANDONED CART RECOVERY: Capture Lead
-app.post('/api/checkout/lead', async (req, res) => {
+// ABANDONED CART RECOVERY: Capture Lead - RATE LIMITED
+app.post('/api/checkout/lead', authLimiter, async (req, res) => {
     const { email } = req.body;
     if (!email) return res.status(400).json({ error: 'Email required' });
     
@@ -541,7 +541,8 @@ app.post('/api/checkout/lead', async (req, res) => {
     }
 });
 
-app.post('/api/orders', async (req, res) => {
+// CREATE ORDER - RATE LIMITED
+app.post('/api/orders', checkoutLimiter, async (req, res) => {
     const { customer, items, total, paymentId, userId, discountCode } = req.body;
     try {
         // 1. Calculate Total Jars to Remove
