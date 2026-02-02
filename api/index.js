@@ -574,9 +574,24 @@ app.post('/api/orders', async (req, res) => {
 // Admin Stats
 app.get('/api/admin/stats', requireAdmin, async (req, res) => {
     try {
-        const totalRevenue = (await prisma.order.aggregate({ _sum: { total: true }, where: { status: 'Paid' } }))._sum.total || 0;
-        const totalOrders = await prisma.order.count();
-        res.json({ totalRevenue, totalOrders, avgOrderValue: totalOrders ? totalRevenue/totalOrders : 0, chart: [] });
+        const validStatuses = ['Paid', 'Fulfilled', 'Delivered'];
+        
+        const totalRevenue = (await prisma.order.aggregate({ 
+            _sum: { total: true }, 
+            where: { status: { in: validStatuses } } 
+        }))._sum.total || 0;
+        
+        // Only count valid orders for AOV calculation to prevent dilution by Pending/Unpaid
+        const totalOrders = await prisma.order.count({
+            where: { status: { in: validStatuses } }
+        });
+        
+        res.json({ 
+            totalRevenue, 
+            totalOrders, 
+            avgOrderValue: totalOrders ? totalRevenue/totalOrders : 0, 
+            chart: [] 
+        });
     } catch (e) { res.status(500).json({ error: e.message }); }
 });
 

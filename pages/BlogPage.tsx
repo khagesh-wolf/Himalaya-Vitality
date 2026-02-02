@@ -9,7 +9,7 @@ import { SEO } from '../components/SEO';
 // --- Blog Index (Listing) ---
 export const BlogIndex = () => {
   return (
-    <div className="bg-gray-50 py-20 min-h-screen">
+    <div className="bg-gray-50 pt-32 pb-20 min-h-screen">
       <SEO title="Vitality Blog" description="Latest news, health tips, and ayurvedic wisdom from Himalaya Vitality." />
       <Container>
         <Reveal>
