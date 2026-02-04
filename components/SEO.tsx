@@ -7,16 +7,25 @@ interface SEOProps {
   description?: string;
   image?: string;
   type?: 'website' | 'product' | 'article';
+  schema?: object; // Accept custom JSON-LD schema
+  noIndex?: boolean; // For pages like 404, Checkout, Account
+  productData?: {
+    price: number;
+    currency: string;
+    availability?: 'instock' | 'outofstock';
+  };
 }
 
 export const SEO: React.FC<SEOProps> = ({ 
   title, 
   description, 
   image = 'https://images.unsplash.com/photo-1540747913346-19e32dc3e97e?q=80&w=1200&auto=format&fit=crop', 
-  type = 'website' 
+  type = 'website',
+  schema,
+  noIndex = false,
+  productData
 }) => {
   const location = useLocation();
-  // In production, this would be the actual domain
   const siteUrl = 'https://himalayavitality.com';
   const canonicalUrl = `${siteUrl}${location.pathname}`;
   const fullTitle = `${title} | Himalaya Vitality`;
@@ -30,7 +39,12 @@ export const SEO: React.FC<SEOProps> = ({
     "sameAs": [
         "https://instagram.com/himalayavitality",
         "https://facebook.com/himalayavitality"
-    ]
+    ],
+    "contactPoint": {
+      "@type": "ContactPoint",
+      "email": "support@himalayavitality.com",
+      "contactType": "customer service"
+    }
   };
 
   // Generate Breadcrumb Schema automatically based on route
@@ -80,6 +94,9 @@ export const SEO: React.FC<SEOProps> = ({
       element.setAttribute('href', href);
     };
 
+    // Robots
+    updateMeta('robots', noIndex ? 'noindex, nofollow' : 'index, follow');
+
     // Standard Meta
     if (description) updateMeta('description', description);
     updateLink('canonical', canonicalUrl);
@@ -92,6 +109,15 @@ export const SEO: React.FC<SEOProps> = ({
     updateMeta('og:image', image, 'property');
     updateMeta('og:site_name', 'Himalaya Vitality', 'property');
 
+    // Product Specific OG Tags
+    if (type === 'product' && productData) {
+        updateMeta('product:price:amount', productData.price.toString(), 'property');
+        updateMeta('product:price:currency', productData.currency, 'property');
+        if (productData.availability) {
+            updateMeta('product:availability', productData.availability, 'property');
+        }
+    }
+
     // Twitter
     updateMeta('twitter:card', 'summary_large_image');
     updateMeta('twitter:url', canonicalUrl);
@@ -99,7 +125,7 @@ export const SEO: React.FC<SEOProps> = ({
     if (description) updateMeta('twitter:description', description);
     updateMeta('twitter:image', image);
 
-  }, [title, description, image, type, canonicalUrl, fullTitle]);
+  }, [title, description, image, type, canonicalUrl, fullTitle, noIndex, productData]);
 
   return (
     <>
@@ -109,6 +135,11 @@ export const SEO: React.FC<SEOProps> = ({
         <script type="application/ld+json">
             {JSON.stringify(breadcrumbSchema)}
         </script>
+        {schema && (
+            <script type="application/ld+json">
+                {JSON.stringify(schema)}
+            </script>
+        )}
     </>
   );
 };

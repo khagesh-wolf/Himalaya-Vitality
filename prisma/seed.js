@@ -15,9 +15,11 @@ const MAIN_PRODUCT = {
     'Traditional Ayurvedic Purification'
   ],
   images: [
-    'https://picsum.photos/600/600?random=1',
-    'https://picsum.photos/600/600?random=2',
-    'https://picsum.photos/600/600?random=3'
+    'https://i.ibb.co/zTB7Fx9m/Whats-App-Image-2026-01-26-at-7-08-18-PM.jpg',
+    'https://i.ibb.co/9H8yWSgP/Whats-App-Image-2026-01-26-at-7-08-21-PM.jpg',
+    'https://i.ibb.co/bMWsMg0T/Whats-App-Image-2026-01-26-at-7-08-20-PM.jpg',
+    'https://i.ibb.co/VYcz2Tky/Whats-App-Image-2026-01-26-at-7-08-20-PM-1.jpg',
+    'https://i.ibb.co/KzWf8byr/Whats-App-Image-2026-01-26-at-7-08-20-PM-3.jpg'
   ],
   totalStock: 100, // MASTER STOCK
   variants: [
@@ -93,7 +95,10 @@ async function main() {
   // 1. Upsert Product with Variants
   const product = await prisma.product.upsert({
     where: { id: MAIN_PRODUCT.id },
-    update: { totalStock: MAIN_PRODUCT.totalStock }, // Ensure stock is updated on re-seed
+    update: { 
+        totalStock: MAIN_PRODUCT.totalStock,
+        images: MAIN_PRODUCT.images // Ensure images are updated on re-seed
+    }, 
     create: {
       id: MAIN_PRODUCT.id,
       title: MAIN_PRODUCT.title,

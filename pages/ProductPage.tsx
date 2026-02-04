@@ -110,15 +110,52 @@ export const ProductPage = () => {
   const displayedReviews = filteredReviews.slice(0, visibleReviews);
   const hasMoreReviews = visibleReviews < filteredReviews.length;
 
+  // --- RICH SNIPPET GENERATION ---
+  const productSchema = product && currentVariant ? {
+    "@context": "https://schema.org",
+    "@type": "Product",
+    "name": product.title,
+    "image": product.images,
+    "description": product.description,
+    "sku": currentVariant.id,
+    "brand": {
+      "@type": "Brand",
+      "name": "Himalaya Vitality"
+    },
+    "aggregateRating": {
+      "@type": "AggregateRating",
+      "ratingValue": product.rating,
+      "reviewCount": product.reviewCount || reviews.length
+    },
+    "offers": {
+      "@type": "Offer",
+      "url": window.location.href,
+      "priceCurrency": "USD",
+      "price": currentVariant.price,
+      "itemCondition": "https://schema.org/NewCondition",
+      "availability": "https://schema.org/InStock",
+      "seller": {
+        "@type": "Organization",
+        "name": "Himalaya Vitality"
+      }
+    }
+  } : undefined;
+
   if (isProductLoading || !product || !currentVariant) return <ProductPageSkeleton />;
 
   return (
-    <div className="bg-[#FAFAFA] pt-32 pb-16">
+    <div className="bg-[#FAFAFA] pt-28 md:pt-32 pb-16">
       <SEO 
         title="Buy Athlete Grade Shilajit | High Performance Resin" 
         description="Official store for Himalaya Vitality Athlete Grade Shilajit. Optimized for peak physical output, endurance, and recovery. Gold grade purity."
         image={product.images[0]}
         type="product"
+        schema={productSchema}
+        productData={{
+            price: currentVariant.price,
+            currency: 'USD',
+            availability: 'instock'
+        }}
       />
 
       <Container>
