@@ -262,6 +262,7 @@ const OrdersView = () => {
                             <th className="p-4 font-bold">Order ID</th>
                             <th className="p-4 font-bold">Customer</th>
                             <th className="p-4 font-bold">Items Purchased</th>
+                            {/* DEDICATED COLUMN ADDED */}
                             <th className="p-4 font-bold text-center">Total Jars</th>
                             <th className="p-4 font-bold">Total</th>
                             <th className="p-4 font-bold">Status</th>
@@ -292,10 +293,11 @@ const OrdersView = () => {
                                         )}
                                     </div>
                                 </td>
+                                {/* DEDICATED CELL ADDED */}
                                 <td className="p-4 text-center">
-                                    <span className="inline-flex items-center justify-center bg-orange-100 text-orange-800 text-sm font-bold px-3 py-1 rounded-full border border-orange-200 min-w-[40px]">
+                                    <div className="font-heading font-bold text-lg text-brand-red bg-red-50 w-10 h-10 rounded-full flex items-center justify-center mx-auto border border-red-100 shadow-sm">
                                         {order.totalJars || 0}
-                                    </span>
+                                    </div>
                                 </td>
                                 <td className="p-4 font-bold">{formatPrice(order.total)}</td>
                                 <td className="p-4">
