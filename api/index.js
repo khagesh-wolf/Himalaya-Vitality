@@ -552,13 +552,19 @@ app.get('/api/admin/orders', requireAdmin, async (req, res) => {
         });
 
         const mappedOrders = orders.map(o => {
-            // Map items to include friendly names
+            let totalJars = 0;
+            // Map items to include friendly names and calc jars
             const enrichedItems = o.items.map(item => {
                 const variant = variantMap[item.variantId];
+                const type = variant ? variant.type : 'UNKNOWN';
+                const multiplier = BUNDLE_MULTIPLIERS[type] || 1;
+                
+                totalJars += (item.quantity * multiplier);
+
                 return {
                     quantity: item.quantity,
                     name: variant ? variant.name : 'Unknown Item',
-                    type: variant ? variant.type : 'UNKNOWN'
+                    type: type
                 };
             });
 
@@ -571,6 +577,7 @@ app.get('/api/admin/orders', requireAdmin, async (req, res) => {
                 total: o.total, 
                 status: o.status, 
                 items: enrichedItems, // Return array of details
+                totalJars: totalJars, // Return calculated jar count
                 trackingNumber: o.trackingNumber, 
                 carrier: o.carrier 
             };

@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Link, useSearchParams, useNavigate } from 'react-router-dom';
 import { ShieldCheck, Lock, ArrowLeft, Loader2, AlertCircle, CheckCircle, Package, UserCircle, ShoppingCart, ChevronDown, ChevronUp, CreditCard } from 'lucide-react';
@@ -8,7 +9,7 @@ import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
 import { CartItem, RegionConfig } from '../types';
 import { useLoading } from '../context/LoadingContext';
-import { createPaymentIntent, createOrder, fetchShippingRegions } from '../services/api';
+import { createPaymentIntent, createOrder, fetchShippingRegions, captureCheckoutLead } from '../services/api';
 import { trackPurchase } from '../services/analytics';
 import { useQuery } from '@tanstack/react-query';
 
@@ -258,6 +259,14 @@ const AddressStep = ({
         defaultValues: { country: defaultCountry || 'US', ...initialData }
     });
 
+    const handleEmailBlur = (e: React.FocusEvent<HTMLInputElement>) => {
+        const email = e.target.value;
+        if (email && email.includes('@')) {
+            // Send to backend for abandoned cart recovery
+            captureCheckoutLead(email);
+        }
+    };
+
     return (
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-5 animate-in fade-in">
             <div className="bg-gray-50 p-4 rounded-xl border border-gray-100 space-y-4">
@@ -267,7 +276,14 @@ const AddressStep = ({
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="space-y-1">
                         <label className="text-xs font-bold text-gray-500 uppercase">Email</label>
-                        <input {...register('email')} autoComplete="email" type="email" className={`w-full p-3 bg-white border rounded-lg outline-none transition-all ${errors.email ? 'border-red-500' : 'border-gray-200 focus:border-brand-red'}`} placeholder="email@example.com" />
+                        <input 
+                            {...register('email')} 
+                            onBlur={handleEmailBlur}
+                            autoComplete="email" 
+                            type="email" 
+                            className={`w-full p-3 bg-white border rounded-lg outline-none transition-all ${errors.email ? 'border-red-500' : 'border-gray-200 focus:border-brand-red'}`} 
+                            placeholder="email@example.com" 
+                        />
                         {errors.email && <p className="text-red-500 text-xs">{errors.email.message}</p>}
                     </div>
                     <div className="space-y-1">
@@ -424,8 +440,7 @@ export const CheckoutPage = () => {
 
     const handleSuccess = (orderId: string) => {
         clearCart();
-        alert(`Order ${orderId} placed successfully! Check your email.`);
-        navigate('/profile');
+        navigate('/order-confirmation', { state: { orderId } });
     };
 
     return (

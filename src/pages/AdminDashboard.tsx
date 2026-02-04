@@ -228,8 +228,8 @@ const OrdersView = () => {
         const getItemsString = (items: any[]) => items.map(i => `${i.quantity}x ${i.name}`).join(' | ');
 
         const csvContent = "data:text/csv;charset=utf-8," 
-            + "Order ID,Customer,Email,Items,Total,Status,Date,Tracking,Carrier\n"
-            + filteredData.map((o: any) => `"${o.id}","${o.customer}","${o.email}","${getItemsString(o.items)}","${o.total}","${o.status}","${o.date}","${o.trackingNumber || ''}","${o.carrier || ''}"`).join("\n");
+            + "Order ID,Customer,Email,Items,Total Jars,Total,Status,Date,Tracking,Carrier\n"
+            + filteredData.map((o: any) => `"${o.id}","${o.customer}","${o.email}","${getItemsString(o.items)}","${o.totalJars || 0}","${o.total}","${o.status}","${o.date}","${o.trackingNumber || ''}","${o.carrier || ''}"`).join("\n");
         
         const encodedUri = encodeURI(csvContent);
         const link = document.createElement("a");
@@ -276,13 +276,26 @@ const OrdersView = () => {
                                     <div className="text-xs text-gray-400">{order.email}</div>
                                 </td>
                                 <td className="p-4">
+                                    {order.totalJars !== undefined && order.totalJars > 0 && (
+                                        <div className="mb-2">
+                                            <span className="bg-orange-100 text-orange-800 text-[10px] font-bold px-2 py-1 rounded-full border border-orange-200">
+                                                Total Jars: {order.totalJars}
+                                            </span>
+                                        </div>
+                                    )}
                                     <div className="space-y-1">
-                                        {Array.isArray(order.items) ? order.items.map((item: any, idx: number) => (
-                                            <div key={idx} className="flex items-center text-xs">
-                                                <span className="font-bold bg-gray-200 text-brand-dark px-1.5 py-0.5 rounded mr-2">{item.quantity}x</span>
-                                                <span className="text-gray-600 font-medium">{item.name}</span>
-                                            </div>
-                                        )) : <span className="text-gray-400 text-xs">No items data</span>}
+                                        {Array.isArray(order.items) && order.items.length > 0 ? (
+                                            order.items.map((item: any, idx: number) => (
+                                                <div key={idx} className="flex items-center text-xs">
+                                                    <span className="font-bold bg-gray-200 text-brand-dark px-1.5 py-0.5 rounded mr-2 min-w-[24px] text-center">
+                                                        {item.quantity}x
+                                                    </span>
+                                                    <span className="text-gray-600 font-medium">{item.name}</span>
+                                                </div>
+                                            ))
+                                        ) : (
+                                            <span className="text-gray-400 text-xs italic">No items found</span>
+                                        )}
                                     </div>
                                 </td>
                                 <td className="p-4 font-bold">{formatPrice(order.total)}</td>

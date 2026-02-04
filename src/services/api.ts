@@ -194,6 +194,19 @@ export const trackOrder = async (orderId: string) => {
     return handleResponse(res);
 };
 
+export const captureCheckoutLead = async (email: string) => {
+    try {
+        await fetch(`${API_URL}/checkout/lead`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email })
+        });
+    } catch (e) {
+        // Silently fail is acceptable for lead capture
+        console.warn("Lead capture failed", e);
+    }
+};
+
 // --- ADMIN DASHBOARD ---
 
 export const fetchAdminStats = async (startDate?: Date, endDate?: Date) => {
