@@ -541,11 +541,42 @@ app.get('/api/admin/stats', requireAdmin, async (req, res) => {
 
 app.get('/api/admin/orders', requireAdmin, async (req, res) => {
     try {
+        // Fetch variants for lookup to map variantId to names
+        const variants = await prisma.productVariant.findMany();
+        const variantMap = {};
+        variants.forEach(v => variantMap[v.id] = v);
+
         const orders = await prisma.order.findMany({ 
             orderBy: { createdAt: 'desc' }, 
-            select: { id: true, orderNumber: true, customerName: true, customerEmail: true, shippingAddress: true, total: true, status: true, paymentId: true, trackingNumber: true, carrier: true, createdAt: true, items: true }
+            include: { items: true } // Fetch OrderItems
         });
-        res.json(orders.map(o => ({ id: o.orderNumber, dbId: o.id, customer: o.customerName, email: o.customerEmail, date: new Date(o.createdAt).toLocaleDateString(), total: o.total, status: o.status, items: o.items.length, trackingNumber: o.trackingNumber, carrier: o.carrier })));
+
+        const mappedOrders = orders.map(o => {
+            // Map items to include friendly names
+            const enrichedItems = o.items.map(item => {
+                const variant = variantMap[item.variantId];
+                return {
+                    quantity: item.quantity,
+                    name: variant ? variant.name : 'Unknown Item',
+                    type: variant ? variant.type : 'UNKNOWN'
+                };
+            });
+
+            return { 
+                id: o.orderNumber, 
+                dbId: o.id, 
+                customer: o.customerName, 
+                email: o.customerEmail, 
+                date: new Date(o.createdAt).toLocaleDateString(), 
+                total: o.total, 
+                status: o.status, 
+                items: enrichedItems, // Return array of details
+                trackingNumber: o.trackingNumber, 
+                carrier: o.carrier 
+            };
+        });
+
+        res.json(mappedOrders);
     } catch (e) { res.status(500).json({ error: e.message }); }
 });
 

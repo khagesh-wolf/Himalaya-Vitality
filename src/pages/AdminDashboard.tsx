@@ -224,9 +224,13 @@ const OrdersView = () => {
 
     const exportCSV = () => {
         const filteredData = filter === 'All' ? orders : orders.filter((o: any) => o.status === filter);
+        // Helper to stringify items for CSV
+        const getItemsString = (items: any[]) => items.map(i => `${i.quantity}x ${i.name}`).join(' | ');
+
         const csvContent = "data:text/csv;charset=utf-8," 
-            + "Order ID,Customer,Email,Total,Status,Date,Tracking,Carrier\n"
-            + filteredData.map((o: any) => `${o.id},${o.customer},${o.email},${o.total},${o.status},${o.date},${o.trackingNumber || ''},${o.carrier || ''}`).join("\n");
+            + "Order ID,Customer,Email,Items,Total,Status,Date,Tracking,Carrier\n"
+            + filteredData.map((o: any) => `"${o.id}","${o.customer}","${o.email}","${getItemsString(o.items)}","${o.total}","${o.status}","${o.date}","${o.trackingNumber || ''}","${o.carrier || ''}"`).join("\n");
+        
         const encodedUri = encodeURI(csvContent);
         const link = document.createElement("a");
         link.setAttribute("href", encodedUri);
@@ -257,6 +261,7 @@ const OrdersView = () => {
                         <tr className="bg-gray-50 text-gray-500 text-xs uppercase tracking-wider">
                             <th className="p-4 font-bold">Order ID</th>
                             <th className="p-4 font-bold">Customer</th>
+                            <th className="p-4 font-bold">Items Purchased</th>
                             <th className="p-4 font-bold">Total</th>
                             <th className="p-4 font-bold">Status</th>
                             <th className="p-4 font-bold">Fulfillment</th>
@@ -269,6 +274,16 @@ const OrdersView = () => {
                                 <td className="p-4">
                                     <div className="font-bold text-brand-dark">{order.customer}</div>
                                     <div className="text-xs text-gray-400">{order.email}</div>
+                                </td>
+                                <td className="p-4">
+                                    <div className="space-y-1">
+                                        {Array.isArray(order.items) ? order.items.map((item: any, idx: number) => (
+                                            <div key={idx} className="flex items-center text-xs">
+                                                <span className="font-bold bg-gray-200 text-brand-dark px-1.5 py-0.5 rounded mr-2">{item.quantity}x</span>
+                                                <span className="text-gray-600 font-medium">{item.name}</span>
+                                            </div>
+                                        )) : <span className="text-gray-400 text-xs">No items data</span>}
+                                    </div>
                                 </td>
                                 <td className="p-4 font-bold">{formatPrice(order.total)}</td>
                                 <td className="p-4">
