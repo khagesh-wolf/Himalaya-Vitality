@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { 
@@ -249,7 +248,7 @@ const OrdersView = () => {
                         <tr className="bg-gray-50 text-gray-500 text-xs uppercase tracking-wider">
                             <th className="p-4 font-bold">Order ID</th>
                             <th className="p-4 font-bold">Customer</th>
-                            <th className="p-4 font-bold">Items Purchased</th>
+                            <th className="p-4 font-bold">Items</th>
                             <th className="p-4 font-bold text-center">Total Jars</th>
                             <th className="p-4 font-bold">Total</th>
                             <th className="p-4 font-bold">Status</th>
@@ -281,7 +280,7 @@ const OrdersView = () => {
                                     </div>
                                 </td>
                                 <td className="p-4 text-center">
-                                    <div className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-brand-red/10 text-brand-red font-bold text-sm border border-brand-red/20 shadow-sm">
+                                    <div className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-red-100 text-brand-red font-extrabold text-sm border border-red-200 shadow-sm">
                                         {order.totalJars || 0}
                                     </div>
                                 </td>
@@ -380,7 +379,7 @@ const OrdersView = () => {
     );
 };
 
-// --- 3. Products View ---
+// --- 3. Products View (Simplified) ---
 const ProductsView = () => {
     const queryClient = useQueryClient();
     const { data: product } = useQuery({ 
@@ -395,6 +394,8 @@ const ProductsView = () => {
     useEffect(() => { 
         if (product) {
             setEditProduct(product as AdminProduct); 
+            // Product comes with variants that have calculated stock, but we need the master stock
+            // Assuming API returns totalStock on the product object
             if (product.totalStock !== undefined) {
                 setTotalStock(product.totalStock);
             }
@@ -425,14 +426,17 @@ const ProductsView = () => {
     const saveChanges = () => {
         if (!editProduct) return;
         setIsSaving(true);
+        // Ensure values are numbers before sending
         const cleanVariants = editProduct.variants.map(v => ({
             ...v,
             price: parseFloat(v.price.toString()),
             compareAtPrice: parseFloat(v.compareAtPrice.toString()),
+            // stock is not sent for variants anymore, master stock is sent separately
         }));
         mutation.mutate({ variants: cleanVariants, totalStock: totalStock });
     };
 
+    // Calculate dynamic stocks for display preview
     const calculateStockPreview = (bundleType: string) => {
         const multiplier = bundleType === 'TRIPLE' ? 3 : bundleType === 'DOUBLE' ? 2 : 1;
         return Math.floor(totalStock / multiplier);

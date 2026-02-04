@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Link, useSearchParams, useNavigate } from 'react-router-dom';
 import { ShieldCheck, Lock, ArrowLeft, Loader2, AlertCircle, CheckCircle, Package, UserCircle, ShoppingCart, ChevronDown, ChevronUp, CreditCard } from 'lucide-react';
@@ -440,7 +439,8 @@ export const CheckoutPage = () => {
 
     const handleSuccess = (orderId: string) => {
         clearCart();
-        navigate('/order-confirmation', { state: { orderId } });
+        alert(`Order ${orderId} placed successfully! Check your email.`);
+        navigate('/profile');
     };
 
     return (
