@@ -19,33 +19,30 @@ const stripe = process.env.STRIPE_SECRET_KEY ? require('stripe')(process.env.STR
 const app = express();
 
 const JWT_SECRET = process.env.JWT_SECRET || 'dev-secret-key';
+const SITE_URL = process.env.SITE_URL || 'https://himalayavitality.com';
 
 // --- SECURITY: RATE LIMITING ---
-// Trust Proxy is required for Vercel/Serverless to correctly identify the Client IP
 app.set('trust proxy', 1);
 
-// 1. General API Limiter (Protection against DDoS/Scraping)
 const apiLimiter = rateLimit({
-    windowMs: 15 * 60 * 1000, // 15 minutes
-    max: 300, // Limit each IP to 300 requests per 15 minutes
+    windowMs: 15 * 60 * 1000, 
+    max: 300, 
     standardHeaders: true,
     legacyHeaders: false,
     message: { error: 'Too many requests, please try again later.' }
 });
 
-// 2. Auth Limiter (Protection against Brute Force & OTP Spam)
 const authLimiter = rateLimit({
-    windowMs: 15 * 60 * 1000, // 15 minutes
-    max: 10, // Strict: 10 attempts per 15 minutes
+    windowMs: 15 * 60 * 1000, 
+    max: 10, 
     standardHeaders: true,
     legacyHeaders: false,
     message: { error: 'Too many login/signup attempts. Please wait 15 minutes.' }
 });
 
-// 3. Checkout Limiter (Protection against Card Testing Attacks)
 const checkoutLimiter = rateLimit({
-    windowMs: 60 * 60 * 1000, // 1 hour
-    max: 20, // Strict: 20 payment attempts per hour
+    windowMs: 60 * 60 * 1000, 
+    max: 20, 
     message: { error: 'Payment initialization limit reached. Please try again later.' }
 });
 
@@ -53,17 +50,16 @@ app.use(cors());
 app.use(express.json());
 
 // Apply Global Limiters
-app.use('/api', apiLimiter); // Global limit for all API routes
-app.use('/api/auth', authLimiter); // Stricter limit for auth routes
-app.use('/api/create-payment-intent', checkoutLimiter); // Strict limit for payments
-app.use('/api/newsletter/subscribe', authLimiter); // Prevent spam subscriptions
-app.use('/api/reviews', authLimiter); // Prevent spam reviews
+app.use('/api', apiLimiter); 
+app.use('/api/auth', authLimiter); 
+app.use('/api/create-payment-intent', checkoutLimiter); 
+app.use('/api/newsletter/subscribe', authLimiter); 
+app.use('/api/reviews', authLimiter); 
 
 // --- CONSTANTS & HELPERS ---
 const DEFAULT_PRODUCT_ID = 'himalaya-shilajit-resin';
 const generateOTP = () => Math.floor(100000 + Math.random() * 900000).toString();
 
-// Bundle Multipliers for Inventory Logic
 const BUNDLE_MULTIPLIERS = {
     'SINGLE': 1,
     'DOUBLE': 2,
@@ -84,7 +80,6 @@ const authenticate = (req, res, next) => {
 
 const requireAdmin = (req, res, next) => {
     authenticate(req, res, () => {
-        // Case-insensitive check for ADMIN role
         if (req.user && (req.user.role === 'ADMIN' || req.user.role === 'admin')) {
             next();
         } else {
@@ -94,7 +89,6 @@ const requireAdmin = (req, res, next) => {
 };
 
 // --- EMAIL INFRASTRUCTURE ---
-
 const transporter = nodemailer.createTransport({
     host: 'smtp.gmail.com', 
     port: 465, 
@@ -111,13 +105,13 @@ const BRAND = {
     name: "Himalaya Vitality",
     color: "#D0202F",
     dark: "#111111",
-    logo: "https://i.ibb.co/tMXQXvJn/logo-red.png", // Direct link to logo
+    logo: "https://i.ibb.co/tMXQXvJn/logo-red.png", 
     address: "Melbourne, Australia",
     support: "support@himalayavitality.com",
-    website: "https://himalayavitality.com"
+    website: SITE_URL
 };
 
-// Base HTML Layout (Responsive Table Wrapper)
+// Base HTML Layout
 const emailLayout = (title, content) => `
 <!DOCTYPE html>
 <html>
@@ -161,36 +155,25 @@ const emailLayout = (title, content) => `
 `;
 
 // --- EMAIL TEMPLATES ---
-
 const Templates = {
     otp: (otp) => emailLayout(
         "Verify Your Email",
-        `
-        <h2 style="text-align: center; color: ${BRAND.dark}; margin-top: 0;">Verify Your Identity</h2>
+        `<h2 style="text-align: center; color: ${BRAND.dark}; margin-top: 0;">Verify Your Identity</h2>
         <p>Welcome to the tribe. Use the code below to complete your verification or login request.</p>
         <div class="code">${otp}</div>
-        <p style="text-align: center; font-size: 13px; color: #666;">This code will expire in 10 minutes.</p>
-        <p>If you didn't request this code, you can safely ignore this email.</p>
-        `
+        <p style="text-align: center; font-size: 13px; color: #666;">This code will expire in 10 minutes.</p>`
     ),
-
     orderConfirmation: (order, items) => {
         const itemsHtml = items.map(item => `
             <div style="border-bottom: 1px solid #eee; padding: 10px 0; display: flex; justify-content: space-between;">
                 <span style="font-weight: 500;">${item.quantity}x ${item.productTitle || 'Premium Shilajit'} <span style="color: #666; font-size: 12px;">(${item.variantName || 'Bundle'})</span></span>
                 <span>$${item.price.toFixed(2)}</span>
-            </div>
-        `).join('');
-
+            </div>`).join('');
         const address = order.shippingAddress;
-        
         return emailLayout(
             `Order #${order.orderNumber} Confirmed`,
-            `
-            <h2 style="color: ${BRAND.dark}; margin-top: 0;">Order Confirmed</h2>
+            `<h2 style="color: ${BRAND.dark}; margin-top: 0;">Order Confirmed</h2>
             <p>Thank you for your investment in your health, <strong>${order.customerName}</strong>.</p>
-            <p>We have received your order <strong>#${order.orderNumber}</strong> and are preparing it for shipment from our Melbourne warehouse.</p>
-            
             <div style="background-color: #fafafa; padding: 20px; border-radius: 8px; margin: 20px 0;">
                 <h3 style="margin-top: 0; font-size: 16px;">Order Summary</h3>
                 ${itemsHtml}
@@ -198,43 +181,24 @@ const Templates = {
                     Total: $${order.total.toFixed(2)}
                 </div>
             </div>
-
             <h3 style="font-size: 16px;">Shipping To:</h3>
-            <p style="color: #555; line-height: 1.5;">
-                ${address.address}<br>
-                ${address.city}, ${address.country} ${address.zip}
-            </p>
-
-            <div style="text-align: center; margin-top: 30px;">
-                <a href="${BRAND.website}/#/track" class="button">Track Order Status</a>
-            </div>
-            `
+            <p style="color: #555; line-height: 1.5;">${address.address}<br>${address.city}, ${address.country} ${address.zip}</p>
+            <div style="text-align: center; margin-top: 30px;"><a href="${BRAND.website}/track" class="button">Track Order Status</a></div>`
         );
     },
-
     shippingUpdate: (orderNumber, trackingNumber, carrier) => {
         const trackingUrl = carrier.toLowerCase().includes('dhl') 
             ? `https://www.dhl.com/en/express/tracking.html?AWB=${trackingNumber}&brand=DHL`
             : `https://auspost.com.au/mypost/track/#/details/${trackingNumber}`;
-
         return emailLayout(
             `Order #${orderNumber} Shipped`,
-            `
-            <h2 style="color: ${BRAND.dark}; margin-top: 0;">Your Order is on the Way!</h2>
-            <p>Great news! Your supply of Himalaya Vitality has been dispatched and is making its way to you.</p>
-            
+            `<h2 style="color: ${BRAND.dark}; margin-top: 0;">Your Order is on the Way!</h2>
             <div style="text-align: center; background-color: #fafafa; padding: 25px; border-radius: 8px; margin: 25px 0;">
                 <p style="margin: 0; font-size: 12px; text-transform: uppercase; letter-spacing: 1px; color: #888;">Tracking Number</p>
                 <div style="font-size: 24px; font-weight: bold; color: ${BRAND.dark}; margin: 10px 0;">${trackingNumber}</div>
                 <p style="margin: 0; font-size: 14px; color: #555;">Carrier: ${carrier}</p>
             </div>
-
-            <div style="text-align: center;">
-                <a href="${trackingUrl}" class="button">Track Your Package</a>
-            </div>
-
-            <p style="margin-top: 30px; font-size: 13px; color: #666;">Note: It may take up to 24 hours for the tracking information to update on the carrier's website.</p>
-            `
+            <div style="text-align: center;"><a href="${trackingUrl}" class="button">Track Your Package</a></div>`
         );
     }
 };
@@ -245,45 +209,78 @@ const sendEmail = async (to, subject, htmlContent) => {
             console.warn("Skipping email: Credentials not found.");
             return;
         }
-        await transporter.sendMail({ 
-            from: `"${BRAND.name}" <${process.env.EMAIL_USER}>`, 
-            to, 
-            subject, 
-            html: htmlContent 
-        });
+        await transporter.sendMail({ from: `"${BRAND.name}" <${process.env.EMAIL_USER}>`, to, subject, html: htmlContent });
         console.log(`[Email] Sent to ${to}: ${subject}`);
-    } catch (e) { 
-        console.error('[Email] Failed:', e); 
-    }
+    } catch (e) { console.error('[Email] Failed:', e); }
 };
 
-// --- ROUTES ---
+// --- SITEMAP.XML GENERATOR ---
+app.get('/sitemap.xml', async (req, res) => {
+    try {
+        const products = await prisma.product.findMany({ select: { id: true, updatedAt: true } });
+        const posts = await prisma.blogPost.findMany({ where: { published: true }, select: { slug: true, updatedAt: true } });
 
-// Health
+        const staticRoutes = ['', '/about', '/science', '/how-to-use', '/faq', '/contact', '/reviews', '/track', '/shipping-returns', '/privacy', '/terms'];
+
+        let xml = `<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">`;
+
+        staticRoutes.forEach(route => {
+            xml += `
+  <url>
+    <loc>${SITE_URL}${route}</loc>
+    <changefreq>weekly</changefreq>
+    <priority>${route === '' ? '1.0' : '0.8'}</priority>
+  </url>`;
+        });
+
+        products.forEach(prod => {
+            xml += `
+  <url>
+    <loc>${SITE_URL}/product/${prod.id}</loc>
+    <lastmod>${new Date(prod.updatedAt).toISOString()}</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.9</priority>
+  </url>`;
+        });
+
+        posts.forEach(post => {
+            xml += `
+  <url>
+    <loc>${SITE_URL}/blog/${post.slug}</loc>
+    <lastmod>${new Date(post.updatedAt).toISOString()}</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+  </url>`;
+        });
+
+        xml += `\n</urlset>`;
+        res.header('Content-Type', 'application/xml');
+        res.send(xml);
+    } catch (e) {
+        console.error("Sitemap generation error:", e);
+        res.status(500).send("Error generating sitemap");
+    }
+});
+
+// --- API ROUTES ---
 app.get('/api/health', (req, res) => res.json({ status: 'ok', time: new Date() }));
 
-// Blog (New)
+// Blog
 app.get('/api/blog', async (req, res) => {
     try {
-        const posts = await prisma.blogPost.findMany({ 
-            where: { published: true }, 
-            orderBy: { createdAt: 'desc' } 
-        });
+        const posts = await prisma.blogPost.findMany({ where: { published: true }, orderBy: { createdAt: 'desc' } });
         res.json(posts);
     } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-// Reviews (New)
+// Reviews
 app.get('/api/reviews', async (req, res) => {
     try {
-        const reviews = await prisma.review.findMany({
-            where: { status: 'Approved' },
-            orderBy: { createdAt: 'desc' }
-        });
+        const reviews = await prisma.review.findMany({ where: { status: 'Approved' }, orderBy: { createdAt: 'desc' } });
         res.json(reviews);
     } catch (e) { res.status(500).json({ error: e.message }); }
 });
-
 app.post('/api/reviews', async (req, res) => {
     try {
         const review = await prisma.review.create({ data: req.body });
@@ -291,7 +288,7 @@ app.post('/api/reviews', async (req, res) => {
     } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-// Inventory Logs (New)
+// Inventory Logs
 app.get('/api/admin/inventory-logs', requireAdmin, async (req, res) => {
     try {
         const logs = await prisma.inventoryLog.findMany({ orderBy: { createdAt: 'desc' }, take: 100 });
@@ -308,8 +305,6 @@ app.get('/api/products/:id', async (req, res) => {
         });
         if (!product) return res.status(404).json({ error: "Product not found" });
         
-        // Dynamic Stock Calculation:
-        // Variant stock = floor(TotalStock / BundleSize)
         product.variants = product.variants.map(v => ({
             ...v,
             stock: Math.floor(product.totalStock / (BUNDLE_MULTIPLIERS[v.type] || 1))
@@ -322,28 +317,19 @@ app.get('/api/products/:id', async (req, res) => {
 app.put('/api/products/:id', requireAdmin, async (req, res) => {
     const { variants, totalStock } = req.body;
     try {
-        // Update Prices
         if (variants) {
             await prisma.$transaction(
                 variants.map(v => prisma.productVariant.update({
                     where: { id: v.id },
-                    data: {
-                        price: parseFloat(v.price),
-                        compareAtPrice: parseFloat(v.compareAtPrice),
-                        // Note: we do NOT update variant 'stock' here anymore
-                    }
+                    data: { price: parseFloat(v.price), compareAtPrice: parseFloat(v.compareAtPrice) }
                 }))
             );
         }
-
-        // Update Master Stock if provided
         if (totalStock !== undefined) {
             await prisma.product.update({
                 where: { id: req.params.id },
                 data: { totalStock: parseInt(totalStock) }
             });
-
-            // Log the inventory change
             await prisma.inventoryLog.create({
                 data: {
                     sku: 'MASTER_JAR_STOCK',
@@ -354,37 +340,29 @@ app.put('/api/products/:id', requireAdmin, async (req, res) => {
                 }
             });
         }
-
         res.json({ success: true });
     } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-// Shipping Regions - PUBLIC GET
+// Shipping Regions
 app.get('/api/shipping-regions', async (req, res) => {
     try {
         const regions = await prisma.shippingRegion.findMany({ orderBy: { name: 'asc' } });
         res.json(regions);
     } catch (e) { res.status(500).json({ error: e.message }); }
 });
-
-// Shipping Regions - ADMIN ONLY WRITE
 app.post('/api/shipping-regions', requireAdmin, async (req, res) => {
     try {
         const region = await prisma.shippingRegion.create({ data: req.body });
         res.json(region);
     } catch (e) { res.status(500).json({ error: e.message }); }
 });
-
 app.put('/api/shipping-regions/:id', requireAdmin, async (req, res) => {
     try {
-        const region = await prisma.shippingRegion.update({
-            where: { id: req.params.id },
-            data: req.body
-        });
+        const region = await prisma.shippingRegion.update({ where: { id: req.params.id }, data: req.body });
         res.json(region);
     } catch (e) { res.status(500).json({ error: e.message }); }
 });
-
 app.delete('/api/shipping-regions/:id', requireAdmin, async (req, res) => {
     try {
         await prisma.shippingRegion.delete({ where: { id: req.params.id } });
@@ -399,43 +377,25 @@ app.get('/api/discounts', requireAdmin, async (req, res) => {
         res.json(discounts);
     } catch (e) { res.status(500).json({ error: e.message }); }
 });
-
 app.post('/api/discounts', requireAdmin, async (req, res) => {
     try {
         const discount = await prisma.discount.create({ data: req.body });
         res.json(discount);
     } catch (e) { res.status(500).json({ error: e.message }); }
 });
-
 app.delete('/api/discounts/:id', requireAdmin, async (req, res) => {
     try {
         await prisma.discount.delete({ where: { id: req.params.id } });
         res.json({ success: true });
     } catch (e) { res.status(500).json({ error: e.message }); }
 });
-
-// Validate Code - STRICT AUTH REQUIRED & RATE LIMITED
 app.post('/api/discounts/validate', authenticate, authLimiter, async (req, res) => {
     const { code } = req.body;
     try {
         const discount = await prisma.discount.findUnique({ where: { code: code.toUpperCase() } });
-        
-        if (!discount || !discount.active) {
-            return res.status(404).json({ error: 'Invalid or expired code' });
-        }
-
-        // User is present because 'authenticate' middleware is used
-        const existingUsage = await prisma.discountUsage.findFirst({
-            where: {
-                userId: req.user.id,
-                discountId: discount.id
-            }
-        });
-
-        if (existingUsage) {
-            return res.status(409).json({ error: 'You have already used this coupon code.' });
-        }
-
+        if (!discount || !discount.active) return res.status(404).json({ error: 'Invalid or expired code' });
+        const existingUsage = await prisma.discountUsage.findFirst({ where: { userId: req.user.id, discountId: discount.id } });
+        if (existingUsage) return res.status(409).json({ error: 'You have already used this coupon code.' });
         res.json(discount);
     } catch (e) { res.status(500).json({ error: e.message }); }
 });
@@ -455,188 +415,87 @@ app.post('/api/create-payment-intent', async (req, res) => {
     } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-// --- USER ORDERS HISTORY (Must be before other /api/orders routes) ---
 app.get('/api/orders/my-orders', authenticate, async (req, res) => {
     try {
-        const orders = await prisma.order.findMany({
-            where: { userId: req.user.id },
-            orderBy: { createdAt: 'desc' },
-            include: { items: true }
-        });
-
-        // Enrich with product info for UI
+        const orders = await prisma.order.findMany({ where: { userId: req.user.id }, orderBy: { createdAt: 'desc' }, include: { items: true } });
         const enhancedOrders = await Promise.all(orders.map(async (order) => {
             const itemsDetails = await Promise.all(order.items.map(async (item) => {
-                // Find variant to get product details (title/image)
-                const variant = await prisma.productVariant.findUnique({
-                    where: { id: item.variantId },
-                    include: { product: true }
-                });
-                return {
-                    ...item,
-                    title: variant?.product?.title || variant?.name || 'Product',
-                    image: variant?.product?.images?.[0],
-                    productId: variant?.productId
-                };
+                const variant = await prisma.productVariant.findUnique({ where: { id: item.variantId }, include: { product: true } });
+                return { ...item, title: variant?.product?.title || variant?.name || 'Product', image: variant?.product?.images?.[0], productId: variant?.productId };
             }));
-            
-            return {
-                id: order.orderNumber,
-                date: new Date(order.createdAt).toLocaleDateString(),
-                total: order.total,
-                status: order.status,
-                itemsDetails
-            };
+            return { id: order.orderNumber, date: new Date(order.createdAt).toLocaleDateString(), total: order.total, status: order.status, itemsDetails };
         }));
-
         res.json(enhancedOrders);
-    } catch (e) { 
-        res.status(500).json({ error: e.message }); 
-    }
-});
-
-// Public Tracking Endpoint - GUEST CHECKOUT ORDER LOOKUP
-app.get('/api/orders/:id/track', async (req, res) => {
-    try {
-        // Explicit selection to avoid 'updatedAt' errors if column missing in DB
-        const order = await prisma.order.findUnique({
-            where: { orderNumber: req.params.id },
-            select: { 
-                orderNumber: true, 
-                status: true, 
-                trackingNumber: true, 
-                carrier: true,
-                createdAt: true
-            }
-        });
-        if (!order) return res.status(404).json({ error: 'Order not found. Check your ID.' });
-        
-        // Return a simplified object safe for public viewing
-        res.json({
-            orderNumber: order.orderNumber,
-            status: order.status,
-            trackingNumber: order.trackingNumber,
-            carrier: order.carrier,
-            date: new Date(order.createdAt).toLocaleDateString()
-        });
     } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-// ABANDONED CART RECOVERY: Capture Lead - RATE LIMITED
+app.get('/api/orders/:id/track', async (req, res) => {
+    try {
+        const order = await prisma.order.findUnique({
+            where: { orderNumber: req.params.id },
+            select: { orderNumber: true, status: true, trackingNumber: true, carrier: true, createdAt: true }
+        });
+        if (!order) return res.status(404).json({ error: 'Order not found. Check your ID.' });
+        res.json({ orderNumber: order.orderNumber, status: order.status, trackingNumber: order.trackingNumber, carrier: order.carrier, date: new Date(order.createdAt).toLocaleDateString() });
+    } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 app.post('/api/checkout/lead', authLimiter, async (req, res) => {
     const { email } = req.body;
     if (!email) return res.status(400).json({ error: 'Email required' });
-    
     try {
-        // Upsert subscriber with source "Checkout" or "Abandoned Cart"
-        await prisma.subscriber.upsert({
-            where: { email },
-            update: {}, // Don't overwrite if exists
-            create: { email, source: 'Abandoned Cart' }
-        });
+        await prisma.subscriber.upsert({ where: { email }, update: {}, create: { email, source: 'Abandoned Cart' } });
         res.json({ success: true });
-    } catch (e) {
-        // Silently fail for frontend
-        res.json({ success: false });
-    }
+    } catch (e) { res.json({ success: false }); }
 });
 
-// CREATE ORDER - RATE LIMITED
 app.post('/api/orders', checkoutLimiter, async (req, res) => {
     const { customer, items, total, paymentId, userId, discountCode } = req.body;
     try {
-        // 1. Calculate Total Jars to Remove
         let totalJarsToRemove = 0;
-        
-        // We need to look up the variants to know their 'type' (multiplier)
         const enrichedItems = await Promise.all(items.map(async (item) => {
             const variant = await prisma.productVariant.findUnique({ where: { id: item.variantId } });
             return { ...item, type: variant.type };
         }));
-
         for (const item of enrichedItems) {
             const multiplier = BUNDLE_MULTIPLIERS[item.type] || 1;
             totalJarsToRemove += (item.quantity * multiplier);
         }
 
-        // 2. Perform Transaction: Verify Usage, Create Order & Decrement Master Stock & Record Discount Usage
         const result = await prisma.$transaction(async (tx) => {
-            // Check stock
             const product = await tx.product.findUnique({ where: { id: DEFAULT_PRODUCT_ID } });
-            if (product.totalStock < totalJarsToRemove) {
-                throw new Error("Insufficient stock");
-            }
+            if (product.totalStock < totalJarsToRemove) throw new Error("Insufficient stock");
 
-            // CHECK COUPON USAGE AGAIN STRICTLY FOR GUESTS AND USERS
             if (discountCode) {
                 const discount = await tx.discount.findUnique({ where: { code: discountCode.toUpperCase() } });
                 if (discount) {
-                    const usageCheckQuery = userId 
-                        ? { userId: userId, discountId: discount.id }
-                        : { guestEmail: customer.email, discountId: discount.id };
-
+                    const usageCheckQuery = userId ? { userId: userId, discountId: discount.id } : { guestEmail: customer.email, discountId: discount.id };
                     const existingUsage = await tx.discountUsage.findFirst({ where: usageCheckQuery });
-                    
-                    if (existingUsage) {
-                        throw new Error(`The coupon '${discountCode}' has already been used by this account.`);
-                    }
-
-                    // Record Usage
-                    await tx.discountUsage.create({
-                        data: {
-                            userId: userId || null,
-                            guestEmail: userId ? null : customer.email, // If guest, save email
-                            discountId: discount.id
-                        }
-                    });
+                    if (existingUsage) throw new Error(`The coupon '${discountCode}' has already been used by this account.`);
+                    await tx.discountUsage.create({ data: { userId: userId || null, guestEmail: userId ? null : customer.email, discountId: discount.id } });
                 }
             }
 
-            // Decrement Stock
-            await tx.product.update({
-                where: { id: DEFAULT_PRODUCT_ID },
-                data: { totalStock: { decrement: totalJarsToRemove } }
-            });
-
-            // Log Inventory
+            await tx.product.update({ where: { id: DEFAULT_PRODUCT_ID }, data: { totalStock: { decrement: totalJarsToRemove } } });
             await tx.inventoryLog.create({
-                data: {
-                    sku: 'MASTER_JAR_STOCK',
-                    action: 'ORDER_SALE',
-                    quantity: -totalJarsToRemove, // negative for sale
-                    user: 'System',
-                    date: new Date().toLocaleDateString()
-                }
+                data: { sku: 'MASTER_JAR_STOCK', action: 'ORDER_SALE', quantity: -totalJarsToRemove, user: 'System', date: new Date().toLocaleDateString() }
             });
 
-            // Create Order
-            // Explicitly do NOT include updatedAt to prevent errors with legacy DB schema
             const order = await tx.order.create({
                 data: {
                     orderNumber: `HV-${Date.now()}`,
                     customerEmail: customer.email,
                     customerName: `${customer.firstName} ${customer.lastName}`,
                     shippingAddress: customer, 
-                    total,
-                    status: 'Paid',
-                    paymentId,
-                    userId: userId || null,
-                    items: {
-                        create: items.map(i => ({
-                            variantId: i.variantId,
-                            quantity: i.quantity,
-                            price: i.price
-                        }))
-                    }
+                    total, status: 'Paid', paymentId, userId: userId || null,
+                    items: { create: items.map(i => ({ variantId: i.variantId, quantity: i.quantity, price: i.price })) }
                 }
             });
-            return { order, items: enrichedItems }; // Return enriched items for email
+            return { order, items: enrichedItems };
         });
 
-        // Send Professional HTML Email
         const emailHtml = Templates.orderConfirmation(result.order, result.items);
         await sendEmail(customer.email, `Order Confirmation ${result.order.orderNumber}`, emailHtml);
-        
         res.json({ success: true, orderId: result.order.orderNumber });
     } catch(e) { 
         console.error("Order error", e);
@@ -647,194 +506,89 @@ app.post('/api/orders', checkoutLimiter, async (req, res) => {
 // Admin Stats
 app.get('/api/admin/stats', requireAdmin, async (req, res) => {
     try {
-        // Valid statuses including Fulfilled
         const validStatuses = ['Paid', 'Fulfilled', 'Delivered'];
         const { startDate, endDate } = req.query;
-        
-        // Parse date range (Default to last 30 days)
         const end = endDate ? new Date(endDate) : new Date();
         const start = startDate ? new Date(startDate) : new Date(new Date().setDate(end.getDate() - 30));
+        const metricsWhere = { status: { in: validStatuses }, createdAt: { gte: start, lte: end } };
 
-        // Define filter criteria for the selected range
-        const metricsWhere = {
-            status: { in: validStatuses },
-            createdAt: { gte: start, lte: end }
-        };
-
-        // 1. Total Metrics (Filtered by range)
-        const totalRevenue = (await prisma.order.aggregate({ 
-            _sum: { total: true }, 
-            where: metricsWhere
-        }))._sum.total || 0;
-        
-        const totalOrders = await prisma.order.count({
-            where: metricsWhere
-        });
-
+        const totalRevenue = (await prisma.order.aggregate({ _sum: { total: true }, where: metricsWhere }))._sum.total || 0;
+        const totalOrders = await prisma.order.count({ where: metricsWhere });
         const avgOrderValue = totalOrders ? totalRevenue / totalOrders : 0;
 
-        // 2. Chart Data Aggregation (Daily Breakdown)
-        const ordersInRange = await prisma.order.findMany({
-            where: metricsWhere,
-            select: { createdAt: true, total: true },
-            orderBy: { createdAt: 'asc' }
-        });
-
-        // Initialize map with 0 for every day in range to have a continuous line
+        const ordersInRange = await prisma.order.findMany({ where: metricsWhere, select: { createdAt: true, total: true }, orderBy: { createdAt: 'asc' } });
         const chartData = {};
-        for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
-            chartData[d.toISOString().split('T')[0]] = 0;
-        }
+        for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) { chartData[d.toISOString().split('T')[0]] = 0; }
+        ordersInRange.forEach(o => { chartData[o.createdAt.toISOString().split('T')[0]] = (chartData[o.createdAt.toISOString().split('T')[0]] || 0) + o.total; });
+        const chart = Object.keys(chartData).map(date => ({ date, revenue: chartData[date] })).sort((a, b) => new Date(a.date) - new Date(b.date));
 
-        // Fill with actual data
-        ordersInRange.forEach(o => {
-            const date = o.createdAt.toISOString().split('T')[0];
-            if (chartData[date] !== undefined) {
-                chartData[date] += o.total;
-            } else {
-                // In case of timezone edge cases or if order falls slightly outside initialized loop
-                // (Though query should prevent this, good for safety)
-                chartData[date] = (chartData[date] || 0) + o.total;
-            }
-        });
-
-        const chart = Object.keys(chartData).map(date => ({
-            date,
-            revenue: chartData[date]
-        })).sort((a, b) => new Date(a.date) - new Date(b.date));
-
-        // 3. Trends (Compare vs Previous Period)
+        // Trends
         const duration = end.getTime() - start.getTime();
         const prevStart = new Date(start.getTime() - duration);
-        const prevEnd = start;
-
-        const prevWhere = {
-            status: { in: validStatuses },
-            createdAt: { gte: prevStart, lte: prevEnd }
-        };
-
-        const prevRevenue = (await prisma.order.aggregate({ 
-            _sum: { total: true }, 
-            where: prevWhere 
-        }))._sum.total || 0;
-
+        const prevWhere = { status: { in: validStatuses }, createdAt: { gte: prevStart, lte: start } };
+        const prevRevenue = (await prisma.order.aggregate({ _sum: { total: true }, where: prevWhere }))._sum.total || 0;
         const prevOrders = await prisma.order.count({ where: prevWhere });
         const prevAov = prevOrders ? prevRevenue / prevOrders : 0;
-        
-        const calculateTrend = (current, previous) => {
-            if (previous === 0) return current > 0 ? 100 : 0;
-            return ((current - previous) / previous) * 100;
-        };
+        const calculateTrend = (current, previous) => { if (previous === 0) return current > 0 ? 100 : 0; return ((current - previous) / previous) * 100; };
 
         res.json({ 
-            totalRevenue, 
-            totalOrders, 
-            avgOrderValue,
-            trends: {
-                revenue: calculateTrend(totalRevenue, prevRevenue),
-                orders: calculateTrend(totalOrders, prevOrders),
-                aov: calculateTrend(avgOrderValue, prevAov)
-            },
+            totalRevenue, totalOrders, avgOrderValue,
+            trends: { revenue: calculateTrend(totalRevenue, prevRevenue), orders: calculateTrend(totalOrders, prevOrders), aov: calculateTrend(avgOrderValue, prevAov) },
             chart 
         });
-    } catch (e) { 
-        console.error("Stats Error:", e);
-        res.status(500).json({ error: e.message }); 
-    }
+    } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 app.get('/api/admin/orders', requireAdmin, async (req, res) => {
     try {
-        // Explicitly select columns to exclude 'updatedAt' if schema is out of sync
         const orders = await prisma.order.findMany({ 
             orderBy: { createdAt: 'desc' }, 
-            select: {
-                id: true,
-                orderNumber: true,
-                customerName: true,
-                customerEmail: true,
-                shippingAddress: true,
-                total: true,
-                status: true,
-                paymentId: true,
-                trackingNumber: true,
-                carrier: true,
-                createdAt: true,
-                items: true // Relation can be selected
-            }
+            select: { id: true, orderNumber: true, customerName: true, customerEmail: true, shippingAddress: true, total: true, status: true, paymentId: true, trackingNumber: true, carrier: true, createdAt: true, items: true }
         });
-        
-        res.json(orders.map(o => ({
-            id: o.orderNumber, dbId: o.id, customer: o.customerName, email: o.customerEmail,
-            date: new Date(o.createdAt).toLocaleDateString(), total: o.total, status: o.status,
-            items: o.items.length, trackingNumber: o.trackingNumber, carrier: o.carrier
-        })));
+        res.json(orders.map(o => ({ id: o.orderNumber, dbId: o.id, customer: o.customerName, email: o.customerEmail, date: new Date(o.createdAt).toLocaleDateString(), total: o.total, status: o.status, items: o.items.length, trackingNumber: o.trackingNumber, carrier: o.carrier })));
     } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 app.put('/api/admin/orders/:id/status', requireAdmin, async (req, res) => {
-    try {
-        await prisma.order.update({ where: { orderNumber: req.params.id }, data: { status: req.body.status } });
-        res.json({ success: true });
-    } catch (e) { res.status(500).json({ error: e.message }); }
+    try { await prisma.order.update({ where: { orderNumber: req.params.id }, data: { status: req.body.status } }); res.json({ success: true }); } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 app.put('/api/admin/orders/:id/tracking', requireAdmin, async (req, res) => {
     try {
-        const { trackingNumber, carrier, notify } = req.body; // Added notify flag check if coming from frontend
-        
-        const order = await prisma.order.update({ 
-            where: { orderNumber: req.params.id }, 
-            data: { trackingNumber, carrier, status: 'Fulfilled' } 
-        });
-
-        // Send Shipping Email if tracking is added/updated
+        const { trackingNumber, carrier, notify } = req.body;
+        const order = await prisma.order.update({ where: { orderNumber: req.params.id }, data: { trackingNumber, carrier, status: 'Fulfilled' } });
         if (notify !== false && trackingNumber) {
             const emailHtml = Templates.shippingUpdate(order.orderNumber, trackingNumber, carrier || 'Australia Post');
             await sendEmail(order.customerEmail, `Your Order #${order.orderNumber} is on the way!`, emailHtml);
         }
-
         res.json({ success: true });
     } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-// Subscribers
 app.post('/api/newsletter/subscribe', async (req, res) => {
-    try {
-        const { email, source } = req.body;
-        await prisma.subscriber.create({ data: { email, source } });
-        res.json({ success: true });
-    } catch (e) { res.json({ message: 'Already subscribed' }); }
+    try { await prisma.subscriber.create({ data: req.body }); res.json({ success: true }); } catch (e) { res.json({ message: 'Already subscribed' }); }
 });
 
 app.get('/api/admin/subscribers', requireAdmin, async (req, res) => {
-    try {
-        const subs = await prisma.subscriber.findMany({ orderBy: { createdAt: 'desc' } });
-        res.json(subs.map(s => ({ id: s.id, email: s.email, date: new Date(s.createdAt).toLocaleDateString(), source: s.source })));
-    } catch (e) { res.status(500).json({ error: e.message }); }
+    try { const subs = await prisma.subscriber.findMany({ orderBy: { createdAt: 'desc' } }); res.json(subs.map(s => ({ id: s.id, email: s.email, date: new Date(s.createdAt).toLocaleDateString(), source: s.source }))); } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 app.post('/api/admin/newsletter/send', requireAdmin, async (req, res) => {
     try {
         const { subject, message } = req.body;
         const subs = await prisma.subscriber.findMany();
-        const htmlContent = emailLayout(subject, message); // Wrap ad-hoc email in template
+        const htmlContent = emailLayout(subject, message);
         for (const sub of subs) { await sendEmail(sub.email, subject, htmlContent); }
         res.json({ success: true, sent: subs.length });
     } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-// Auth
 app.post('/api/auth/login', async (req, res) => {
     const { email, password } = req.body;
     try {
         const user = await prisma.user.findUnique({ where: { email } });
-        if (!user || !user.password || !(await bcrypt.compare(password, user.password))) {
-            return res.status(400).json({ message: 'Invalid credentials' });
-        }
-        if (!user.isVerified && user.role !== 'ADMIN') {
-            return res.status(403).json({ message: 'Verification required', requiresVerification: true, email });
-        }
+        if (!user || !user.password || !(await bcrypt.compare(password, user.password))) return res.status(400).json({ message: 'Invalid credentials' });
+        if (!user.isVerified && user.role !== 'ADMIN') return res.status(403).json({ message: 'Verification required', requiresVerification: true, email });
         const token = jwt.sign({ id: user.id, role: user.role, email: user.email }, JWT_SECRET, { expiresIn: '7d' });
         const { password: _, otp: __, ...safeUser } = user;
         res.json({ token, user: safeUser });
@@ -849,11 +603,8 @@ app.post('/api/auth/signup', async (req, res) => {
         const hashedPassword = await bcrypt.hash(password, 10);
         const otp = generateOTP();
         await prisma.user.create({ data: { name, email, password: hashedPassword, otp } });
-        
-        // Send OTP Email
         const emailHtml = Templates.otp(otp);
         await sendEmail(email, 'Verify Your Email - Himalaya Vitality', emailHtml);
-        
         res.json({ message: 'Signup successful', requiresVerification: true, email });
     } catch (e) { res.status(500).json({ error: e.message }); }
 });
@@ -872,10 +623,7 @@ app.post('/api/auth/verify-email', async (req, res) => {
 
 app.get('/api/auth/me', authenticate, async (req, res) => {
     const user = await prisma.user.findUnique({ where: { id: req.user.id } });
-    if(user) {
-        const { password: _, otp: __, ...safeUser } = user;
-        res.json(safeUser);
-    } else { res.status(404).json({ message: 'User not found' }); }
+    if(user) { const { password: _, otp: __, ...safeUser } = user; res.json(safeUser); } else { res.status(404).json({ message: 'User not found' }); }
 });
 
 app.put('/api/auth/profile', authenticate, async (req, res) => {

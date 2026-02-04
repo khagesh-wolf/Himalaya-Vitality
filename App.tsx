@@ -1,6 +1,6 @@
 
 import React, { useEffect, Suspense } from 'react';
-import { HashRouter, Routes, Route, useLocation } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, useLocation } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { GoogleOAuthProvider } from '@react-oauth/google';
 import { Navbar, Footer } from './components/Layout';
@@ -69,7 +69,7 @@ const LayoutWrapper = ({ children }: { children?: React.ReactNode }) => {
     return (
         <div className="flex flex-col min-h-screen font-sans text-earth-900">
             <Navbar />
-            <main className="flex-grow">
+            <main className="flex-grow flex flex-col">
                 {children}
             </main>
             <Footer />
@@ -91,7 +91,7 @@ const App = () => {
               <SettingsProvider>
                 <CurrencyProvider>
                   <CartProvider>
-                    <HashRouter>
+                    <BrowserRouter>
                       <ScrollToTop />
                       <LayoutWrapper>
                           <Suspense fallback={<GlobalLoader />}>
@@ -131,7 +131,7 @@ const App = () => {
                             </Routes>
                           </Suspense>
                       </LayoutWrapper>
-                    </HashRouter>
+                    </BrowserRouter>
                   </CartProvider>
                 </CurrencyProvider>
               </SettingsProvider>
