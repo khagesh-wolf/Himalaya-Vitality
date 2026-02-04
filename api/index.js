@@ -568,6 +568,16 @@ app.get('/api/admin/orders', requireAdmin, async (req, res) => {
                 };
             });
 
+            // Fallback for orders with no items (legacy or errored)
+            if (enrichedItems.length === 0 && o.total > 0) {
+                enrichedItems.push({
+                    quantity: 1,
+                    name: 'Manual Order / Legacy',
+                    type: 'SINGLE'
+                });
+                totalJars = 1; // Assume at least 1 jar
+            }
+
             return { 
                 id: o.orderNumber, 
                 dbId: o.id, 
@@ -577,7 +587,7 @@ app.get('/api/admin/orders', requireAdmin, async (req, res) => {
                 total: o.total, 
                 status: o.status, 
                 items: enrichedItems, // Return array of details
-                totalJars: totalJars, // Return calculated jar count
+                totalJars: totalJars || 0, // Ensure it's a number
                 trackingNumber: o.trackingNumber, 
                 carrier: o.carrier 
             };

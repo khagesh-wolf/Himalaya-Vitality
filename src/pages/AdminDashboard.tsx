@@ -276,21 +276,24 @@ const OrdersView = () => {
                                     <div className="text-xs text-gray-400">{order.email}</div>
                                 </td>
                                 <td className="p-4">
-                                    {order.totalJars !== undefined && order.totalJars > 0 && (
+                                    {/* Total Jars Badge - Visible only if data is present */}
+                                    {typeof order.totalJars === 'number' && order.totalJars > 0 && (
                                         <div className="mb-2">
-                                            <span className="bg-orange-100 text-orange-800 text-[10px] font-bold px-2 py-1 rounded-full border border-orange-200">
-                                                Total Jars: {order.totalJars}
+                                            <span className="bg-orange-100 text-orange-800 text-[10px] font-bold px-2 py-1 rounded-full border border-orange-200 inline-flex items-center">
+                                                <Database size={10} className="mr-1"/> Total Jars: {order.totalJars}
                                             </span>
                                         </div>
                                     )}
+                                    
+                                    {/* Items List */}
                                     <div className="space-y-1">
                                         {Array.isArray(order.items) && order.items.length > 0 ? (
                                             order.items.map((item: any, idx: number) => (
                                                 <div key={idx} className="flex items-center text-xs">
-                                                    <span className="font-bold bg-gray-200 text-brand-dark px-1.5 py-0.5 rounded mr-2 min-w-[24px] text-center">
+                                                    <span className="font-bold bg-gray-100 text-brand-dark px-1.5 py-0.5 rounded mr-2 min-w-[24px] text-center border border-gray-200">
                                                         {item.quantity}x
                                                     </span>
-                                                    <span className="text-gray-600 font-medium">{item.name}</span>
+                                                    <span className="text-gray-600 font-medium truncate max-w-[200px]" title={item.name}>{item.name}</span>
                                                 </div>
                                             ))
                                         ) : (
