@@ -26,19 +26,9 @@ import { useCurrency } from '../context/CurrencyContext';
 type AdminView = 'DASHBOARD' | 'ORDERS' | 'DISCOUNTS' | 'PRODUCTS' | 'SUBSCRIBERS' | 'SHIPPING' | 'INVENTORY_LOGS';
 
 // Extended types for local admin state
-// Explicitly defining properties to fix TS errors where it loses track of extended properties
-interface AdminVariant {
-  id: string;
-  type: any; 
-  name: string;
-  price: number | string;
-  compareAtPrice: number | string;
-  label: string;
-  savings: string;
-  isPopular?: boolean;
+interface AdminVariant extends ProductVariant {
   stock: number;
 }
-
 type AdminProduct = Omit<Product, 'variants'> & { variants: AdminVariant[] };
 
 const SidebarItem = ({ icon: Icon, label, active, onClick }: { icon: any, label: string, active: boolean, onClick: () => void }) => (
@@ -181,7 +171,7 @@ const DashboardHome = () => {
     );
 };
 
-// --- 2. Orders View (Functional) ---
+// --- 2. Orders View ---
 const OrdersView = () => {
     const { formatPrice } = useCurrency();
     const queryClient = useQueryClient();
@@ -224,13 +214,11 @@ const OrdersView = () => {
 
     const exportCSV = () => {
         const filteredData = filter === 'All' ? orders : orders.filter((o: any) => o.status === filter);
-        // Helper to stringify items for CSV
-        const getItemsString = (items: any[]) => items.map(i => `${i.quantity}x ${i.name}`).join(' | ');
+        const getItemsString = (items: any[]) => Array.isArray(items) ? items.map(i => `${i.quantity}x ${i.name}`).join(' | ') : '';
 
         const csvContent = "data:text/csv;charset=utf-8," 
             + "Order ID,Customer,Email,Items,Total Jars,Total,Status,Date,Tracking,Carrier\n"
             + filteredData.map((o: any) => `"${o.id}","${o.customer}","${o.email}","${getItemsString(o.items)}","${o.totalJars || 0}","${o.total}","${o.status}","${o.date}","${o.trackingNumber || ''}","${o.carrier || ''}"`).join("\n");
-        
         const encodedUri = encodeURI(csvContent);
         const link = document.createElement("a");
         link.setAttribute("href", encodedUri);
@@ -262,7 +250,6 @@ const OrdersView = () => {
                             <th className="p-4 font-bold">Order ID</th>
                             <th className="p-4 font-bold">Customer</th>
                             <th className="p-4 font-bold">Items Purchased</th>
-                            {/* DEDICATED COLUMN ADDED */}
                             <th className="p-4 font-bold text-center">Total Jars</th>
                             <th className="p-4 font-bold">Total</th>
                             <th className="p-4 font-bold">Status</th>
@@ -293,9 +280,8 @@ const OrdersView = () => {
                                         )}
                                     </div>
                                 </td>
-                                {/* DEDICATED CELL ADDED */}
                                 <td className="p-4 text-center">
-                                    <div className="font-heading font-bold text-lg text-brand-red bg-red-50 w-10 h-10 rounded-full flex items-center justify-center mx-auto border border-red-100 shadow-sm">
+                                    <div className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-brand-red/10 text-brand-red font-bold text-sm border border-brand-red/20 shadow-sm">
                                         {order.totalJars || 0}
                                     </div>
                                 </td>
@@ -394,7 +380,7 @@ const OrdersView = () => {
     );
 };
 
-// --- 3. Products View (Simplified) ---
+// --- 3. Products View ---
 const ProductsView = () => {
     const queryClient = useQueryClient();
     const { data: product } = useQuery({ 
@@ -409,8 +395,6 @@ const ProductsView = () => {
     useEffect(() => { 
         if (product) {
             setEditProduct(product as AdminProduct); 
-            // Product comes with variants that have calculated stock, but we need the master stock
-            // Assuming API returns totalStock on the product object
             if (product.totalStock !== undefined) {
                 setTotalStock(product.totalStock);
             }
@@ -441,17 +425,14 @@ const ProductsView = () => {
     const saveChanges = () => {
         if (!editProduct) return;
         setIsSaving(true);
-        // Ensure values are numbers before sending
         const cleanVariants = editProduct.variants.map(v => ({
             ...v,
             price: parseFloat(v.price.toString()),
             compareAtPrice: parseFloat(v.compareAtPrice.toString()),
-            // stock is not sent for variants anymore, master stock is sent separately
         }));
         mutation.mutate({ variants: cleanVariants, totalStock: totalStock });
     };
 
-    // Calculate dynamic stocks for display preview
     const calculateStockPreview = (bundleType: string) => {
         const multiplier = bundleType === 'TRIPLE' ? 3 : bundleType === 'DOUBLE' ? 2 : 1;
         return Math.floor(totalStock / multiplier);
