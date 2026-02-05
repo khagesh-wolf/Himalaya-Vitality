@@ -440,8 +440,7 @@ export const CheckoutPage = () => {
 
     const handleSuccess = (orderId: string) => {
         clearCart();
-        alert(`Order ${orderId} placed successfully! Check your email.`);
-        navigate('/profile');
+        navigate('/order-confirmation', { state: { orderId } });
     };
 
     return (
