@@ -2,7 +2,7 @@
 import { Product, Review, Order, CartItem, User, RegionConfig, Discount, BlogPost, Subscriber, InventoryLog } from '../types';
 
 // --- CONFIGURATION ---
-const API_URL = (import.meta as any).env.VITE_API_URL || '/api';
+const API_URL = (import.meta as any).env?.VITE_API_URL || '/api';
 
 console.log(`[API] Service initialized. Endpoint: ${API_URL}`);
 
@@ -57,20 +57,13 @@ export const fetchReviews = async (): Promise<Review[]> => {
 export const createReview = async (data: Partial<Review>) => {
     const res = await fetch(`${API_URL}/reviews`, {
         method: 'POST',
-        headers: getHeaders(), // Headers needed if backend requires auth for reviews, currently usually open or guarded
+        headers: getHeaders(), 
         body: JSON.stringify(data)
     });
     return handleResponse(res);
 };
 
 export const fetchBlogPosts = async (): Promise<BlogPost[]> => {
-    // If backend endpoint exists, uncomment:
-    // const res = await fetch(`${API_URL}/blog`);
-    // return handleResponse(res);
-    
-    // For now, if blog isn't in DB, fallback to empty or constants is acceptable 
-    // ONLY for Blog to prevent site breaking if you haven't migrated content.
-    // However, user requested strict DB usage.
     try {
         const res = await fetch(`${API_URL}/blog`);
         return await handleResponse(res);
@@ -88,7 +81,7 @@ export const fetchShippingRegions = async (): Promise<RegionConfig[]> => {
 export const validateDiscount = async (code: string) => {
     const res = await fetch(`${API_URL}/discounts/validate`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getHeaders(),
         body: JSON.stringify({ code })
     });
     return handleResponse(res);
@@ -178,7 +171,7 @@ export const createPaymentIntent = async (items: CartItem[], currency: string, t
 export const createOrder = async (data: any) => {
     const res = await fetch(`${API_URL}/orders`, {
         method: 'POST',
-        headers: getHeaders(), // Order creation might require token if logged in, but backend handles guest
+        headers: getHeaders(),
         body: JSON.stringify(data)
     });
     return handleResponse(res);
@@ -190,7 +183,7 @@ export const fetchUserOrders = async (): Promise<Order[]> => {
 };
 
 export const trackOrder = async (orderId: string) => {
-    const res = await fetch(`${API_URL}/orders/${orderId}/track`); // Ensure backend has this public endpoint or create it
+    const res = await fetch(`${API_URL}/orders/${encodeURIComponent(orderId)}/track`); 
     return handleResponse(res);
 };
 
@@ -202,7 +195,6 @@ export const captureCheckoutLead = async (email: string) => {
             body: JSON.stringify({ email })
         });
     } catch (e) {
-        // Silently fail is acceptable for lead capture
         console.warn("Lead capture failed", e);
     }
 };
@@ -322,7 +314,15 @@ export const sendAdminNewsletter = async (subject: string, message: string) => {
 };
 
 export const fetchInventoryLogs = async (): Promise<InventoryLog[]> => {
-    // Requires backend implementation
     const res = await fetch(`${API_URL}/admin/inventory-logs`, { headers: getHeaders() });
+    return handleResponse(res);
+};
+
+export const sendContactMessage = async (data: { name: string, email: string, subject: string, message: string }) => {
+    const res = await fetch(`${API_URL}/contact`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+    });
     return handleResponse(res);
 };

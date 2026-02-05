@@ -7,7 +7,7 @@ import {
 import { Container, Button, Card, Reveal, LazyImage, Badge } from '../components/UI';
 import { Link } from 'react-router-dom';
 import { BLOG_POSTS, MAIN_PRODUCT, FAQ_DATA } from '../constants';
-import { trackOrder } from '../services/api';
+import { trackOrder, sendContactMessage } from '../services/api';
 
 // --- Shared Components ---
 const PageHeader = ({ title, subtitle, image }: { title: string, subtitle?: string, image?: string }) => (
@@ -449,7 +449,36 @@ export const FAQPage = () => {
 };
 
 // --- Contact Page ---
-export const ContactPage = () => (
+export const ContactPage = () => {
+    const [formData, setFormData] = useState({
+        name: '',
+        email: '',
+        subject: '',
+        message: ''
+    });
+    const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
+    const [errorMessage, setErrorMessage] = useState('');
+
+    const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+        setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }));
+    };
+
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setStatus('loading');
+        setErrorMessage('');
+
+        try {
+            await sendContactMessage(formData);
+            setStatus('success');
+            setFormData({ name: '', email: '', subject: '', message: '' }); // Reset form
+        } catch (err: any) {
+            setStatus('error');
+            setErrorMessage(err.message || 'Failed to send message. Please try again.');
+        }
+    };
+
+    return (
     <div className="bg-white">
          <PageHeader title="Contact Us" subtitle="Our team is ready to support your journey." />
          <Container className="py-24">
@@ -481,34 +510,85 @@ export const ContactPage = () => (
                 </Reveal>
                 
                 <Reveal delay={200}>
-                    <div className="bg-white p-8 md:p-10 rounded-3xl shadow-xl border border-gray-100">
-                        <form className="space-y-6">
+                    <div className="bg-white p-8 md:p-10 rounded-3xl shadow-xl border border-gray-100 relative overflow-hidden">
+                        {status === 'success' ? (
+                            <div className="absolute inset-0 bg-white z-10 flex flex-col items-center justify-center text-center p-8 animate-in fade-in">
+                                <div className="w-20 h-20 bg-green-50 text-green-600 rounded-full flex items-center justify-center mb-6">
+                                    <CheckCircle size={40} />
+                                </div>
+                                <h3 className="font-heading font-bold text-2xl text-brand-dark mb-2">Message Sent!</h3>
+                                <p className="text-gray-500 mb-8">Thank you for reaching out. Our team usually responds within 24 hours.</p>
+                                <Button onClick={() => setStatus('idle')} variant="outline-dark">Send Another</Button>
+                            </div>
+                        ) : null}
+
+                        <form onSubmit={handleSubmit} className="space-y-6">
                             <div className="grid grid-cols-2 gap-6">
                                 <div className="space-y-2">
                                     <label className="text-xs font-bold text-gray-500 uppercase ml-1">Name</label>
-                                    <input className="w-full p-4 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-brand-red transition-all" placeholder="Your Name" />
+                                    <input 
+                                        name="name"
+                                        value={formData.name}
+                                        onChange={handleChange}
+                                        className="w-full p-4 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-brand-red transition-all" 
+                                        placeholder="Your Name" 
+                                        required
+                                    />
                                 </div>
                                 <div className="space-y-2">
                                     <label className="text-xs font-bold text-gray-500 uppercase ml-1">Email</label>
-                                    <input className="w-full p-4 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-brand-red transition-all" placeholder="Your Email" type="email" />
+                                    <input 
+                                        name="email"
+                                        type="email"
+                                        value={formData.email}
+                                        onChange={handleChange}
+                                        className="w-full p-4 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-brand-red transition-all" 
+                                        placeholder="Your Email" 
+                                        required
+                                    />
                                 </div>
                             </div>
                             <div className="space-y-2">
                                 <label className="text-xs font-bold text-gray-500 uppercase ml-1">Subject</label>
-                                <input className="w-full p-4 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-brand-red transition-all" placeholder="How can we help?" />
+                                <input 
+                                    name="subject"
+                                    value={formData.subject}
+                                    onChange={handleChange}
+                                    className="w-full p-4 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-brand-red transition-all" 
+                                    placeholder="How can we help?" 
+                                    required
+                                />
                             </div>
                             <div className="space-y-2">
                                 <label className="text-xs font-bold text-gray-500 uppercase ml-1">Message</label>
-                                <textarea className="w-full p-4 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-brand-red transition-all" rows={5} placeholder="Tell us more..."></textarea>
+                                <textarea 
+                                    name="message"
+                                    value={formData.message}
+                                    onChange={handleChange}
+                                    className="w-full p-4 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-brand-red transition-all" 
+                                    rows={5} 
+                                    placeholder="Tell us more..."
+                                    required
+                                ></textarea>
                             </div>
-                            <Button fullWidth size="lg" className="shadow-xl shadow-brand-red/20">Send Message</Button>
+
+                            {status === 'error' && (
+                                <div className="flex items-center gap-2 text-red-500 text-sm bg-red-50 p-3 rounded-lg border border-red-100">
+                                    <AlertCircle size={16} /> {errorMessage}
+                                </div>
+                            )}
+
+                            <Button fullWidth size="lg" className="shadow-xl shadow-brand-red/20" disabled={status === 'loading'}>
+                                {status === 'loading' ? <><Loader2 className="animate-spin mr-2" size={18}/> Sending...</> : 'Send Message'}
+                            </Button>
                         </form>
                     </div>
                 </Reveal>
             </div>
          </Container>
     </div>
-);
+    );
+};
 
 // --- Legal Pages ---
 export const PrivacyPage = () => (
