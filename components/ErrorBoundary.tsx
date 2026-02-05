@@ -1,3 +1,4 @@
+
 import React, { ErrorInfo, ReactNode } from 'react';
 import { AlertTriangle, RefreshCw } from 'lucide-react';
 import { Button, Container } from './UI';
@@ -12,12 +13,9 @@ interface State {
 }
 
 export class ErrorBoundary extends React.Component<Props, State> {
-  constructor(props: Props) {
-    super(props);
-    this.state = {
-      hasError: false
-    };
-  }
+  public state: State = {
+    hasError: false
+  };
 
   public static getDerivedStateFromError(error: Error): State {
     return { hasError: true, error };
