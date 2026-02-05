@@ -2,7 +2,9 @@
 import { Product, Review, Order, CartItem, User, RegionConfig, Discount, BlogPost, Subscriber, InventoryLog } from '../types';
 
 // --- CONFIGURATION ---
-const API_URL = (import.meta as any).env?.VITE_API_URL || '/api';
+// Safety check: ensure import.meta.env exists before accessing properties
+const env = (import.meta as any).env || {};
+const API_URL = env.VITE_API_URL || '/api';
 
 console.log(`[API] Service initialized. Endpoint: ${API_URL}`);
 
@@ -57,7 +59,7 @@ export const fetchReviews = async (): Promise<Review[]> => {
 export const createReview = async (data: Partial<Review>) => {
     const res = await fetch(`${API_URL}/reviews`, {
         method: 'POST',
-        headers: getHeaders(), 
+        headers: getHeaders(), // Headers needed if backend requires auth for reviews
         body: JSON.stringify(data)
     });
     return handleResponse(res);
@@ -199,6 +201,22 @@ export const captureCheckoutLead = async (email: string) => {
     }
 };
 
+// --- CONTACT & MESSAGES ---
+
+export const sendContactMessage = async (data: { name: string, email: string, subject: string, message: string }) => {
+    const res = await fetch(`${API_URL}/contact`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+    });
+    return handleResponse(res);
+};
+
+export const fetchContactMessages = async () => {
+    const res = await fetch(`${API_URL}/admin/messages`, { headers: getHeaders() });
+    return handleResponse(res);
+};
+
 // --- ADMIN DASHBOARD ---
 
 export const fetchAdminStats = async (startDate?: Date, endDate?: Date) => {
@@ -315,14 +333,5 @@ export const sendAdminNewsletter = async (subject: string, message: string) => {
 
 export const fetchInventoryLogs = async (): Promise<InventoryLog[]> => {
     const res = await fetch(`${API_URL}/admin/inventory-logs`, { headers: getHeaders() });
-    return handleResponse(res);
-};
-
-export const sendContactMessage = async (data: { name: string, email: string, subject: string, message: string }) => {
-    const res = await fetch(`${API_URL}/contact`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data)
-    });
     return handleResponse(res);
 };

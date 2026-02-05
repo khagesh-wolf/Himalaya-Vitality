@@ -181,6 +181,16 @@ model BlogPost {
   published Boolean  @default(true)
   createdAt DateTime @default(now())
 }
+
+model ContactMessage {
+  id        String   @id @default(uuid())
+  name      String
+  email     String
+  subject   String?
+  message   String
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now())
+}
 ```
 
 ## 2. Inventory Logic
