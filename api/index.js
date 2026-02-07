@@ -455,23 +455,50 @@ app.get('/api/admin/stats', async (req, res) => {
 });
 
 app.get('/api/admin/orders', async (req, res) => {
-    const orders = await prisma.order.findMany({
-        orderBy: { createdAt: 'desc' },
-        include: { items: true }
-    });
-    // Transform for frontend
-    const mapped = orders.map(o => ({
-        id: o.orderNumber,
-        customer: o.customerName,
-        email: o.customerEmail,
-        total: o.total,
-        status: o.status,
-        date: o.createdAt.toISOString().split('T')[0],
-        trackingNumber: o.trackingNumber,
-        carrier: o.carrier,
-        items: o.items.map(i => ({ name: 'Shilajit Resin', quantity: i.quantity }))
-    }));
-    res.json(mapped);
+    try {
+        const orders = await prisma.order.findMany({
+            orderBy: { createdAt: 'desc' },
+            include: { items: true }
+        });
+        
+        // Transform for frontend and calculate Jars
+        const mapped = orders.map(o => {
+            let totalJars = 0;
+            const itemsMapped = o.items.map(i => {
+                let multiplier = 1;
+                let variantName = 'Shilajit Resin';
+                
+                // Determine multiplier based on variant ID convention from seed/constants
+                if (i.variantId.includes('triple') || i.variantId.includes('TRIPLE') || i.variantId.includes('Triple')) {
+                    multiplier = 3;
+                    variantName = 'Transformation Pack (3 Jars)';
+                } else if (i.variantId.includes('double') || i.variantId.includes('DOUBLE') || i.variantId.includes('Double')) {
+                    multiplier = 2;
+                    variantName = 'Commitment Pack (2 Jars)';
+                } else {
+                    variantName = 'Starter Pack (1 Jar)';
+                }
+                
+                totalJars += (i.quantity * multiplier);
+                
+                return { name: variantName, quantity: i.quantity };
+            });
+
+            return {
+                id: o.orderNumber,
+                customer: o.customerName,
+                email: o.customerEmail,
+                total: o.total,
+                status: o.status,
+                date: o.createdAt.toISOString().split('T')[0],
+                trackingNumber: o.trackingNumber,
+                carrier: o.carrier,
+                totalJars: totalJars, // Return calculated count
+                items: itemsMapped
+            };
+        });
+        res.json(mapped);
+    } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 app.put('/api/admin/orders/:id/status', async (req, res) => {
