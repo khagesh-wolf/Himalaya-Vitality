@@ -139,7 +139,55 @@ app.get('/api/shipping-regions', async (req, res) => {
     } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+app.post('/api/shipping-regions', authenticateToken, authorizeAdmin, async (req, res) => {
+    try {
+        const region = await prisma.shippingRegion.create({ data: req.body });
+        res.json(region);
+    } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.put('/api/shipping-regions/:id', authenticateToken, authorizeAdmin, async (req, res) => {
+    try {
+        const region = await prisma.shippingRegion.update({
+            where: { id: req.params.id },
+            data: req.body
+        });
+        res.json(region);
+    } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.delete('/api/shipping-regions/:id', authenticateToken, authorizeAdmin, async (req, res) => {
+    try {
+        await prisma.shippingRegion.delete({ where: { id: req.params.id } });
+        res.json({ success: true });
+    } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 // 4. Discounts
+app.get('/api/discounts', authenticateToken, authorizeAdmin, async (req, res) => {
+    try {
+        const discounts = await prisma.discount.findMany({ orderBy: { createdAt: 'desc' } });
+        res.json(discounts);
+    } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.post('/api/discounts', authenticateToken, authorizeAdmin, async (req, res) => {
+    try {
+        const { code, type, value, active } = req.body;
+        const discount = await prisma.discount.create({
+            data: { code, type, value, active: active ?? true }
+        });
+        res.json(discount);
+    } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.delete('/api/discounts/:id', authenticateToken, authorizeAdmin, async (req, res) => {
+    try {
+        await prisma.discount.delete({ where: { id: req.params.id } });
+        res.json({ success: true });
+    } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 app.post('/api/discounts/validate', async (req, res) => {
     try {
         const { code } = req.body;
