@@ -358,10 +358,8 @@ export const Footer = () => {
           <div>
             <h4 className="font-heading font-bold mb-6 text-white text-lg tracking-wide">Learn</h4>
             <ul className="space-y-4 text-sm text-gray-400 font-medium">
-              <li><Link to="/science" className="hover:text-brand-red transition-colors block py-1">The Science</Link></li>
-              <li><Link to="/how-to-use" className="hover:text-brand-red transition-colors block py-1">How To Use</Link></li>
-              <li><Link to="/about" className="hover:text-brand-red transition-colors block py-1">Our Story</Link></li>
-              <li><Link to="/blog" className="hover:text-brand-red transition-colors block py-1">Journal</Link></li>
+\              <li><Link to="/how-to-use" className="hover:text-brand-red transition-colors block py-1">How To Use</Link></li>
+\              <li><Link to="/blog" className="hover:text-brand-red transition-colors block py-1">Journal</Link></li>
               <li><Link to="/faq" className="hover:text-brand-red transition-colors block py-1">FAQ</Link></li>
               <li><Link to="/contact" className="hover:text-brand-red transition-colors block py-1">Contact</Link></li>
             </ul>
@@ -386,8 +384,6 @@ export const Footer = () => {
              <Link to="/privacy" className="hover:text-white transition-colors">Privacy Policy</Link>
              <Link to="/terms" className="hover:text-white transition-colors">Terms of Service</Link>
              <Link to="/shipping-returns" className="hover:text-white transition-colors">Shipping & Returns</Link>
-             <Link to="/sitemap" className="hover:text-white transition-colors">Sitemap</Link>
-             <Link to="/admin" className="hover:text-brand-red transition-colors">Admin</Link>
              
              {/* Protected Developer Credit */}
              <a 
