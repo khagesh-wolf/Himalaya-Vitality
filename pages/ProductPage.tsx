@@ -181,7 +181,7 @@ export const ProductPage = () => {
                     High Altitude • Gold Grade
                     </div>
                     <div className="bg-brand-dark px-4 py-2 rounded-full text-xs font-bold text-white shadow-sm flex items-center">
-                    <Award size={14} className="mr-1 text-brand-red " /> Athlete Grade
+                    <Award size={14} className="mr-1 text-brand-red" /> Athlete Grade
                     </div>
                 </div>
                 </div>
@@ -251,6 +251,7 @@ export const ProductPage = () => {
                     <div className="space-y-4 mb-8 bg-gray-50 p-4 rounded-2xl border border-gray-100">
                     <div className="flex justify-between items-center mb-2 px-1">
                         <h3 className="font-bold text-brand-dark text-sm uppercase tracking-wide">Select Package</h3>
+                        <span className="text-[10px] font-bold text-green-700 bg-green-100 px-2 py-1 rounded-full">Free AusPost Shipping</span>
                     </div>
                     
                     {product.variants.map((variant) => {

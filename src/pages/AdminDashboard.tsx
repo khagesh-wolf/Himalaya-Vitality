@@ -27,9 +27,11 @@ import { useCurrency } from '../context/CurrencyContext';
 type AdminView = 'DASHBOARD' | 'ORDERS' | 'DISCOUNTS' | 'PRODUCTS' | 'SUBSCRIBERS' | 'SHIPPING' | 'INVENTORY_LOGS' | 'MESSAGES';
 
 // Extended types for local admin state
-interface AdminVariant extends ProductVariant {
+// Using type intersection ensures all properties from ProductVariant are included correctly
+type AdminVariant = ProductVariant & {
   stock: number;
-}
+};
+
 type AdminProduct = Omit<Product, 'variants'> & { variants: AdminVariant[] };
 
 const SidebarItem = ({ icon: Icon, label, active, onClick }: { icon: any, label: string, active: boolean, onClick: () => void }) => (

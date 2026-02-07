@@ -183,6 +183,7 @@ export const Navbar = () => {
                                 <Link to="/admin" onClick={() => setShowProfileMenu(false)} className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 hover:text-brand-red">Admin Dashboard</Link>
                             )}
                             <Link to="/profile" onClick={() => setShowProfileMenu(false)} className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 hover:text-brand-red">My Profile</Link>
+                            <Link to="/profile" onClick={() => setShowProfileMenu(false)} className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 hover:text-brand-red">Order History</Link>
                             <button onClick={() => { logout(); setShowProfileMenu(false); }} className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 hover:text-brand-red flex items-center">
                                 <LogOut size={14} className="mr-2" /> Sign Out
                             </button>
@@ -255,7 +256,7 @@ export const Navbar = () => {
                         </Link>
                     )}
 
-                    {['Shop', 'Science', 'About', 'Track Order', 'Contact'].map((item) => (
+                    {['Shop', 'Science', 'About', 'Reviews', 'Blog', 'Track Order', 'Contact'].map((item) => (
                         <Link 
                             key={item}
                             to={item === 'Shop' ? '/product/himalaya-shilajit-resin' : item === 'Track Order' ? '/track' : `/${item.toLowerCase().replace(/ /g, '-')}`} 
@@ -282,6 +283,7 @@ export const Navbar = () => {
                 
                 <div className="grid grid-cols-2 gap-4 mb-6">
                       <Link to="/faq" className="text-xs text-gray-500 font-bold hover:text-brand-dark" onClick={() => setIsMobileMenuOpen(false)}>FAQ</Link>
+                      <Link to="/shipping-returns" className="text-xs text-gray-500 font-bold hover:text-brand-dark" onClick={() => setIsMobileMenuOpen(false)}>Shipping</Link>
                 </div>
 
                 <p className="text-xs text-gray-400 text-center">© {new Date().getFullYear()} Himalaya Vitality</p>
@@ -337,7 +339,7 @@ export const Footer = () => {
                  <a href="https://www.instagram.com/himalaya_vitality/" target="_blank" rel="noopener noreferrer" className="w-10 h-10 bg-white/10 rounded-full flex items-center justify-center hover:bg-brand-red transition-colors cursor-pointer text-white">
                     <Instagram size={18}/>
                  </a>
-                 <a href="mailto:mail@himalayavitality.app" className="w-10 h-10 bg-white/10 rounded-full flex items-center justify-center hover:bg-brand-red transition-colors cursor-pointer text-white">
+                 <a href="mailto:support@himalayavitality.com" className="w-10 h-10 bg-white/10 rounded-full flex items-center justify-center hover:bg-brand-red transition-colors cursor-pointer text-white">
                     <Mail size={18}/>
                  </a>
              </div>
@@ -357,7 +359,9 @@ export const Footer = () => {
           <div>
             <h4 className="font-heading font-bold mb-6 text-white text-lg tracking-wide">Learn</h4>
             <ul className="space-y-4 text-sm text-gray-400 font-medium">
+              <li><Link to="/science" className="hover:text-brand-red transition-colors block py-1">The Science</Link></li>
               <li><Link to="/how-to-use" className="hover:text-brand-red transition-colors block py-1">How To Use</Link></li>
+              <li><Link to="/about" className="hover:text-brand-red transition-colors block py-1">Our Story</Link></li>
               <li><Link to="/blog" className="hover:text-brand-red transition-colors block py-1">Journal</Link></li>
               <li><Link to="/faq" className="hover:text-brand-red transition-colors block py-1">FAQ</Link></li>
               <li><Link to="/contact" className="hover:text-brand-red transition-colors block py-1">Contact</Link></li>
@@ -383,6 +387,8 @@ export const Footer = () => {
              <Link to="/privacy" className="hover:text-white transition-colors">Privacy Policy</Link>
              <Link to="/terms" className="hover:text-white transition-colors">Terms of Service</Link>
              <Link to="/shipping-returns" className="hover:text-white transition-colors">Shipping & Returns</Link>
+             <Link to="/sitemap" className="hover:text-white transition-colors">Sitemap</Link>
+             <Link to="/admin" className="hover:text-brand-red transition-colors">Admin</Link>
              
              {/* Protected Developer Credit */}
              <a 

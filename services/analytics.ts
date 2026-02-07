@@ -1,7 +1,9 @@
+
 import { CartItem, Product } from '../types';
 
 // Configuration - In production, these should come from env variables
-const GA_MEASUREMENT_ID = (import.meta as any).env?.VITE_GA_ID || 'G-XXXXXXXXXX'; 
+// Updated to user provided ID
+const GA_MEASUREMENT_ID = (import.meta as any).env?.VITE_GA_ID || 'G-HEF88PY146'; 
 const PIXEL_ID = (import.meta as any).env?.VITE_PIXEL_ID || '1234567890';
 
 declare global {

@@ -340,7 +340,7 @@ export const Footer = () => {
                  <a href="https://www.instagram.com/himalaya_vitality/" target="_blank" rel="noopener noreferrer" className="w-10 h-10 bg-white/10 rounded-full flex items-center justify-center hover:bg-brand-red transition-colors cursor-pointer text-white">
                     <Instagram size={18}/>
                  </a>
-                 <a href="mailto:mail@himalayavitality.app" className="w-10 h-10 bg-white/10 rounded-full flex items-center justify-center hover:bg-brand-red transition-colors cursor-pointer text-white">
+                 <a href="mailto:support@himalayavitality.com" className="w-10 h-10 bg-white/10 rounded-full flex items-center justify-center hover:bg-brand-red transition-colors cursor-pointer text-white">
                     <Mail size={18}/>
                  </a>
              </div>

@@ -66,7 +66,104 @@ const authorizeAdmin = (req, res, next) => {
     next();
 };
 
-// --- Email Helper ---
+// --- Email Templates & Helper ---
+const emailStyles = `
+  body { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; background-color: #f9f9f9; margin: 0; padding: 0; -webkit-font-smoothing: antialiased; }
+  .container { max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 8px; overflow: hidden; margin-top: 20px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); }
+  .header { background-color: #111111; padding: 30px 20px; text-align: center; }
+  .header img { height: 32px; }
+  .content { padding: 40px 30px; color: #333333; line-height: 1.6; }
+  .button { display: inline-block; padding: 14px 28px; background-color: #D0202F; color: #ffffff !important; text-decoration: none; border-radius: 6px; font-weight: bold; margin-top: 25px; text-align: center; }
+  .footer { background-color: #f9f9f9; padding: 20px; text-align: center; font-size: 12px; color: #888888; border-top: 1px solid #eeeeee; }
+  .h1 { font-size: 24px; font-weight: 700; margin-bottom: 15px; color: #111111; letter-spacing: -0.5px; }
+  .text-gray { color: #666666; }
+  .otp-box { background-color: #f0f0f0; border: 1px solid #e0e0e0; padding: 15px; font-size: 32px; font-weight: 800; letter-spacing: 8px; text-align: center; margin: 25px 0; border-radius: 8px; color: #111111; }
+  .info-table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+  .info-table td { padding: 10px 0; border-bottom: 1px solid #eeeeee; }
+  .info-table td:last-child { text-align: right; font-weight: bold; }
+`;
+
+const wrapEmail = (content) => `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>${emailStyles}</style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+       <img src="https://i.ibb.co/mr2hH8wK/logo-white.png" alt="Himalaya Vitality" style="display: block; margin: 0 auto;">
+    </div>
+    <div class="content">
+       ${content}
+    </div>
+    <div class="footer">
+      <p>&copy; ${new Date().getFullYear()} Himalaya Vitality. All rights reserved.</p>
+      <p>Elevate your potential.</p>
+    </div>
+  </div>
+</body>
+</html>
+`;
+
+const templates = {
+    otp: (code) => wrapEmail(`
+        <h1 class="h1">Verify Your Email</h1>
+        <p class="text-gray">Welcome to the tribe. Use the code below to complete your verification.</p>
+        <div class="otp-box">${code}</div>
+        <p class="text-gray" style="font-size: 12px; text-align: center;">This code is valid for 10 minutes. If you didn't request this, please ignore this email.</p>
+    `),
+    forgotPassword: (code) => wrapEmail(`
+        <h1 class="h1">Reset Password</h1>
+        <p class="text-gray">We received a request to reset your password. Use the code below to proceed.</p>
+        <div class="otp-box">${code}</div>
+        <p class="text-gray" style="font-size: 12px; text-align: center;">If you didn't request a password reset, you can safely ignore this email.</p>
+    `),
+    orderConfirmation: (orderId, total, customerName) => wrapEmail(`
+        <h1 class="h1">Order Confirmed!</h1>
+        <p class="text-gray">Hi ${customerName},</p>
+        <p class="text-gray">Thank you for choosing Himalaya Vitality. Your journey to peak performance starts now. We have received your order and are preparing it for dispatch.</p>
+        
+        <table class="info-table">
+            <tr><td>Order Reference</td><td>${orderId}</td></tr>
+            <tr><td>Total Amount</td><td>$${total.toFixed(2)}</td></tr>
+            <tr><td>Status</td><td style="color: #D0202F;">Processing</td></tr>
+        </table>
+
+        <div style="text-align: center;">
+            <a href="${process.env.SITE_URL || 'https://himalayavitality.com'}/track" class="button">Track Order</a>
+        </div>
+    `),
+    shipping: (orderId, carrier, trackingNumber) => wrapEmail(`
+        <h1 class="h1">Your Order has Shipped!</h1>
+        <p class="text-gray">Great news! Your package is on its way.</p>
+        
+        <div style="background-color: #f9f9f9; padding: 20px; border-radius: 8px; border: 1px solid #eeeeee;">
+            <p style="margin: 0 0 10px 0; font-size: 12px; text-transform: uppercase; color: #888; font-weight: bold;">Order ID</p>
+            <p style="margin: 0 0 20px 0; font-weight: bold; font-size: 16px;">${orderId}</p>
+            
+            <p style="margin: 0 0 10px 0; font-size: 12px; text-transform: uppercase; color: #888; font-weight: bold;">Carrier</p>
+            <p style="margin: 0 0 20px 0; font-weight: bold;">${carrier}</p>
+            
+            <p style="margin: 0 0 10px 0; font-size: 12px; text-transform: uppercase; color: #888; font-weight: bold;">Tracking Number</p>
+            <p style="margin: 0; font-weight: bold; font-family: monospace; font-size: 18px;">${trackingNumber}</p>
+        </div>
+
+        <div style="text-align: center;">
+            <a href="${process.env.SITE_URL || 'https://himalayavitality.com'}/track" class="button">Track Package</a>
+        </div>
+    `),
+    contactReply: (name) => wrapEmail(`
+        <h1 class="h1">Message Received</h1>
+        <p class="text-gray">Hi ${name},</p>
+        <p class="text-gray">Thanks for reaching out to Himalaya Vitality Support. We have received your message and a member of our team will get back to you within 24 hours.</p>
+        <p class="text-gray">Stay vital,</p>
+        <p style="font-weight: bold;">Himalaya Vitality Team</p>
+    `)
+};
+
 const transporter = nodemailer.createTransport({
     service: 'gmail', // Or use host/port from env
     auth: {
@@ -230,8 +327,8 @@ app.post('/api/auth/signup', authLimiter, async (req, res) => {
             data: { name, email, password: hashed, otp }
         });
 
-        // Send OTP Email
-        await sendEmail(email, 'Verify Your Account', `<p>Your code is: <strong>${otp}</strong></p>`);
+        // Send Styled OTP Email
+        await sendEmail(email, 'Verify Your Account', templates.otp(otp));
 
         res.json({ success: true, requiresVerification: true, email });
     } catch (e) { res.status(500).json({ error: e.message }); }
@@ -277,7 +374,8 @@ app.post('/api/auth/forgot-password', authLimiter, async (req, res) => {
         if (user) {
             const otp = Math.floor(100000 + Math.random() * 900000).toString();
             await prisma.user.update({ where: { id: user.id }, data: { otp } });
-            await sendEmail(email, 'Reset Password', `<p>Your reset code is: <strong>${otp}</strong></p>`);
+            // Send Styled OTP Email
+            await sendEmail(email, 'Reset Password', templates.forgotPassword(otp));
         }
         res.json({ success: true }); // Always return true for security
     } catch (e) { res.status(500).json({ error: e.message }); }
@@ -369,8 +467,12 @@ app.post('/api/orders', async (req, res) => {
             return order;
         });
 
-        // Email Confirmation (Async)
-        sendEmail(customer.email, `Order Confirmed ${orderNumber}`, `<h1>Thank you for your order!</h1><p>Order #${orderNumber} has been received.</p>`);
+        // Send Styled Confirmation Email
+        sendEmail(
+            customer.email, 
+            `Order Confirmed ${orderNumber}`, 
+            templates.orderConfirmation(orderNumber, total, customer.firstName)
+        );
 
         res.json({ success: true, orderId: orderNumber });
     } catch (e) { 
@@ -518,7 +620,12 @@ app.put('/api/admin/orders/:id/tracking', async (req, res) => {
     });
     
     if (notify) {
-        sendEmail(order.customerEmail, 'Order Shipped!', `<p>Your order ${order.orderNumber} is on the way via ${carrier}. Tracking: ${trackingNumber}</p>`);
+        // Send Styled Shipping Email
+        sendEmail(
+            order.customerEmail, 
+            'Order Shipped!', 
+            templates.shipping(order.orderNumber, carrier, trackingNumber)
+        );
     }
     
     res.json({ success: true });
@@ -612,31 +719,28 @@ app.post('/api/contact', contactLimiter, async (req, res) => {
 
     try {
         // 2. Save to DB (Persistence)
-        // Check if ContactMessage table exists (User must have migrated)
         try {
             await prisma.contactMessage.create({
                 data: { name, email, subject: subject || 'No Subject', message }
             });
         } catch (dbError) {
             console.error("DB Save failed - Ensure 'npx prisma db push' ran", dbError);
-            // Fallthrough to email only if DB fails
         }
 
-        // 3. Send Email
-        const emailSent = await sendEmail(
+        // 3. Send Notification to Admin
+        await sendEmail(
             process.env.EMAIL_USER, 
-            `Contact: ${subject || 'New Inquiry'}`, 
-            `From: ${name} (${email})\n\n${message}`
+            `New Contact: ${subject || 'Inquiry'}`, 
+            wrapEmail(`
+                <h1 class="h1">New Contact Message</h1>
+                <p><strong>From:</strong> ${name} (${email})</p>
+                <p><strong>Subject:</strong> ${subject}</p>
+                <div style="background:#f4f4f4; padding:15px; border-radius:5px;">${message}</div>
+            `)
         );
 
-        if (!emailSent) {
-            // If email fails, but we might have saved to DB. 
-            // Return 200 but log warning, OR return error if critical.
-            // Let's return error if email fails so user knows to retry or check contact info.
-            // Unless DB save succeeded? It's complex. Let's assume email is primary.
-            // Actually, best UX: If saved to DB, success. If not saved AND email failed, error.
-            console.warn("Contact email failed to send.");
-        }
+        // 4. Send Auto-Reply to User
+        await sendEmail(email, "We received your message", templates.contactReply(name));
 
         res.json({ success: true, message: "Message received." });
     } catch (e) {
@@ -653,6 +757,74 @@ app.post('/api/newsletter/subscribe', async (req, res) => {
     } catch (e) {
         // Unique constraint failed likely
         res.json({ success: true }); // Silent success
+    }
+});
+
+// --- Sitemap XML Route ---
+app.get('/sitemap.xml', async (req, res) => {
+    try {
+        const baseUrl = 'https://himalayavitality.com';
+        
+        // Static Pages
+        const staticPages = [
+            '', '/science', '/about', '/reviews', '/blog', '/track', '/contact', 
+            '/faq', '/shipping-returns', '/privacy', '/terms', '/how-to-use'
+        ];
+
+        // Products (Hardcoded ID for now as per constant structure)
+        const products = ['himalaya-shilajit-resin'];
+
+        // Fetch Blogs dynamically
+        let blogs = [];
+        try {
+            blogs = await prisma.blogPost.findMany({ select: { slug: true, updatedAt: true } });
+        } catch (e) {
+            // If DB fail or table missing, fallback to empty or handle gracefully
+            console.warn("Could not fetch blogs for sitemap");
+        }
+
+        let xml = `<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">`;
+
+        // Static
+        staticPages.forEach(page => {
+            xml += `
+  <url>
+    <loc>${baseUrl}${page}</loc>
+    <changefreq>weekly</changefreq>
+    <priority>${page === '' ? '1.0' : '0.8'}</priority>
+  </url>`;
+        });
+
+        // Products
+        products.forEach(slug => {
+             xml += `
+  <url>
+    <loc>${baseUrl}/product/${slug}</loc>
+    <changefreq>daily</changefreq>
+    <priority>0.9</priority>
+  </url>`;
+        });
+
+        // Blogs
+        blogs.forEach(post => {
+            xml += `
+  <url>
+    <loc>${baseUrl}/blog/${post.slug}</loc>
+    <lastmod>${post.updatedAt.toISOString()}</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>`;
+        });
+
+        xml += `
+</urlset>`;
+
+        res.header('Content-Type', 'application/xml');
+        res.send(xml);
+    } catch (e) {
+        console.error("Sitemap generation error:", e);
+        res.status(500).end();
     }
 });
 

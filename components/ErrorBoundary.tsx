@@ -1,4 +1,3 @@
-
 import React, { ErrorInfo, ReactNode } from 'react';
 import { AlertTriangle, RefreshCw } from 'lucide-react';
 import { Button, Container } from './UI';
@@ -40,11 +39,6 @@ export class ErrorBoundary extends React.Component<Props, State> {
                 <Button onClick={() => window.location.reload()} fullWidth className="bg-brand-dark">
                     <RefreshCw size={16} className="mr-2" /> Reload Page
                 </Button>
-              <Link to="/">
-                    <Button size="lg" className="min-w-[180px]">
-                        <Home size={18} className="mr-2" /> Back Home
-                    </Button>
-                </Link>
                 
                 {(import.meta as any).env?.DEV && (
                     <div className="mt-8 p-4 bg-gray-100 rounded-lg text-left overflow-auto max-h-48">
