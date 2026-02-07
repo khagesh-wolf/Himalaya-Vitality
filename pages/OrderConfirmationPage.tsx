@@ -19,7 +19,7 @@ export const OrderConfirmationPage = () => {
     if (!orderId) return null;
 
     return (
-        <div className="min-h-screen bg-gray-50 flex items-center justify-center py-20">
+        <div className="min-h-screen bg-gray-50 flex items-center justify-center pt-32 pb-20 px-4">
             <SEO title="Order Confirmed" />
             <Container className="max-w-xl">
                 <Reveal>
