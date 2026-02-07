@@ -466,7 +466,7 @@ export const ContactPage = () => (
                                 <div className="w-12 h-12 bg-brand-red text-white flex items-center justify-center rounded-xl shadow-lg shadow-brand-red/20"><Mail size={24}/></div>
                                 <div>
                                     <div className="text-xs font-bold uppercase text-gray-400 mb-1">Email Support</div>
-                                    <a href="mailto:support@himalayavitality.com" className="font-bold text-xl text-brand-dark hover:text-brand-red transition-colors">support@himalayavitality.com</a>
+                                    <a href="mailto:mail@himalayavitality.app" className="font-bold text-xl text-brand-dark hover:text-brand-red transition-colors">mail@himalayavitality.app</a>
                                 </div>
                             </div>
                             <div className="flex items-center gap-6 p-6 bg-gray-50 rounded-2xl border border-gray-100">
@@ -480,31 +480,7 @@ export const ContactPage = () => (
                     </div>
                 </Reveal>
                 
-                <Reveal delay={200}>
-                    <div className="bg-white p-8 md:p-10 rounded-3xl shadow-xl border border-gray-100">
-                        <form className="space-y-6">
-                            <div className="grid grid-cols-2 gap-6">
-                                <div className="space-y-2">
-                                    <label className="text-xs font-bold text-gray-500 uppercase ml-1">Name</label>
-                                    <input className="w-full p-4 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-brand-red transition-all" placeholder="Your Name" />
-                                </div>
-                                <div className="space-y-2">
-                                    <label className="text-xs font-bold text-gray-500 uppercase ml-1">Email</label>
-                                    <input className="w-full p-4 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-brand-red transition-all" placeholder="Your Email" type="email" />
-                                </div>
-                            </div>
-                            <div className="space-y-2">
-                                <label className="text-xs font-bold text-gray-500 uppercase ml-1">Subject</label>
-                                <input className="w-full p-4 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-brand-red transition-all" placeholder="How can we help?" />
-                            </div>
-                            <div className="space-y-2">
-                                <label className="text-xs font-bold text-gray-500 uppercase ml-1">Message</label>
-                                <textarea className="w-full p-4 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-brand-red transition-all" rows={5} placeholder="Tell us more..."></textarea>
-                            </div>
-                            <Button fullWidth size="lg" className="shadow-xl shadow-brand-red/20">Send Message</Button>
-                        </form>
-                    </div>
-                </Reveal>
+                
             </div>
          </Container>
     </div>
