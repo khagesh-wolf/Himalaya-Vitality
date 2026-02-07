@@ -164,7 +164,7 @@ export const NewsletterModal = () => {
                   />
                 </div>
                 <Button fullWidth size="md" className="shadow-lg shadow-brand-red/20 group justify-between px-6">
-                  <span>Get My 10% Code</span>
+                  <span>Get My 25% Code</span>
                   <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform" />
                 </Button>
               </form>
@@ -182,10 +182,9 @@ export const NewsletterModal = () => {
                <p className="text-gray-500 text-sm mb-6">Your code is ready. Use it at checkout.</p>
                
                <div className="bg-gray-50 border border-dashed border-gray-300 p-4 rounded-xl flex items-center justify-between mb-2">
-                 <code className="font-mono font-bold text-lg text-brand-dark">WELCOME10</code>
+                 <code className="font-mono font-bold text-lg text-brand-dark">WELCOME25</code>
                  <Button size="sm" variant="ghost" className="text-brand-red text-xs hover:bg-red-50" onClick={() => navigator.clipboard.writeText('WELCOME10')}>Copy</Button>
                </div>
-               <p className="text-[10px] text-gray-400">Code also sent to {email}</p>
             </div>
           )}
         </div>
