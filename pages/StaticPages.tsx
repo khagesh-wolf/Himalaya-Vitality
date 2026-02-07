@@ -7,7 +7,7 @@ import {
 import { Container, Button, Card, Reveal, LazyImage, Badge } from '../components/UI';
 import { Link } from 'react-router-dom';
 import { BLOG_POSTS, MAIN_PRODUCT, FAQ_DATA } from '../constants';
-import { trackOrder } from '../services/api';
+import { trackOrder, sendContactMessage } from '../services/api';
 
 // --- Shared Components ---
 const PageHeader = ({ title, subtitle, image }: { title: string, subtitle?: string, image?: string }) => (
@@ -449,7 +449,36 @@ export const FAQPage = () => {
 };
 
 // --- Contact Page ---
-export const ContactPage = () => (
+export const ContactPage = () => {
+    const [formData, setFormData] = useState({
+        name: '',
+        email: '',
+        subject: '',
+        message: ''
+    });
+    const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
+    const [errorMessage, setErrorMessage] = useState('');
+
+    const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+        setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }));
+    };
+
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setStatus('loading');
+        setErrorMessage('');
+
+        try {
+            await sendContactMessage(formData);
+            setStatus('success');
+            setFormData({ name: '', email: '', subject: '', message: '' }); // Reset form
+        } catch (err: any) {
+            setStatus('error');
+            setErrorMessage(err.message || 'Failed to send message. Please try again.');
+        }
+    };
+
+    return (
     <div className="bg-white">
          <PageHeader title="Contact Us" subtitle="Our team is ready to support your journey." />
          <Container className="py-24">
@@ -466,7 +495,7 @@ export const ContactPage = () => (
                                 <div className="w-12 h-12 bg-brand-red text-white flex items-center justify-center rounded-xl shadow-lg shadow-brand-red/20"><Mail size={24}/></div>
                                 <div>
                                     <div className="text-xs font-bold uppercase text-gray-400 mb-1">Email Support</div>
-                                    <a href="mailto:mail@himalayavitality.app" className="font-bold text-xl text-brand-dark hover:text-brand-red transition-colors">mail@himalayavitality.app</a>
+                                    <a href="mailto:support@himalayavitality.com" className="font-bold text-xl text-brand-dark hover:text-brand-red transition-colors">support@himalayavitality.com</a>
                                 </div>
                             </div>
                             <div className="flex items-center gap-6 p-6 bg-gray-50 rounded-2xl border border-gray-100">
@@ -479,7 +508,8 @@ export const ContactPage = () => (
                         </div>
                     </div>
                 </Reveal>
-                 <Reveal delay={200}>
+                
+                <Reveal delay={200}>
                     <div className="bg-white p-8 md:p-10 rounded-3xl shadow-xl border border-gray-100 relative overflow-hidden">
                         {status === 'success' ? (
                             <div className="absolute inset-0 bg-white z-10 flex flex-col items-center justify-center text-center p-8 animate-in fade-in">
@@ -554,11 +584,11 @@ export const ContactPage = () => (
                         </form>
                     </div>
                 </Reveal>
-                
             </div>
          </Container>
     </div>
-);
+    );
+};
 
 // --- Legal Pages ---
 export const PrivacyPage = () => (
@@ -644,7 +674,7 @@ export const ShippingReturnsPage = () => (
                             <h2 className="text-2xl font-bold text-brand-dark mb-4">30-Day Guarantee</h2>
                             <div className="prose text-gray-600">
                                 <p>We stand behind the potency of our product. If you don't feel a difference in your energy and focus within 30 days, we'll refund your money.</p>
-                                <p>To initiate a return, simply email <a href="mailto:mail@himalayavitality.app" className="text-brand-red font-bold">mail@himalayavitality.app</a> with your order number. </p>
+                                <p>To initiate a return, simply email <a href="mailto:support@himalayavitality.com" className="text-brand-red font-bold">support@himalayavitality.com</a> with your order number. You do not need to return the used jar.</p>
                             </div>
                         </div>
                     </div>
