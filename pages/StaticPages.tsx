@@ -479,7 +479,31 @@ export const ContactPage = () => (
                         </div>
                     </div>
                 </Reveal>
-                
+                <Reveal delay={200}>
+                    <div className="bg-white p-8 md:p-10 rounded-3xl shadow-xl border border-gray-100">
+                        <form className="space-y-6">
+                            <div className="grid grid-cols-2 gap-6">
+                                <div className="space-y-2">
+                                    <label className="text-xs font-bold text-gray-500 uppercase ml-1">Name</label>
+                                    <input className="w-full p-4 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-brand-red transition-all" placeholder="Your Name" />
+                                </div>
+                                <div className="space-y-2">
+                                    <label className="text-xs font-bold text-gray-500 uppercase ml-1">Email</label>
+                                    <input className="w-full p-4 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-brand-red transition-all" placeholder="Your Email" type="email" />
+                                </div>
+                            </div>
+                            <div className="space-y-2">
+                                <label className="text-xs font-bold text-gray-500 uppercase ml-1">Subject</label>
+                                <input className="w-full p-4 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-brand-red transition-all" placeholder="How can we help?" />
+                            </div>
+                            <div className="space-y-2">
+                                <label className="text-xs font-bold text-gray-500 uppercase ml-1">Message</label>
+                                <textarea className="w-full p-4 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-brand-red transition-all" rows={5} placeholder="Tell us more..."></textarea>
+                            </div>
+                            <Button fullWidth size="lg" className="shadow-xl shadow-brand-red/20">Send Message</Button>
+                        </form>
+                    </div>
+                </Reveal>
                 
             </div>
          </Container>
