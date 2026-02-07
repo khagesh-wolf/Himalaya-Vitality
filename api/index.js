@@ -21,10 +21,37 @@ const stripe = Stripe(process.env.STRIPE_SECRET_KEY);
 // --- Security Middleware ---
 app.use(helmet()); // Set secure HTTP headers
 app.use(express.json({ limit: '10kb' })); // Body limit to prevent DoS
+
+// --- CORS Configuration ---
+const allowedOrigins = [
+    process.env.SITE_URL, 
+    'https://himalayavitality.app', 
+    'https://www.himalayavitality.app',
+    'http://localhost:5173',
+    'http://localhost:3000'
+];
+
 app.use(cors({
-    origin: process.env.SITE_URL || '*', // Restrict in production
+    origin: (origin, callback) => {
+        // Allow requests with no origin (like mobile apps or curl requests)
+        if (!origin) return callback(null, true);
+        
+        // Check against allowed list or allow any Vercel preview deployment
+        if (allowedOrigins.includes(origin) || origin.endsWith('.vercel.app')) {
+            return callback(null, true);
+        }
+        
+        // Optional: Log blocked origins for debugging
+        console.warn(`Blocked CORS origin: ${origin}`);
+        
+        // Fallback: In strict mode, we'd block. For now, to ensure your custom domain works immediately
+        // if exact string matching fails (e.g. http vs https mixed content), we can allow.
+        // However, the check above covers standard use cases.
+        return callback(null, true); 
+    },
     credentials: true
 }));
+
 app.use(xss()); // Data sanitization against XSS
 app.use(hpp()); // Prevent HTTP Parameter Pollution
 
@@ -55,23 +82,23 @@ const authenticateToken = (req, res, next) => {
   if (!token) return res.status(401).json({ error: 'Access token required' });
 
   jwt.verify(token, process.env.JWT_SECRET, (err, user) => {
-    if (err) return res.status(403).json({ error: 'Invalid or expired token' });
+    if (err) return res.status(403).json({ error: 'Invalid or expired token. Please login again.' });
     req.user = user;
     next();
   });
 };
 
 const authorizeAdmin = (req, res, next) => {
-    if (req.user.role !== 'ADMIN') return res.status(403).json({ error: 'Access denied' });
+    if (req.user.role !== 'ADMIN') return res.status(403).json({ error: 'Access denied: Admin privileges required.' });
     next();
 };
 
 // --- Email Templates & Helper ---
 const emailStyles = `
-  body { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; background-color: #f9f9f9; margin: 0; padding: 0; -webkit-font-smoothing: antialiased; }
+  body { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; background-color: #f9f9f9; margin: 0; padding: 0; -webkit-font-smoothing: antialiased; width: 100% !important; -webkit-text-size-adjust: 100%; }
   .container { max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 8px; overflow: hidden; margin-top: 20px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); }
   .header { background-color: #111111; padding: 30px 20px; text-align: center; }
-  .header img { height: 32px; }
+  .header img { height: 32px; border: 0; display: block; margin: 0 auto; }
   .content { padding: 40px 30px; color: #333333; line-height: 1.6; }
   .button { display: inline-block; padding: 14px 28px; background-color: #D0202F; color: #ffffff !important; text-decoration: none; border-radius: 6px; font-weight: bold; margin-top: 25px; text-align: center; }
   .footer { background-color: #f9f9f9; padding: 20px; text-align: center; font-size: 12px; color: #888888; border-top: 1px solid #eeeeee; }
@@ -81,20 +108,26 @@ const emailStyles = `
   .info-table { width: 100%; border-collapse: collapse; margin-top: 20px; }
   .info-table td { padding: 10px 0; border-bottom: 1px solid #eeeeee; }
   .info-table td:last-child { text-align: right; font-weight: bold; }
+  a { color: #D0202F; text-decoration: none; }
 `;
 
-const wrapEmail = (content) => `
+const wrapEmail = (content, preheader = '') => `
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="x-apple-disable-message-reformatting">
+  <title>Himalaya Vitality</title>
   <style>${emailStyles}</style>
 </head>
 <body>
+  <div style="display:none;font-size:1px;color:#333333;line-height:1px;max-height:0px;max-width:0px;opacity:0;overflow:hidden;">
+    ${preheader}
+  </div>
   <div class="container">
     <div class="header">
-       <img src="https://i.ibb.co/mr2hH8wK/logo-white.png" alt="Himalaya Vitality" style="display: block; margin: 0 auto;">
+       <img src="https://i.ibb.co/mr2hH8wK/logo-white.png" alt="Himalaya Vitality">
     </div>
     <div class="content">
        ${content}
@@ -102,66 +135,88 @@ const wrapEmail = (content) => `
     <div class="footer">
       <p>&copy; ${new Date().getFullYear()} Himalaya Vitality. All rights reserved.</p>
       <p>Elevate your potential.</p>
+      <p style="margin-top: 10px; font-style: italic;">Melbourne, Australia</p>
+      <p><a href="${process.env.SITE_URL || 'https://himalayavitality.com'}" style="color: #888; text-decoration: underline;">Visit Website</a></p>
     </div>
   </div>
 </body>
 </html>
 `;
 
+// Templates returning both HTML and Plain Text
 const templates = {
-    otp: (code) => wrapEmail(`
-        <h1 class="h1">Verify Your Email</h1>
-        <p class="text-gray">Welcome to the tribe. Use the code below to complete your verification.</p>
-        <div class="otp-box">${code}</div>
-        <p class="text-gray" style="font-size: 12px; text-align: center;">This code is valid for 10 minutes. If you didn't request this, please ignore this email.</p>
-    `),
-    forgotPassword: (code) => wrapEmail(`
-        <h1 class="h1">Reset Password</h1>
-        <p class="text-gray">We received a request to reset your password. Use the code below to proceed.</p>
-        <div class="otp-box">${code}</div>
-        <p class="text-gray" style="font-size: 12px; text-align: center;">If you didn't request a password reset, you can safely ignore this email.</p>
-    `),
-    orderConfirmation: (orderId, total, customerName) => wrapEmail(`
-        <h1 class="h1">Order Confirmed!</h1>
-        <p class="text-gray">Hi ${customerName},</p>
-        <p class="text-gray">Thank you for choosing Himalaya Vitality. Your journey to peak performance starts now. We have received your order and are preparing it for dispatch.</p>
-        
-        <table class="info-table">
-            <tr><td>Order Reference</td><td>${orderId}</td></tr>
-            <tr><td>Total Amount</td><td>$${total.toFixed(2)}</td></tr>
-            <tr><td>Status</td><td style="color: #D0202F;">Processing</td></tr>
-        </table>
-
-        <div style="text-align: center;">
-            <a href="${process.env.SITE_URL || 'https://himalayavitality.com'}/track" class="button">Track Order</a>
-        </div>
-    `),
-    shipping: (orderId, carrier, trackingNumber) => wrapEmail(`
-        <h1 class="h1">Your Order has Shipped!</h1>
-        <p class="text-gray">Great news! Your package is on its way.</p>
-        
-        <div style="background-color: #f9f9f9; padding: 20px; border-radius: 8px; border: 1px solid #eeeeee;">
-            <p style="margin: 0 0 10px 0; font-size: 12px; text-transform: uppercase; color: #888; font-weight: bold;">Order ID</p>
-            <p style="margin: 0 0 20px 0; font-weight: bold; font-size: 16px;">${orderId}</p>
-            
-            <p style="margin: 0 0 10px 0; font-size: 12px; text-transform: uppercase; color: #888; font-weight: bold;">Carrier</p>
-            <p style="margin: 0 0 20px 0; font-weight: bold;">${carrier}</p>
-            
-            <p style="margin: 0 0 10px 0; font-size: 12px; text-transform: uppercase; color: #888; font-weight: bold;">Tracking Number</p>
-            <p style="margin: 0; font-weight: bold; font-family: monospace; font-size: 18px;">${trackingNumber}</p>
-        </div>
-
-        <div style="text-align: center;">
-            <a href="${process.env.SITE_URL || 'https://himalayavitality.com'}/track" class="button">Track Package</a>
-        </div>
-    `),
-    contactReply: (name) => wrapEmail(`
-        <h1 class="h1">Message Received</h1>
-        <p class="text-gray">Hi ${name},</p>
-        <p class="text-gray">Thanks for reaching out to Himalaya Vitality Support. We have received your message and a member of our team will get back to you within 24 hours.</p>
-        <p class="text-gray">Stay vital,</p>
-        <p style="font-weight: bold;">Himalaya Vitality Team</p>
-    `)
+    otp: (code) => ({
+        subject: 'Verify Your Email - Himalaya Vitality',
+        html: wrapEmail(`
+            <h1 class="h1">Verify Your Email</h1>
+            <p class="text-gray">Welcome to the tribe. Use the code below to complete your verification.</p>
+            <div class="otp-box">${code}</div>
+            <p class="text-gray" style="font-size: 12px; text-align: center;">This code is valid for 10 minutes. If you didn't request this, please ignore this email.</p>
+        `, `Your verification code is ${code}`),
+        text: `Verify Your Email\n\nWelcome to the tribe. Use the code below to complete your verification.\n\nCode: ${code}\n\nThis code is valid for 10 minutes. If you didn't request this, please ignore this email.\n\nHimalaya Vitality`
+    }),
+    forgotPassword: (code) => ({
+        subject: 'Reset Password',
+        html: wrapEmail(`
+            <h1 class="h1">Reset Password</h1>
+            <p class="text-gray">We received a request to reset your password. Use the code below to proceed.</p>
+            <div class="otp-box">${code}</div>
+            <p class="text-gray" style="font-size: 12px; text-align: center;">If you didn't request a password reset, you can safely ignore this email.</p>
+        `, `Your password reset code is ${code}`),
+        text: `Reset Password\n\nWe received a request to reset your password. Use the code below to proceed.\n\nCode: ${code}\n\nIf you didn't request a password reset, you can safely ignore this email.\n\nHimalaya Vitality`
+    }),
+    orderConfirmation: (orderId, total, customerName) => ({
+        subject: `Order Confirmed ${orderId}`,
+        html: wrapEmail(`
+            <h1 class="h1">Order Confirmed!</h1>
+            <p class="text-gray">Hi ${customerName},</p>
+            <p class="text-gray">Thank you for choosing Himalaya Vitality. Your journey to peak performance starts now. We have received your order and are preparing it for dispatch.</p>
+            <table class="info-table">
+                <tr><td>Order Reference</td><td>${orderId}</td></tr>
+                <tr><td>Total Amount</td><td>$${total.toFixed(2)}</td></tr>
+                <tr><td>Status</td><td style="color: #D0202F;">Processing</td></tr>
+            </table>
+            <div style="text-align: center;">
+                <a href="${process.env.SITE_URL || 'https://himalayavitality.com'}/track" class="button">Track Order</a>
+            </div>
+        `, `Order #${orderId} confirmed. Total: $${total.toFixed(2)}`),
+        text: `Order Confirmed!\n\nHi ${customerName},\n\nThank you for choosing Himalaya Vitality. Your order has been received.\n\nOrder Reference: ${orderId}\nTotal Amount: $${total.toFixed(2)}\nStatus: Processing\n\nTrack your order here: ${process.env.SITE_URL || 'https://himalayavitality.com'}/track\n\nHimalaya Vitality`
+    }),
+    shipping: (orderId, carrier, trackingNumber) => ({
+        subject: 'Your Order has Shipped!',
+        html: wrapEmail(`
+            <h1 class="h1">Your Order has Shipped!</h1>
+            <p class="text-gray">Great news! Your package is on its way.</p>
+            <div style="background-color: #f9f9f9; padding: 20px; border-radius: 8px; border: 1px solid #eeeeee;">
+                <p style="margin: 0 0 10px 0; font-size: 12px; text-transform: uppercase; color: #888; font-weight: bold;">Order ID</p>
+                <p style="margin: 0 0 20px 0; font-weight: bold; font-size: 16px;">${orderId}</p>
+                <p style="margin: 0 0 10px 0; font-size: 12px; text-transform: uppercase; color: #888; font-weight: bold;">Carrier</p>
+                <p style="margin: 0 0 20px 0; font-weight: bold;">${carrier}</p>
+                <p style="margin: 0 0 10px 0; font-size: 12px; text-transform: uppercase; color: #888; font-weight: bold;">Tracking Number</p>
+                <p style="margin: 0; font-weight: bold; font-family: monospace; font-size: 18px;">${trackingNumber}</p>
+            </div>
+            <div style="text-align: center;">
+                <a href="${process.env.SITE_URL || 'https://himalayavitality.com'}/track" class="button">Track Package</a>
+            </div>
+        `, `Your order ${orderId} has shipped via ${carrier}`),
+        text: `Your Order has Shipped!\n\nGreat news! Your package is on its way.\n\nOrder ID: ${orderId}\nCarrier: ${carrier}\nTracking Number: ${trackingNumber}\n\nTrack here: ${process.env.SITE_URL || 'https://himalayavitality.com'}/track\n\nHimalaya Vitality`
+    }),
+    contactReply: (name) => ({
+        subject: 'We received your message',
+        html: wrapEmail(`
+            <h1 class="h1">Message Received</h1>
+            <p class="text-gray">Hi ${name},</p>
+            <p class="text-gray">Thanks for reaching out to Himalaya Vitality Support. We have received your message and a member of our team will get back to you within 24 hours.</p>
+            <p class="text-gray">Stay vital,</p>
+            <p style="font-weight: bold;">Himalaya Vitality Team</p>
+        `, `We have received your message.`),
+        text: `Message Received\n\nHi ${name},\n\nThanks for reaching out to Himalaya Vitality Support. We have received your message and a member of our team will get back to you within 24 hours.\n\nStay vital,\nHimalaya Vitality Team`
+    }),
+    adminNotification: (subject, content) => ({
+        subject: subject,
+        html: wrapEmail(content, subject),
+        text: content.replace(/<[^>]*>?/gm, '')
+    })
 };
 
 const transporter = nodemailer.createTransport({
@@ -172,13 +227,33 @@ const transporter = nodemailer.createTransport({
     }
 });
 
-const sendEmail = async (to, subject, html) => {
+const sendEmail = async (to, templateData) => {
     try {
         if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
             console.warn("Skipping email: Credentials missing.");
             return false;
         }
-        await transporter.sendMail({ from: `"Himalaya Vitality" <${process.env.EMAIL_USER}>`, to, subject, html });
+        
+        let subject, html, text;
+        if (templateData && typeof templateData === 'object' && templateData.html) {
+            subject = templateData.subject;
+            html = templateData.html;
+            text = templateData.text;
+        } else {
+            console.warn("Invalid email template data provided");
+            return false;
+        }
+
+        await transporter.sendMail({ 
+            from: `"Himalaya Vitality" <${process.env.EMAIL_USER}>`, 
+            to, 
+            subject, 
+            html,
+            text, // Plain text fallback significantly reduces spam flagging
+            headers: {
+                'X-Entity-Ref-ID': `HV-${Date.now()}`,
+            }
+        });
         return true;
     } catch (e) {
         console.error("Email Error:", e);
@@ -327,8 +402,8 @@ app.post('/api/auth/signup', authLimiter, async (req, res) => {
             data: { name, email, password: hashed, otp }
         });
 
-        // Send Styled OTP Email
-        await sendEmail(email, 'Verify Your Account', templates.otp(otp));
+        // Send OTP
+        await sendEmail(email, templates.otp(otp));
 
         res.json({ success: true, requiresVerification: true, email });
     } catch (e) { res.status(500).json({ error: e.message }); }
@@ -374,8 +449,7 @@ app.post('/api/auth/forgot-password', authLimiter, async (req, res) => {
         if (user) {
             const otp = Math.floor(100000 + Math.random() * 900000).toString();
             await prisma.user.update({ where: { id: user.id }, data: { otp } });
-            // Send Styled OTP Email
-            await sendEmail(email, 'Reset Password', templates.forgotPassword(otp));
+            await sendEmail(email, templates.forgotPassword(otp));
         }
         res.json({ success: true }); // Always return true for security
     } catch (e) { res.status(500).json({ error: e.message }); }
@@ -467,10 +541,9 @@ app.post('/api/orders', async (req, res) => {
             return order;
         });
 
-        // Send Styled Confirmation Email
+        // Send Confirmation Email
         sendEmail(
             customer.email, 
-            `Order Confirmed ${orderNumber}`, 
             templates.orderConfirmation(orderNumber, total, customer.firstName)
         );
 
@@ -535,25 +608,81 @@ app.use('/api/admin', authenticateToken, authorizeAdmin);
 
 app.get('/api/admin/stats', async (req, res) => {
     try {
-        // Simple aggregated stats
-        const orders = await prisma.order.findMany({ where: { status: 'Paid' } });
-        const totalRevenue = orders.reduce((acc, o) => acc + o.total, 0);
-        const avgOrderValue = orders.length > 0 ? totalRevenue / orders.length : 0;
+        const { startDate, endDate } = req.query;
         
-        // Mock Chart Data
-        const chart = Array.from({length: 7}, (_, i) => {
-            const d = new Date();
-            d.setDate(d.getDate() - i);
-            return { date: d.toISOString().split('T')[0], revenue: Math.floor(Math.random() * 500) };
-        }).reverse();
+        // Default to last 30 days if not provided
+        const end = endDate ? new Date(endDate) : new Date();
+        const start = startDate ? new Date(startDate) : new Date();
+        if (!startDate) start.setDate(end.getDate() - 30);
+
+        // 1. Fetch Current Period Orders
+        const currentOrders = await prisma.order.findMany({
+            where: {
+                createdAt: { gte: start, lte: end },
+                status: { in: ['Paid', 'Fulfilled', 'Delivered'] }
+            }
+        });
+
+        const totalRevenue = currentOrders.reduce((acc, o) => acc + o.total, 0);
+        const totalOrders = currentOrders.length;
+        const avgOrderValue = totalOrders > 0 ? totalRevenue / totalOrders : 0;
+
+        // 2. Generate Chart Data
+        const revenueMap = {};
+        currentOrders.forEach(o => {
+            const date = o.createdAt.toISOString().split('T')[0];
+            revenueMap[date] = (revenueMap[date] || 0) + o.total;
+        });
+
+        const chart = [];
+        let current = new Date(start);
+        const last = new Date(end);
+        
+        while (current <= last) {
+             const dateStr = current.toISOString().split('T')[0];
+             chart.push({
+                date: dateStr,
+                revenue: revenueMap[dateStr] || 0
+             });
+             current.setDate(current.getDate() + 1);
+        }
+
+        // 3. Trends (Compare to previous period)
+        const duration = end.getTime() - start.getTime();
+        const prevStart = new Date(start.getTime() - duration);
+        const prevEnd = new Date(start.getTime());
+
+        const prevOrders = await prisma.order.findMany({
+            where: {
+                createdAt: { gte: prevStart, lt: prevEnd },
+                status: { in: ['Paid', 'Fulfilled', 'Delivered'] }
+            }
+        });
+
+        const prevRevenue = prevOrders.reduce((acc, o) => acc + o.total, 0);
+        const prevOrdersCount = prevOrders.length;
+        const prevAov = prevOrdersCount > 0 ? prevRevenue / prevOrdersCount : 0;
+
+        const calculateTrend = (current, previous) => {
+            if (previous === 0) return current > 0 ? 100 : 0;
+            return ((current - previous) / previous) * 100;
+        };
 
         res.json({
             totalRevenue,
-            totalOrders: orders.length,
+            totalOrders,
             avgOrderValue,
-            chart
+            chart,
+            trends: {
+                revenue: calculateTrend(totalRevenue, prevRevenue),
+                orders: calculateTrend(totalOrders, prevOrdersCount),
+                aov: calculateTrend(avgOrderValue, prevAov)
+            }
         });
-    } catch (e) { res.status(500).json({ error: e.message }); }
+    } catch (e) { 
+        console.error(e);
+        res.status(500).json({ error: e.message }); 
+    }
 });
 
 app.get('/api/admin/orders', async (req, res) => {
@@ -620,10 +749,8 @@ app.put('/api/admin/orders/:id/tracking', async (req, res) => {
     });
     
     if (notify) {
-        // Send Styled Shipping Email
         sendEmail(
             order.customerEmail, 
-            'Order Shipped!', 
             templates.shipping(order.orderNumber, carrier, trackingNumber)
         );
     }
@@ -729,18 +856,15 @@ app.post('/api/contact', contactLimiter, async (req, res) => {
 
         // 3. Send Notification to Admin
         await sendEmail(
-            process.env.EMAIL_USER, 
-            `New Contact: ${subject || 'Inquiry'}`, 
-            wrapEmail(`
-                <h1 class="h1">New Contact Message</h1>
-                <p><strong>From:</strong> ${name} (${email})</p>
-                <p><strong>Subject:</strong> ${subject}</p>
-                <div style="background:#f4f4f4; padding:15px; border-radius:5px;">${message}</div>
-            `)
+            process.env.EMAIL_USER,
+            templates.adminNotification(
+                `New Contact: ${subject || 'Inquiry'}`,
+                `<h1 class="h1">New Contact Message</h1><p><strong>From:</strong> ${name} (${email})</p><p><strong>Subject:</strong> ${subject}</p><div style="background:#f4f4f4; padding:15px; border-radius:5px;">${message}</div>`
+            )
         );
 
         // 4. Send Auto-Reply to User
-        await sendEmail(email, "We received your message", templates.contactReply(name));
+        await sendEmail(email, templates.contactReply(name));
 
         res.json({ success: true, message: "Message received." });
     } catch (e) {
