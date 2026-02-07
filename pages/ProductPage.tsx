@@ -179,9 +179,7 @@ export const ProductPage = () => {
                 <div className="absolute top-6 left-6 flex flex-col gap-2 items-start">
                     <div className="bg-white/90 backdrop-blur px-4 py-2 rounded-full text-xs font-bold text-brand-dark shadow-sm border border-gray-100">
                     High Altitude • Gold Grade
-                    </div>
-                    <div className="bg-brand-dark px-4 py-2 rounded-full text-xs font-bold text-white shadow-sm flex items-center">
-                    <Award size={14} className="mr-1 text-brand-red" /> Athlete Grade
+                    <Award size={14} className="mr-1 text-brand-red bg-brand-dark px-4 py-2 rounded-full text-xs font-bold text-white shadow-sm flex items-center" /> Athlete Grade
                     </div>
                 </div>
                 </div>
