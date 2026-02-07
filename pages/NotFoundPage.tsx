@@ -44,15 +44,6 @@ export const NotFoundPage = () => {
                     </Button>
                 </Link>
             </div>
-
-            <div className="mt-12 max-w-md mx-auto relative">
-                <input 
-                    type="text" 
-                    placeholder="Search for products..." 
-                    className="w-full p-4 pl-12 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-brand-red"
-                />
-                <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
-            </div>
         </Reveal>
       </Container>
     </div>
