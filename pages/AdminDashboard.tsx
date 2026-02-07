@@ -6,10 +6,10 @@ import {
 } from 'recharts';
 import { 
   LayoutDashboard, ShoppingCart, Package, Tag, Check, X, Trash2, 
-  Save, Mail, Truck, DollarSign, Percent, ArrowUpRight, ArrowDownRight, Download, History, Menu, Send, Box, Calendar, Globe, Plus, Pencil, Database, MessageSquare
+  Save, Mail, Truck, DollarSign, Percent, ArrowUpRight, ArrowDownRight, Download, History, Menu, Send, Box, Calendar, Globe, Plus, Pencil, Database
 } from 'lucide-react';
 import { Card, Button, Badge } from '../components/UI';
-import { Order, ProductVariant, Product, RegionConfig, BundleType } from '../types';
+import { Order, ProductVariant, Product, RegionConfig } from '../types';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { SEO } from '../components/SEO';
@@ -18,13 +18,12 @@ import {
     fetchDiscounts, createDiscount, deleteDiscount, 
     fetchSubscribers, fetchInventoryLogs, fetchAdminStats,
     fetchProduct, sendAdminNewsletter,
-    fetchShippingRegions, createShippingRegion, updateShippingRegion, deleteShippingRegion,
-    fetchContactMessages
+    fetchShippingRegions, createShippingRegion, updateShippingRegion, deleteShippingRegion
 } from '../services/api';
 import { DashboardSkeleton } from '../components/Skeletons';
 import { useCurrency } from '../context/CurrencyContext';
 
-type AdminView = 'DASHBOARD' | 'ORDERS' | 'DISCOUNTS' | 'PRODUCTS' | 'SUBSCRIBERS' | 'SHIPPING' | 'INVENTORY_LOGS' | 'MESSAGES';
+type AdminView = 'DASHBOARD' | 'ORDERS' | 'DISCOUNTS' | 'PRODUCTS' | 'SUBSCRIBERS' | 'SHIPPING' | 'INVENTORY_LOGS';
 
 // Extended types for local admin state
 interface AdminVariant extends ProductVariant {
@@ -950,50 +949,6 @@ const SubscribersView = () => {
     );
 };
 
-const MessagesView = () => {
-    const { data: messages = [] } = useQuery({ queryKey: ['admin-messages'], queryFn: fetchContactMessages });
-
-    return (
-        <Card className="p-0 overflow-hidden">
-            <div className="p-6 border-b border-gray-100">
-                <h3 className="font-heading font-bold text-lg text-brand-dark">Inbox (Contact Form)</h3>
-            </div>
-            <div className="overflow-x-auto">
-                <table className="w-full text-left">
-                    <thead>
-                        <tr className="bg-gray-50 text-gray-500 text-xs uppercase">
-                            <th className="p-4">Date</th>
-                            <th className="p-4">From</th>
-                            <th className="p-4">Subject</th>
-                            <th className="p-4">Message</th>
-                        </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-100 text-sm">
-                        {messages.map((msg: any) => (
-                            <tr key={msg.id} className="hover:bg-gray-50">
-                                <td className="p-4 whitespace-nowrap text-gray-500 text-xs">
-                                    {new Date(msg.createdAt).toLocaleDateString()}
-                                </td>
-                                <td className="p-4">
-                                    <div className="font-bold text-brand-dark">{msg.name}</div>
-                                    <div className="text-xs text-gray-400">{msg.email}</div>
-                                </td>
-                                <td className="p-4 font-medium">{msg.subject}</td>
-                                <td className="p-4 text-gray-600 max-w-md truncate">{msg.message}</td>
-                            </tr>
-                        ))}
-                        {messages.length === 0 && (
-                            <tr>
-                                <td colSpan={4} className="p-8 text-center text-gray-400">No messages found.</td>
-                            </tr>
-                        )}
-                    </tbody>
-                </table>
-            </div>
-        </Card>
-    );
-};
-
 const InventoryLogView = () => {
     const { data: logs = [] } = useQuery({ queryKey: ['admin-logs'], queryFn: fetchInventoryLogs });
 
@@ -1075,7 +1030,6 @@ export const AdminDashboard = () => {
           <SidebarItem icon={Tag} label="Discounts" active={currentView === 'DISCOUNTS'} onClick={() => handleViewChange('DISCOUNTS')} />
           <SidebarItem icon={Globe} label="Shipping" active={currentView === 'SHIPPING'} onClick={() => handleViewChange('SHIPPING')} />
           <SidebarItem icon={Mail} label="Subscribers" active={currentView === 'SUBSCRIBERS'} onClick={() => handleViewChange('SUBSCRIBERS')} />
-          <SidebarItem icon={MessageSquare} label="Messages" active={currentView === 'MESSAGES'} onClick={() => handleViewChange('MESSAGES')} />
           <SidebarItem icon={History} label="Inventory Logs" active={currentView === 'INVENTORY_LOGS'} onClick={() => handleViewChange('INVENTORY_LOGS')} />
         </div>
         <div className="p-4 border-t border-gray-100">
@@ -1110,7 +1064,6 @@ export const AdminDashboard = () => {
             {currentView === 'DISCOUNTS' && <DiscountsView />}
             {currentView === 'SHIPPING' && <ShippingView />}
             {currentView === 'SUBSCRIBERS' && <SubscribersView />}
-            {currentView === 'MESSAGES' && <MessagesView />}
             {currentView === 'INVENTORY_LOGS' && <InventoryLogView />}
         </div>
       </div>
