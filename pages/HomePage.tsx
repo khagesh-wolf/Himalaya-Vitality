@@ -457,8 +457,8 @@ export const HomePage = () => {
                         </div>
 
                         <div className="mt-8 flex flex-col sm:flex-row items-center justify-center md:justify-start gap-4 sm:gap-6 text-xs font-bold text-gray-500 uppercase tracking-widest">
-                            <div className="flex items-center gap-2"><Truck size={16} /> Free Aus Shipping (2+)</div>
-                            <div className="flex items-center gap-2"><ShieldCheck size={16} /> Money Back Guarantee</div>
+                            <div className="flex items-center gap-2"><Truck size={16} />Fast Shipping</div>
+                            <div className="flex items-center gap-2"><ShieldCheck size={16} />Purity Guarantee</div>
                         </div>
                     </Reveal>
                 </div>
