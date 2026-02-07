@@ -255,7 +255,7 @@ export const Navbar = () => {
                         </Link>
                     )}
 
-                    {['Shop', 'Science', 'About', 'Reviews', 'Blog', 'Track Order', 'Contact'].map((item) => (
+                    {['Shop', 'Science', 'About', 'Track Order', 'Contact'].map((item) => (
                         <Link 
                             key={item}
                             to={item === 'Shop' ? '/product/himalaya-shilajit-resin' : item === 'Track Order' ? '/track' : `/${item.toLowerCase().replace(/ /g, '-')}`} 
@@ -282,7 +282,6 @@ export const Navbar = () => {
                 
                 <div className="grid grid-cols-2 gap-4 mb-6">
                       <Link to="/faq" className="text-xs text-gray-500 font-bold hover:text-brand-dark" onClick={() => setIsMobileMenuOpen(false)}>FAQ</Link>
-                      <Link to="/shipping-returns" className="text-xs text-gray-500 font-bold hover:text-brand-dark" onClick={() => setIsMobileMenuOpen(false)}>Shipping</Link>
                 </div>
 
                 <p className="text-xs text-gray-400 text-center">© {new Date().getFullYear()} Himalaya Vitality</p>
