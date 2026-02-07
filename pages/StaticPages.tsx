@@ -495,7 +495,7 @@ export const ContactPage = () => {
                                 <div className="w-12 h-12 bg-brand-red text-white flex items-center justify-center rounded-xl shadow-lg shadow-brand-red/20"><Mail size={24}/></div>
                                 <div>
                                     <div className="text-xs font-bold uppercase text-gray-400 mb-1">Email Support</div>
-                                    <a href="mailto:support@himalayavitality.com" className="font-bold text-xl text-brand-dark hover:text-brand-red transition-colors">support@himalayavitality.com</a>
+                                    <a href="mailto:mail@himalayavitality.app" className="font-bold text-xl text-brand-dark hover:text-brand-red transition-colors">mail@himalayavitality.app</a>
                                 </div>
                             </div>
                             <div className="flex items-center gap-6 p-6 bg-gray-50 rounded-2xl border border-gray-100">
