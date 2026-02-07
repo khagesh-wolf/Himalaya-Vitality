@@ -594,7 +594,7 @@ export const ShippingReturnsPage = () => (
                             <h2 className="text-2xl font-bold text-brand-dark mb-4">30-Day Guarantee</h2>
                             <div className="prose text-gray-600">
                                 <p>We stand behind the potency of our product. If you don't feel a difference in your energy and focus within 30 days, we'll refund your money.</p>
-                                <p>To initiate a return, simply email <a href="mailto:support@himalayavitality.com" className="text-brand-red font-bold">support@himalayavitality.com</a> with your order number. You do not need to return the used jar.</p>
+                                <p>To initiate a return, simply email <a href="mailto:mail@himalayavitality.app" className="text-brand-red font-bold">mail@himalayavitality.app</a> with your order number. </p>
                             </div>
                         </div>
                     </div>
