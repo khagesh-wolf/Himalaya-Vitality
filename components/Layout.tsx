@@ -183,7 +183,6 @@ export const Navbar = () => {
                                 <Link to="/admin" onClick={() => setShowProfileMenu(false)} className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 hover:text-brand-red">Admin Dashboard</Link>
                             )}
                             <Link to="/profile" onClick={() => setShowProfileMenu(false)} className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 hover:text-brand-red">My Profile</Link>
-                            <Link to="/profile" onClick={() => setShowProfileMenu(false)} className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 hover:text-brand-red">Order History</Link>
                             <button onClick={() => { logout(); setShowProfileMenu(false); }} className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 hover:text-brand-red flex items-center">
                                 <LogOut size={14} className="mr-2" /> Sign Out
                             </button>
